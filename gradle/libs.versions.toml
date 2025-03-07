@@ -1,0 +1,13 @@
+[libraries]
+ucanaccess = { module = "io.github.spannm:ucanaccess", version = "5.1.3" }
+
+jackson-yaml = { module = "com.fasterxml.jackson.dataformat:jackson-dataformat-yaml", version.ref = "jackson" }
+jackson-kotlin = { module = "com.fasterxml.jackson.module:jackson-module-kotlin", version.ref = "jackson" }
+
+logging-logback = { module = "ch.qos.logback:logback-classic", version = "1.5.17" }
+logging-kotlin = { module = "io.github.oshai:kotlin-logging-jvm", version = "7.0.4" }
+
+
+[versions]
+jackson = "2.18.3"
+jdk = "21"
