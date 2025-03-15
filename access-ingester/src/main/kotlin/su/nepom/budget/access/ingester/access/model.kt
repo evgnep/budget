@@ -1,10 +1,14 @@
 package su.nepom.budget.access.ingester.access
 
-import java.time.LocalDateTime
+import kotlinx.datetime.Instant
 
-data class UserAccess(val id: Int, val name: String)
+interface ObjectAccess {
+    val id: Int
+}
 
-data class CurrencyAccess(val id: Int, val name: String)
+data class UserAccess(override val id: Int, val name: String): ObjectAccess
+
+data class CurrencyAccess(override val id: Int, val name: String): ObjectAccess
 
 enum class AccountType(val id: Int) {
     MONEY(1),
@@ -13,24 +17,31 @@ enum class AccountType(val id: Int) {
 }
 
 data class AccountAccess(
-    val id: Int,
+    override val id: Int,
     val type: AccountType,
     val name: String,
-    val currency: CurrencyAccess,
+    val currencyId: Int,
     val closed: Boolean,
     val order: Int,
-)
+): ObjectAccess
 
-data class AccountingEntryAccess(
-    val id: Int,
-    val date: LocalDateTime,
-    val user: UserAccess,
-    val account: AccountAccess,
+data class TransactionAccess(
+    override val id: Int,
+    val date: Instant,
+    val userId: Int,
+    val accountId: Int,
     val moneyReal: Long,
-    val accountBudget: AccountAccess?,
+    val accountBudgetId: Int?,
     val moneyBudget: Long?,
     val description: String,
-    val accountTarget: AccountAccess?,
+    val accountTargetId: Int?,
     val moneyTransfer: Long?,
     val flag: Boolean,
+): ObjectAccess
+
+data class DataAccess(
+    val users: Map<Int, UserAccess>,
+    val currencies: Map<Int, CurrencyAccess>,
+    val accounts: Map<Int, AccountAccess>,
+    val transactions: List<TransactionAccess>
 )

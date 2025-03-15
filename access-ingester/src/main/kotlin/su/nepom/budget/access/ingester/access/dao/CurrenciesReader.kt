@@ -4,7 +4,7 @@ import su.nepom.budget.access.ingester.access.CurrencyAccess
 import su.nepom.budget.access.ingester.access.utils.readAll
 
 class CurrenciesReader {
-    fun read(): List<CurrencyAccess> = readAll("SELECT ИД, Название FROM Валюта") {
+    fun read(): List<CurrencyAccess> = readAll("SELECT ИД, Название FROM Валюта ORDER BY ИД") {
         CurrencyAccess(getInt("ИД"), getString("Название"))
     }
 }

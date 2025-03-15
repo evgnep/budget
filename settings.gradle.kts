@@ -1,11 +1,18 @@
 rootProject.name = "budget"
-include("access-ingester")
 
 pluginManagement {
 
 }
 
 plugins {
-    kotlin("jvm") version "2.1.0" apply false
+    val kotlinVer = "2.1.10"
+    kotlin("jvm") version kotlinVer apply false
+    kotlin("plugin.serialization") version kotlinVer apply false
 }
-include("utils")
+
+include(
+    "access-ingester",
+    "events",
+    "model",
+    "utils",
+)

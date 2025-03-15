@@ -5,6 +5,7 @@ plugins {
 dependencies {
     api(libs.jackson.yaml)
     api(libs.jackson.kotlin)
+    api(libs.kotlin.datetime)
 
     testImplementation("org.jetbrains.kotlin:kotlin-test")
 }

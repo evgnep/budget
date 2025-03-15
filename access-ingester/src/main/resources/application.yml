@@ -1,1 +1,47 @@
 accessPath: path
+
+eventStore: path
+
+processedDb: path
+
+currencies:
+  "р":
+     code: RUB
+     name: рубли
+  "usd":
+     code: USD
+     name: доллары
+  "евро":
+     code: EUR
+     name: евро
+  "лари":
+    code: GEL
+    name: лари
+  "золото":
+     code: XAU
+     name: золото
+  "серебро":
+     code: XAG
+     name: серебро
+  "платина":
+     code: XPT
+     name: платина
+  "палладий":
+     code: XPD
+     name: палладий
+  "гривны":
+     code: UAH
+     name: гривны
+  "usdt trc20":
+     code: USDT_TRC20
+     name: usdt trc20
+  "тенге":
+     code: KZT
+     name: тенге
+     digitsAfterPoint: 0
+     divider: 100
+  "btc 0.00001":
+     code: BTC
+     name: btc
+     digitsAfterPoint: 7
+     divider: 1
