@@ -9,6 +9,7 @@ import su.nepom.budget.model.AccountKind
 import su.nepom.budget.model.CurrencyCode
 import su.nepom.budget.model.EventCoords
 import su.nepom.budget.model.Uuid
+import su.nepom.budget.utils.SecondsClock
 
 private val CURRENCY_CONTENT = CurrencyContentV1(CurrencyCode("RUB"), "рубли", 2, "RUB")
 
@@ -23,8 +24,8 @@ private val ACCOUNT_CONTENT = AccountContentV1(
 )
 
 private val TRANSACTION_CONTENT = TransactionContentV1(
+    Uuid.generate(),
     SecondsClock.now(),
-    "Ivan",
     "some transaction",
     listOf(
         TransactionContentV1.Item(AccountCode("acc1"), 1020),
@@ -37,10 +38,9 @@ private val BASE_EVENT: Event<StorableContent> = Event(
     created = SecondsClock.now(),
     creator = "Ivan",
     basedOn = listOf(EventCoords("somewhere", 2), EventCoords("somewhere else", 3)),
-    obj = Event.ObjectInfo(Uuid.generate(), EventType.NEW),
+    type = EventType.NEW,
     content = CURRENCY_CONTENT
 )
-
 
 class FileContentSerializationTest {
     @ParameterizedTest

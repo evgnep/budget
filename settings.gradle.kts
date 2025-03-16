@@ -12,7 +12,6 @@ plugins {
 
 include(
     "access-ingester",
+    "common",
     "events",
-    "model",
-    "utils",
 )

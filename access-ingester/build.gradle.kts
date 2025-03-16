@@ -8,8 +8,8 @@ dependencies {
     implementation(libs.logging.logback)
     implementation(libs.logging.kotlin)
     implementation(libs.sqlite)
+    implementation(project(":common"))
     implementation(project(":events"))
-    implementation(project(":utils"))
 
     runtimeOnly(libs.ktorm.sqlite)
     runtimeOnly(libs.ucanaccess)

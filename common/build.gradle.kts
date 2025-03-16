@@ -4,7 +4,9 @@ plugins {
 }
 
 dependencies {
-    implementation(libs.kotlin.datetime)
+    api(libs.jackson.yaml)
+    api(libs.jackson.kotlin)
+    api(libs.kotlin.datetime)
     implementation(libs.kotlin.serialization.core)
 
     testImplementation("org.jetbrains.kotlin:kotlin-test")
