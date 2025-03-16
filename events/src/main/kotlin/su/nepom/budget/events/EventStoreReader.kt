@@ -1,27 +1,63 @@
 package su.nepom.budget.events
 
+import su.nepom.budget.events.impl.EventsSequenceImpl
+import su.nepom.budget.events.model.ActualVersionContent
+import su.nepom.budget.events.model.Event
+import su.nepom.budget.model.Place
 import java.nio.file.Path
+import kotlin.io.path.absolute
+import kotlin.io.path.absolutePathString
 import kotlin.io.path.isDirectory
 import kotlin.io.path.listDirectoryEntries
 import kotlin.io.path.walk
 
-private val eventFilenameRegex = Regex("(\\d+)-(\\d+)\\.json")
+internal val eventFilenameRegex = Regex("(\\d+)-(\\d+)\\.json")
 
 class EventStoreReader(
-    private val rootPath: Path,
+    val rootPath: Path,
+    val ourPlace: Place,
 ) {
-    fun getAllSources(): List<String> =
-        rootPath.listDirectoryEntries().filter { it.isDirectory() }.map { it.fileName.toString() }
+    fun getAllSources(): List<Place> =
+        rootPath.listDirectoryEntries().filter { it.isDirectory() }.map { Place(it.fileName.toString()) }
 
-    fun getMaxEventNoForSource(source: String): Int? =
-        rootPath.resolve(source).walk()
-            .mapNotNull {
-                it.fileName.toString().getFirstEventNoAndCount()?.let {  (first, count) -> first + count - 1 }
+    fun getFilesSequence(resolver: Path.() -> Path = { this }): Sequence<EventFile> = rootPath.let(resolver).walk()
+        .mapNotNull {
+            it.fileName.toString().getFirstEventNoAndCount()?.let { (first, count) ->
+                val place = Place(
+                    Path.of(it.absolutePathString().removePrefix(rootPath.absolutePathString()))
+                        .subpath(0, 1).toString()
+                )
+                if (place == ourPlace) null else EventFile(place, it, first, count)
             }
+        }
+
+    fun getMaxEventNoForSource(source: Place): Int? =
+        getFilesSequence { resolve(source.code) }
+            .map { it.endEventNo }
             .maxOrNull()
+
+    fun createEventsSequence(from: Map<Place, Int>): EventsSequence = EventsSequenceImpl(this, from)
+
+    data class EventFile(val place: Place, val path: Path, val startEventNo: Int, val eventsCount: Int) {
+        val endEventNo: Int get() = startEventNo + eventsCount - 1
+        val alastEventNo: Int get() = startEventNo + eventsCount
+    }
 }
 
-fun String.getFirstEventNoAndCount(): Pair<Int, Int>? =
+interface EventsSequence : Sequence<Event<ActualVersionContent>> {
+    fun getNextEventNoByPlace(): Map<Place, Int>
+
+    fun getReadingErrorsByPlace(): Map<Place, ReadingError>
+
+    data class ReadingError(
+        val place: Place,
+        val eventNo: Int,
+        val message: String,
+        val exception: Exception? = null
+    )
+}
+
+private fun String.getFirstEventNoAndCount(): Pair<Int, Int>? =
     eventFilenameRegex.matchEntire(this)?.let {
         it.groupValues[1].toInt() to it.groupValues[2].toInt()
     }

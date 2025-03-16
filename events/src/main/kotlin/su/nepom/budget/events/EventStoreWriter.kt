@@ -11,6 +11,7 @@ import su.nepom.budget.events.model.ActualVersionContent
 import su.nepom.budget.events.model.Event
 import su.nepom.budget.events.model.FileContent
 import su.nepom.budget.events.model.StorableContent
+import su.nepom.budget.model.Place
 import java.io.OutputStream
 import java.nio.file.Path
 import java.nio.file.StandardOpenOption
@@ -20,7 +21,7 @@ import kotlin.math.min
 
 class EventStoreWriter(
     private val rootPath: Path,
-    private val source: String,
+    private val source: Place   ,
     private val maxEventsPerFile: Int = 999,
     private val dateProvider: () -> LocalDate =
         { Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date }
@@ -76,7 +77,7 @@ class EventStoreWriter(
     private fun getTargetDirectory(): Path {
         val date = dateProvider()
         return rootPath
-            .resolve(source)
+            .resolve(source.code)
             .resolve(String.format("%04d", date.year))
             .resolve(String.format("%02d", date.month.value))
             .resolve(String.format("%02d", date.dayOfMonth))

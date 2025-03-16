@@ -26,9 +26,10 @@ import su.nepom.budget.events.EventStoreWriter
 import su.nepom.budget.events.model.ActualVersionContent
 import su.nepom.budget.events.model.Event
 import su.nepom.budget.model.EventCoords
+import su.nepom.budget.model.Place
 import java.nio.file.Path
 
-private const val SOURCE = "access"
+private val SOURCE = Place("access")
 
 private val logger = KotlinLogging.logger {}
 
@@ -36,7 +37,7 @@ class EventsGenerator(
     private val accessReader: Reader,
     private val config: Config,
 ) {
-    private val eventStoreReader = EventStoreReader(Path.of(config.eventStore))
+    private val eventStoreReader = EventStoreReader(Path.of(config.eventStore), Place.NULL)
 
     private val eventStoreWriter = EventStoreWriter(Path.of(config.eventStore), SOURCE)
 

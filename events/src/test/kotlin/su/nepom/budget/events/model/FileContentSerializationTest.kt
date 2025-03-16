@@ -8,6 +8,7 @@ import su.nepom.budget.model.AccountCode
 import su.nepom.budget.model.AccountKind
 import su.nepom.budget.model.CurrencyCode
 import su.nepom.budget.model.EventCoords
+import su.nepom.budget.model.Place
 import su.nepom.budget.model.Uuid
 import su.nepom.budget.utils.SecondsClock
 
@@ -34,10 +35,10 @@ private val TRANSACTION_CONTENT = TransactionContentV1(
 )
 
 private val BASE_EVENT: Event<StorableContent> = Event(
-    coords = EventCoords("place", 1),
+    coords = EventCoords(Place("place"), 1),
     created = SecondsClock.now(),
     creator = "Ivan",
-    basedOn = listOf(EventCoords("somewhere", 2), EventCoords("somewhere else", 3)),
+    basedOn = listOf(EventCoords(Place("somewhere"), 2), EventCoords(Place("somewhere else"), 3)),
     type = EventType.NEW,
     content = CURRENCY_CONTENT
 )

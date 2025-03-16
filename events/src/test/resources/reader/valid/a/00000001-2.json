@@ -1,0 +1,38 @@
+{
+  "events": [
+    {
+      "coords": {
+        "source": "a",
+        "no": 1
+      },
+      "created": "2025-03-09T19:20:25Z",
+      "creator": "unknown",
+      "type": "NEW",
+      "basedOn": [],
+      "content": {
+        "type": "CurrencyContentV1",
+        "code": "RUB",
+        "name": "рубли",
+        "digitsAfterPoint": 2,
+        "officialCode": "RUB"
+      }
+    },
+    {
+      "coords": {
+        "source": "a",
+        "no": 2
+      },
+      "created": "2025-03-09T19:20:25Z",
+      "creator": "unknown",
+      "type": "NEW",
+      "basedOn": [],
+      "content": {
+        "type": "CurrencyContentV1",
+        "code": "USD",
+        "name": "доллары",
+        "digitsAfterPoint": 2,
+        "officialCode": "USD"
+      }
+    }
+  ]
+}

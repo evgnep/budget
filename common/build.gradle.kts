@@ -8,6 +8,7 @@ dependencies {
     api(libs.jackson.kotlin)
     api(libs.kotlin.datetime)
     implementation(libs.kotlin.serialization.core)
+    implementation(libs.logging.kotlin)
 
     testImplementation("org.jetbrains.kotlin:kotlin-test")
 }

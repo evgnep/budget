@@ -1,0 +1,30 @@
+{
+  "events": [
+    {
+      "coords": {
+        "source": "a",
+        "no": 3
+      },
+      "created": "2025-03-09T19:20:25Z",
+      "creator": "unknown",
+      "type": "NEW",
+      "basedOn": [
+        {
+          "source": "b",
+          "no": 2
+        },
+        {
+          "source": "c",
+          "no": 1
+        }
+      ],
+      "content": {
+        "type": "CurrencyContentV1",
+        "code": "RUB",
+        "name": "рубли",
+        "digitsAfterPoint": 2,
+        "officialCode": "RUB"
+      }
+    }
+  ]
+}

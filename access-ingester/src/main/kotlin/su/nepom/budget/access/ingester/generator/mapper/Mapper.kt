@@ -6,6 +6,7 @@ import su.nepom.budget.events.model.ActualVersionContent
 import su.nepom.budget.events.model.Event
 import su.nepom.budget.events.model.EventType
 import su.nepom.budget.model.EventCoords
+import su.nepom.budget.model.Place
 import su.nepom.budget.utils.SecondsClock
 
 internal interface Mapper {
@@ -34,7 +35,7 @@ internal fun createEventForMapper(
     creator: String = "unknown",
     importedId: String? = null
 ) = Event(
-    EventCoords("", 0),
+    EventCoords(Place.NULL, 0),
     SecondsClock.now(),
     creator,
     type,

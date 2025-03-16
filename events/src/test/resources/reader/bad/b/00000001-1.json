@@ -1,0 +1,22 @@
+{
+  "events": [
+    {
+      "created": "2025-03-09T19:20:25Z",
+      "creator": "unknown",
+      "type": "NEW",
+      "basedOn": [
+        {
+          "source": "a",
+          "no": 2
+        }
+      ],
+      "content": {
+        "type": "CurrencyContentV1",
+        "code": "USD",
+        "name": "доллары",
+        "digitsAfterPoint": 2,
+        "officialCode": "USD"
+      }
+    }
+  ]
+}

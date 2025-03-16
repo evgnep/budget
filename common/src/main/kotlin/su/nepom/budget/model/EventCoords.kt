@@ -4,6 +4,8 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class EventCoords(
-    val source: String,
+    val source: Place,
     val no: Int,
-)
+) {
+    override fun toString() = "${source.code}-$no"
+}
