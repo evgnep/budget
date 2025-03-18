@@ -22,8 +22,8 @@ import su.nepom.budget.access.ingester.generator.procesed.dao.Transactions
 import su.nepom.budget.access.ingester.generator.procesed.database
 import su.nepom.budget.events.EventStoreReader
 import su.nepom.budget.events.EventStoreWriter
-import su.nepom.budget.events.model.ActualVersionContent
-import su.nepom.budget.events.model.Event
+import su.nepom.budget.event.ActualVersionContent
+import su.nepom.budget.event.Event
 import su.nepom.budget.model.EventCoords
 import su.nepom.budget.model.Place
 import java.nio.file.Path

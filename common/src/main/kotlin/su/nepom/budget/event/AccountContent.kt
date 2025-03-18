@@ -1,4 +1,4 @@
-package su.nepom.budget.events.model
+package su.nepom.budget.event
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable

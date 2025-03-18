@@ -9,8 +9,8 @@ import su.nepom.budget.access.ingester.access.AccountType
 import su.nepom.budget.access.ingester.access.ObjectAccess
 import su.nepom.budget.access.ingester.generator.procesed.dao.Accounts
 import su.nepom.budget.access.ingester.generator.procesed.database
-import su.nepom.budget.events.model.AccountContent
-import su.nepom.budget.events.model.EventType
+import su.nepom.budget.event.AccountContent
+import su.nepom.budget.event.EventType
 import su.nepom.budget.model.AccountCode
 import su.nepom.budget.model.AccountId
 import su.nepom.budget.model.AccountKind

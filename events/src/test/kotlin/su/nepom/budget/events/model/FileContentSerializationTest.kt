@@ -4,6 +4,12 @@ import kotlinx.serialization.json.Json
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.MethodSource
+import su.nepom.budget.event.AccountContentV1
+import su.nepom.budget.event.CurrencyContentV1
+import su.nepom.budget.event.Event
+import su.nepom.budget.event.EventType
+import su.nepom.budget.event.StorableContent
+import su.nepom.budget.event.TransactionContentV1
 import su.nepom.budget.model.AccountCode
 import su.nepom.budget.model.AccountId
 import su.nepom.budget.model.AccountKind

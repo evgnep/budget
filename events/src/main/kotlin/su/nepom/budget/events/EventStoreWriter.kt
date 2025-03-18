@@ -7,10 +7,10 @@ import kotlinx.datetime.toLocalDateTime
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.encodeToStream
-import su.nepom.budget.events.model.ActualVersionContent
-import su.nepom.budget.events.model.Event
+import su.nepom.budget.event.ActualVersionContent
+import su.nepom.budget.event.Event
+import su.nepom.budget.event.StorableContent
 import su.nepom.budget.events.model.FileContent
-import su.nepom.budget.events.model.StorableContent
 import su.nepom.budget.model.Place
 import java.io.OutputStream
 import java.nio.file.Path

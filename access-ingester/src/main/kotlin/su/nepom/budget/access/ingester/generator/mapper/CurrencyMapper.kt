@@ -7,8 +7,8 @@ import su.nepom.budget.access.ingester.access.CurrencyAccess
 import su.nepom.budget.access.ingester.access.ObjectAccess
 import su.nepom.budget.access.ingester.generator.procesed.dao.Currencies
 import su.nepom.budget.access.ingester.generator.procesed.database
-import su.nepom.budget.events.model.CurrencyContent
-import su.nepom.budget.events.model.EventType
+import su.nepom.budget.event.CurrencyContent
+import su.nepom.budget.event.EventType
 import su.nepom.budget.model.CurrencyCode
 import su.nepom.budget.model.CurrencyId
 import su.nepom.budget.model.Uuid

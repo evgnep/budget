@@ -2,9 +2,9 @@ package su.nepom.budget.access.ingester.generator.mapper
 
 import org.ktorm.dsl.QueryRowSet
 import su.nepom.budget.access.ingester.access.ObjectAccess
-import su.nepom.budget.events.model.ActualVersionContent
-import su.nepom.budget.events.model.Event
-import su.nepom.budget.events.model.EventType
+import su.nepom.budget.event.ActualVersionContent
+import su.nepom.budget.event.Event
+import su.nepom.budget.event.EventType
 import su.nepom.budget.model.EventCoords
 import su.nepom.budget.model.Place
 import su.nepom.budget.utils.SecondsClock

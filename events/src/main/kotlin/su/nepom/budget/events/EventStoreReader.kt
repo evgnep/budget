@@ -1,8 +1,8 @@
 package su.nepom.budget.events
 
+import su.nepom.budget.event.ActualVersionContent
+import su.nepom.budget.event.Event
 import su.nepom.budget.events.impl.EventsSequenceImpl
-import su.nepom.budget.events.model.ActualVersionContent
-import su.nepom.budget.events.model.Event
 import su.nepom.budget.model.Place
 import java.nio.file.Path
 import kotlin.io.path.absolute
