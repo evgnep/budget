@@ -4,24 +4,28 @@ import org.ktorm.dsl.QueryRowSet
 import org.ktorm.dsl.eq
 import org.ktorm.dsl.insert
 import org.ktorm.dsl.update
-import su.nepom.budget.access.ingester.Config
 import su.nepom.budget.access.ingester.access.AccountAccess
 import su.nepom.budget.access.ingester.access.AccountType
-import su.nepom.budget.access.ingester.access.CurrencyAccess
 import su.nepom.budget.access.ingester.access.ObjectAccess
 import su.nepom.budget.access.ingester.generator.procesed.dao.Accounts
 import su.nepom.budget.access.ingester.generator.procesed.database
 import su.nepom.budget.events.model.AccountContent
 import su.nepom.budget.events.model.EventType
 import su.nepom.budget.model.AccountCode
+import su.nepom.budget.model.AccountId
 import su.nepom.budget.model.AccountKind
 import su.nepom.budget.model.CurrencyCode
+import su.nepom.budget.model.Uuid
 
 internal class AccountsMapper(
-    private val accessCurrencies: Map<Int, CurrencyAccess>,
-    private val currencies: Map<String, Config.CurrencyInfo>,
-    private val accountsInfo: AccountsInfo,
+    allCurrencies: List<CurrencyProcessed>,
 ) : Mapper {
+    private val currenciesByAccessId: Map<Int, CurrencyProcessed> = allCurrencies.associateBy { it.obj.id }
+
+    private val allAccounts = mutableMapOf<Int, AccountProcessed>()
+
+    fun getAllAccounts() = allAccounts.values.toList()
+
     override fun toProcessedObject(rs: QueryRowSet) = AccountProcessed(
         AccountAccess(
             rs[Accounts.id]!!,
@@ -31,23 +35,23 @@ internal class AccountsMapper(
             rs[Accounts.closed]!! == 1,
             rs[Accounts.order]!!
         ),
-        rs[Accounts.codeMoney]?.let { AccountCode(it) },
-        rs[Accounts.codeBudget]?.let { AccountCode(it) },
-    ).also { accountsInfo[it.obj.id] = it }
+        rs[Accounts.codeMoney]?.let { AccountId(Uuid(rs[Accounts.uuidMoney]!!), AccountCode(it)) },
+        rs[Accounts.codeBudget]?.let { AccountId(Uuid(rs[Accounts.uuidBudget]!!), AccountCode(it)) },
+    ).also { allAccounts[it.obj.id] = it }
 
     override fun onDelete(old: ObjectProcessed) =
         throw UnsupportedOperationException("Account deletion is not supported: ${old.obj}")
 
     override fun onNew(new: ObjectAccess): EventsAndActions {
         new as AccountAccess
-        val code = accountsInfo.codeOfNewAccount(new.id, new.name, currencyCode(new.currencyId), new.kind())
-        val content = makeContent(new, code)
+        val id = AccountId(codeOfAccount(new.id, new.name, currencyCode(new.currencyId), new.kind()))
+        val content = makeContent(new, id)
         val accountProcessed = AccountProcessed(
             new,
-            if (content.kind == AccountKind.MONEY) content.code else null,
-            if (content.kind == AccountKind.BUDGET) content.code else null
+            if (content.kind == AccountKind.MONEY) id else null,
+            if (content.kind == AccountKind.BUDGET) id else null
         )
-        accountsInfo[new.id] = accountProcessed
+        allAccounts[accountProcessed.obj.id] = accountProcessed
         return EventsAndActions(createEventForMapper(content, EventType.NEW)) {
             database.insert(Accounts) {
                 set(it.id, new.id)
@@ -56,21 +60,23 @@ internal class AccountsMapper(
                 set(it.currencyId, new.currencyId)
                 set(it.closed, if (new.closed) 1 else 0)
                 set(it.order, new.order)
-                set(it.codeMoney, accountProcessed.money?.code)
-                set(it.codeBudget, accountProcessed.budget?.code)
+                set(it.codeMoney, accountProcessed.money?.readable?.code)
+                set(it.codeBudget, accountProcessed.budget?.readable?.code)
+                set(it.uuidMoney, accountProcessed.money?.uuid?.id)
+                set(it.uuidBudget, accountProcessed.budget?.uuid?.id)
             }
         }
     }
 
     fun makeContent(
         obj: AccountAccess,
-        code: AccountCode,
+        id: AccountId,
         kind: AccountKind = obj.kind(),
     ) = AccountContent(
-        code,
+        id,
         obj.name,
         "",
-        currencyCode(obj.currencyId),
+        currenciesByAccessId[obj.currencyId]!!.id,
         kind,
         setOf(),
         obj.order,
@@ -82,11 +88,11 @@ internal class AccountsMapper(
         else -> AccountKind.BUDGET
     }
 
-    fun currencyInfo(currencyId: Int): Config.CurrencyInfo =
-        accessCurrencies[currencyId]?.let { currencies[it.name] }
-            ?: throw IllegalStateException("Unknown currency: $this")
+    fun currencyInfo(currencyId: Int): CurrencyProcessed =
+        currenciesByAccessId[currencyId]
+            ?: throw IllegalStateException("Unknown currency: $currencyId")
 
-    fun currencyCode(currencyId: Int) = CurrencyCode(currencyInfo(currencyId).code)
+    fun currencyCode(currencyId: Int) = CurrencyCode(currencyInfo(currencyId).id.readable.code)
 
     override fun onUpdate(old: ObjectProcessed, new: ObjectAccess): EventsAndActions {
         new as AccountAccess
@@ -94,16 +100,16 @@ internal class AccountsMapper(
         if (new.currencyId != old.obj.currencyId || new.type != old.obj.type) {
             throw UnsupportedOperationException("Updating currencyId or type is not supported: ${old.obj}, $new")
         }
-        accountsInfo[new.id] = old.copy(obj = new)
-        val events = listOfNotNull(old.money, old.budget).map { code ->
+        val events = listOfNotNull(old.money, old.budget).map { id ->
             createEventForMapper(
                 makeContent(
                     new,
-                    code,
-                    if (code == old.money) AccountKind.MONEY else AccountKind.BUDGET
+                    id,
+                    if (id == old.money) AccountKind.MONEY else AccountKind.BUDGET
                 ), EventType.UPDATE
             )
         }
+        allAccounts[new.id] = old.copy(obj = new)
         return EventsAndActions(
             events,
             listOf {
@@ -119,34 +125,9 @@ internal class AccountsMapper(
 
 internal data class AccountProcessed(
     override val obj: AccountAccess,
-    val money: AccountCode?,
-    val budget: AccountCode?,
+    val money: AccountId?,
+    val budget: AccountId?,
 ) : ObjectProcessed
 
-internal class AccountsInfo {
-    private val accountsByAccessId = mutableMapOf<Int, AccountProcessed>()
-
-    private val accountByCode = mutableMapOf<AccountCode, AccountProcessed>()
-
-    operator fun set(accessId: Int, value: AccountProcessed) {
-        accountsByAccessId[accessId] = value
-        if (value.money != null)
-            accountByCode[value.money] = value
-        if (value.budget != null)
-            accountByCode[value.budget] = value
-    }
-
-    operator fun get(accessId: Int): AccountProcessed =
-        accountsByAccessId[accessId] ?: throw IllegalArgumentException("Can't find account $accessId")
-
-    operator fun contains(code: AccountCode) = code in accountByCode
-
-    fun codeOfNewAccount(id: Int, name: String, currencyCode: CurrencyCode, kind: AccountKind): AccountCode {
-        val code = codeOfAccount(id, name, currencyCode, kind)
-        if (code in accountByCode) throw IllegalArgumentException("Account with $code already exists")
-        return code
-    }
-
-    fun codeOfAccount(id: Int, name: String, currencyCode: CurrencyCode, kind: AccountKind) =
-        AccountCode("$name-$id ${currencyCode.code} ${kind.code}")
-}
+internal fun codeOfAccount(id: Int, name: String, currencyCode: CurrencyCode, kind: AccountKind) =
+    AccountCode("$name-$id ${currencyCode.code} ${kind.code}")

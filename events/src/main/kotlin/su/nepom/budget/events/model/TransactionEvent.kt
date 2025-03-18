@@ -3,14 +3,14 @@ package su.nepom.budget.events.model
 import kotlinx.datetime.Instant
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import su.nepom.budget.model.AccountCode
+import su.nepom.budget.model.AccountId
 import su.nepom.budget.model.ObjectKind
 import su.nepom.budget.model.Uuid
 
 @Serializable
 @SerialName("TransactionContentV1")
 data class TransactionContentV1(
-    val uuid: Uuid,
+    override val id: Uuid,
     val date: Instant,
     val description: String = "",
     val items: List<Item>,
@@ -21,7 +21,7 @@ data class TransactionContentV1(
 
     @Serializable
     data class Item(
-        val account: AccountCode,
+        val account: AccountId,
         val money: Long,
         val description: String = "",
         val flag: Boolean = false,

@@ -17,15 +17,18 @@ import su.nepom.budget.events.model.Event
 import su.nepom.budget.events.model.EventType
 import su.nepom.budget.events.model.TransactionContent
 import su.nepom.budget.events.model.TransactionContentItem
-import su.nepom.budget.model.AccountCode
+import su.nepom.budget.model.AccountId
 import su.nepom.budget.model.AccountKind
 import su.nepom.budget.model.Uuid
 
 internal class TransactionsMapper(
     private val accessUsers: Map<Int, UserAccess>,
-    private val accountsInfo: AccountsInfo,
+    allAccounts: List<AccountProcessed>,
     private val accountsMapper: AccountsMapper,
 ) : Mapper {
+    private val accountByAccessId: MutableMap<Int, AccountProcessed> =
+        allAccounts.associateByTo(mutableMapOf()) { it.obj.id }
+
     override fun toProcessedObject(rs: QueryRowSet) = TransactionProcessed(
         TransactionAccess(
             rs[Transactions.id]!!,
@@ -113,7 +116,7 @@ internal class TransactionsMapper(
             set(it.accountTargetId, obj.accountTargetId)
             set(it.moneyTransfer, obj.moneyTransfer)
             set(it.flag, if (obj.flag) 1 else 0)
-            set(it.uuid, context.uuid.id)
+            set(it.uuid, context.id.id)
             set(it.deleted, 0)
         }
 
@@ -168,30 +171,41 @@ internal class TransactionsMapper(
             add(TransactionContentItem(obj.accountId.getOrCreateAccount(AccountKind.BUDGET), money))
         }
 
-        private fun Int.getOrCreateAccount(kind: AccountKind): AccountCode {
-            val accountProcessed = accountsInfo[this]
+        private fun Int.getOrCreateAccount(kind: AccountKind): AccountId {
+            val accountProcessed = accountByAccessId[this] ?: error("Account not found: $this")
+            if (kind == AccountKind.BUDGET && accountProcessed.budget != null) return accountProcessed.budget
+            if (kind == AccountKind.MONEY && accountProcessed.money != null) return accountProcessed.money
+
             val account = accountProcessed.obj
             val currency = accountsMapper.currencyCode(account.currencyId)
-            val accountCode = accountsInfo.codeOfAccount(this, account.name, currency, kind)
-            if (accountCode !in accountsInfo) {
-                val content = accountsMapper.makeContent(account, accountCode, kind).copy(hidden = true)
-                events.add(createEventForMapper(content, EventType.NEW))
-                dbActions.add {
-                    database.update(Accounts) {
-                        if (kind == AccountKind.MONEY) set(it.codeMoney, accountCode.code)
-                        else set(it.codeBudget, accountCode.code)
-                        where { it.id eq account.id }
+            val accountId = AccountId(codeOfAccount(this, account.name, currency, kind))
+            val content = accountsMapper.makeContent(account, accountId, kind).copy(hidden = true)
+            events.add(createEventForMapper(content, EventType.NEW))
+            dbActions.add {
+                database.update(Accounts) {
+                    if (kind == AccountKind.MONEY) {
+                        set(it.codeMoney, accountId.readable.code)
+                        set(it.uuidMoney, accountId.uuid.id)
                     }
+                    else {
+                        set(it.codeBudget, accountId.readable.code)
+                        set(it.uuidBudget, accountId.uuid.id)
+                    }
+                    where { it.id eq account.id }
                 }
-                val newAccountProcessed = if (kind == AccountKind.MONEY) accountProcessed.copy(money = accountCode)
-                else accountProcessed.copy(budget = accountCode)
-                accountsInfo[account.id] = newAccountProcessed
             }
-            return accountCode
+
+            val newAccountProcessed = if (kind == AccountKind.MONEY) accountProcessed.copy(money = accountId)
+            else accountProcessed.copy(budget = accountId)
+
+            accountByAccessId[this] = newAccountProcessed
+            return accountId
         }
 
         private fun convertMoney(source: Long, accountId: Int): Long {
-            val divider = accountsMapper.currencyInfo(accountsInfo[accountId].obj.currencyId).divider
+            val divider = accountsMapper
+                .currencyInfo(accountByAccessId[accountId]?.obj?.currencyId ?: error("Account not found: $accountId"))
+                .divider
             return source / divider
         }
     }

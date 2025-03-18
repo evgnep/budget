@@ -5,20 +5,22 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.MethodSource
 import su.nepom.budget.model.AccountCode
+import su.nepom.budget.model.AccountId
 import su.nepom.budget.model.AccountKind
 import su.nepom.budget.model.CurrencyCode
+import su.nepom.budget.model.CurrencyId
 import su.nepom.budget.model.EventCoords
 import su.nepom.budget.model.Place
 import su.nepom.budget.model.Uuid
 import su.nepom.budget.utils.SecondsClock
 
-private val CURRENCY_CONTENT = CurrencyContentV1(CurrencyCode("RUB"), "рубли", 2, "RUB")
+private val CURRENCY_CONTENT = CurrencyContentV1(CurrencyId(CurrencyCode("RUB")), "рубли", 2, "RUB")
 
 private val ACCOUNT_CONTENT = AccountContentV1(
-    AccountCode("account"),
+    AccountId(AccountCode("account")),
     "some account",
     "some description",
-    CurrencyCode("RUB"),
+    CURRENCY_CONTENT.id,
     AccountKind.BUDGET,
     setOf("tag1", "tag2"),
     42
@@ -29,8 +31,8 @@ private val TRANSACTION_CONTENT = TransactionContentV1(
     SecondsClock.now(),
     "some transaction",
     listOf(
-        TransactionContentV1.Item(AccountCode("acc1"), 1020),
-        TransactionContentV1.Item(AccountCode("acc2"), -1020, "cool", true)
+        TransactionContentV1.Item(AccountId(AccountCode("acc1")), 1020),
+        TransactionContentV1.Item(AccountId(AccountCode("acc2")), -1020, "cool", true)
     )
 )
 

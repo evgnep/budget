@@ -16,7 +16,10 @@
       ],
       "content": {
         "type": "CurrencyContentV1",
-        "code": "USD",
+        "id": {
+          "uuid": "123",
+          "readable": "RUB"
+        },
         "name": "доллары",
         "digitsAfterPoint": 2,
         "officialCode": "USD"

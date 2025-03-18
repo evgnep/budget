@@ -2,13 +2,13 @@ package su.nepom.budget.events.model
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import su.nepom.budget.model.CurrencyCode
+import su.nepom.budget.model.CurrencyId
 import su.nepom.budget.model.ObjectKind
 
 @Serializable
 @SerialName("CurrencyContentV1")
 data class CurrencyContentV1(
-    val code: CurrencyCode,
+    override val id: CurrencyId,
     val name: String,
     val digitsAfterPoint: Int,
     val officialCode: String,

@@ -5,7 +5,10 @@ import kotlin.uuid.ExperimentalUuidApi
 
 @JvmInline
 @Serializable
-value class Uuid(override val id: String): Id {
+value class Uuid(val id: String): Id {
+    override val uuid: Uuid get() = this
+    override val readable: HumanReadableId? get() = null
+
     companion object {
         @OptIn(ExperimentalUuidApi::class)
         fun generate() = Uuid(kotlin.uuid.Uuid.random().toString())

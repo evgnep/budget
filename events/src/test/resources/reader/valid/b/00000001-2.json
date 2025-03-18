@@ -11,7 +11,10 @@
       "basedOn": [],
       "content": {
         "type": "CurrencyContentV1",
-        "code": "RUB",
+        "id": {
+          "uuid": "123",
+          "readable": "RUB"
+        },
         "name": "рубли",
         "digitsAfterPoint": 2,
         "officialCode": "RUB"
@@ -33,7 +36,10 @@
       ],
       "content": {
         "type": "CurrencyContentV1",
-        "code": "USD",
+        "id": {
+          "uuid": "123",
+          "readable": "RUB"
+        },
         "name": "доллары",
         "digitsAfterPoint": 2,
         "officialCode": "USD"

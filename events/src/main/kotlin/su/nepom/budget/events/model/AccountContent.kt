@@ -2,18 +2,18 @@ package su.nepom.budget.events.model
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import su.nepom.budget.model.AccountCode
+import su.nepom.budget.model.AccountId
 import su.nepom.budget.model.AccountKind
-import su.nepom.budget.model.CurrencyCode
+import su.nepom.budget.model.CurrencyId
 import su.nepom.budget.model.ObjectKind
 
 @Serializable
 @SerialName("AccountContentV1")
 data class AccountContentV1(
-    val code: AccountCode,
+    override val id: AccountId,
     val name: String,
     val description: String,
-    val currency: CurrencyCode,
+    val currency: CurrencyId,
     val kind: AccountKind,
     val tags: Set<String>,
     val orderNo: Int,

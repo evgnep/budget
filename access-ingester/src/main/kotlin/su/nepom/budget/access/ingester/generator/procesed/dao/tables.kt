@@ -7,14 +7,15 @@ import org.ktorm.schema.varchar
 
 object Currencies: Table<Nothing>("currency") {
     val id = int("id").primaryKey()
+    val uuid = varchar("uuid")
     val code = varchar("code")
     val name = varchar("name")
 }
 
 object Accounts: Table<Nothing>("account") {
     val id = int("id").primaryKey()
-    val uidMoney = varchar("uidMoney")
-    val uidBudget = varchar("uidBudget")
+    val uuidMoney = varchar("uuidMoney")
+    val uuidBudget = varchar("uuidBudget")
     val codeMoney = varchar("codeMoney")
     val codeBudget = varchar("codeBudget")
     val type = int("type")
@@ -26,7 +27,7 @@ object Accounts: Table<Nothing>("account") {
 
 object Transactions: Table<Nothing>("trans") {
     val id = int("id").primaryKey()
-    val uuid = varchar("uid")
+    val uuid = varchar("uuid")
     val created = long("created")
     val userId = int("userId")
     val accountId = int("accountId")

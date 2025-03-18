@@ -20,7 +20,10 @@
       ],
       "content": {
         "type": "CurrencyContentV1",
-        "code": "RUB",
+        "id": {
+          "uuid": "123",
+          "readable": "RUB"
+        },
         "name": "рубли",
         "digitsAfterPoint": 2,
         "officialCode": "RUB"

@@ -26,6 +26,7 @@ private fun createTables() {
                 """
                     CREATE TABLE IF NOT EXISTS currency (
                         id INT PRIMARY KEY,
+                        uuid TEXT NOT NULL,
                         code TEXT NOT NULL,
                         name TEXT NOT NULL
                     )
@@ -35,7 +36,9 @@ private fun createTables() {
             it.execute(
                 """
                     CREATE TABLE IF NOT EXISTS account (
-                        id INT PRIMARY KEY,                        
+                        id INT PRIMARY KEY,
+                        uuidMoney TEXT,
+                        uuidBudget TEXT,
                         codeMoney TEXT,                          
                         codeBudget TEXT,                        
                         type INT NOT NULL,
@@ -51,7 +54,7 @@ private fun createTables() {
                 """
                     CREATE TABLE IF NOT EXISTS trans (
                         id INT PRIMARY KEY,
-                        uid TEXT NOT NULL,
+                        uuid TEXT NOT NULL,
                         created INT NOT NULL,
                         userId INT NOT NULL,
                         accountId INT NOT NULL,

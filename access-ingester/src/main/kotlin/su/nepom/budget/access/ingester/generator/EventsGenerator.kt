@@ -10,7 +10,6 @@ import su.nepom.budget.access.ingester.Config
 import su.nepom.budget.access.ingester.access.DataAccess
 import su.nepom.budget.access.ingester.access.ObjectAccess
 import su.nepom.budget.access.ingester.access.Reader
-import su.nepom.budget.access.ingester.generator.mapper.AccountsInfo
 import su.nepom.budget.access.ingester.generator.mapper.AccountsMapper
 import su.nepom.budget.access.ingester.generator.mapper.CurrencyMapper
 import su.nepom.budget.access.ingester.generator.mapper.EventsAndActions
@@ -55,15 +54,15 @@ class EventsGenerator(
         accessReader.prepare()
         current = accessReader.readAllAccountingEntries()
         sequenceNo = eventStoreReader.getMaxEventNoForSource(SOURCE) ?: 0
-        val accountsInfo = AccountsInfo()
-        val accountsMapper = AccountsMapper(current.currencies, config.currencies, accountsInfo)
+        val currencyMapper = CurrencyMapper(config.currencies)
 
         findDifferences(
             current.currencies.values,
             database.from(Currencies).select().orderBy(Currencies.id.asc()),
-            CurrencyMapper(config.currencies)
+            currencyMapper
         )
 
+        val accountsMapper = AccountsMapper(currencyMapper.getAllCurrencies())
         findDifferences(
             current.accounts.values,
             database.from(Accounts).select().orderBy(Accounts.id.asc()),
@@ -73,7 +72,7 @@ class EventsGenerator(
         findDifferences(
             current.transactions,
             database.from(Transactions).select().orderBy(Transactions.id.asc()),
-            TransactionsMapper(current.users, accountsInfo, accountsMapper)
+            TransactionsMapper(current.users, accountsMapper.getAllAccounts(), accountsMapper)
         )
 
         eventStoreWriter.writeEvents(events)
