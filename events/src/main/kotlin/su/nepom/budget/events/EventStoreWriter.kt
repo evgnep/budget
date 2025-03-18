@@ -35,6 +35,7 @@ class EventStoreWriter(
 
     fun writeEvents(events: List<Event<ActualVersionContent>>) {
         if (events.isEmpty()) return
+        events.validate()
         val filesContent = events.paged()
         val target = getTargetDirectory().createDirectories()
         filesContent.forEach { content ->

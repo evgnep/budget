@@ -189,7 +189,25 @@ internal class EventsSequenceImpl(storeReader: EventStoreReader, from: Map<Place
         val startEventNo: Int,
         val path: Path
     ) {
+        init {
+            validate()
+        }
         val endEventNo: Int get() = startEventNo + events.size - 1
+
         operator fun contains(eventNo: Int): Boolean = eventNo in startEventNo until startEventNo + events.size
+
+        private fun validate() {
+            if (events.isEmpty()) throw IllegalStateException("Empty events in file $path")
+            if (events.first().coords.no != startEventNo) throw IllegalStateException("Bad start event no in file $path")
+            if (events.last().coords.no != endEventNo) throw IllegalStateException("Bad end event no in file $path")
+            events.forEachIndexed { index, event ->
+                if (index > 0) {
+                    require(event.coords.no == events[index - 1].coords.no + 1) {
+                        "Bad event no in file $path: ${events[index].coords.no} != ${events[index - 1].coords.no + 1}"
+                    }
+                }
+            }
+        }
+
     }
 }
