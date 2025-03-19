@@ -51,7 +51,7 @@ private val BASE_EVENT: Event<StorableContent> = Event(
     content = CURRENCY_CONTENT
 )
 
-class FileContentSerializationTest {
+internal class FileContentSerializationTest {
     @ParameterizedTest
     @MethodSource("fileContentToSerialize")
     fun `serialize and deserialize`(arg: SerdeArg) {

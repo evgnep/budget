@@ -2,6 +2,7 @@ package su.nepom.budget.access.ingester.generator.mapper
 
 import org.ktorm.dsl.QueryRowSet
 import su.nepom.budget.access.ingester.access.ObjectAccess
+import su.nepom.budget.event.ActualEvent
 import su.nepom.budget.event.ActualVersionContent
 import su.nepom.budget.event.Event
 import su.nepom.budget.event.EventType
@@ -23,8 +24,8 @@ internal interface ObjectProcessed {
     val obj: ObjectAccess
 }
 
-internal data class EventsAndActions(val events: List<Event<ActualVersionContent>>, val dbActions: List<() -> Unit>) {
-    constructor(event: Event<ActualVersionContent>, dbAction: () -> Unit) : this(listOf(event), listOf(dbAction))
+internal data class EventsAndActions(val events: List<ActualEvent>, val dbActions: List<() -> Unit>) {
+    constructor(event: ActualEvent, dbAction: () -> Unit) : this(listOf(event), listOf(dbAction))
 
     constructor() : this(listOf(), listOf())
 }

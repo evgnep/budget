@@ -7,7 +7,7 @@ import kotlinx.datetime.toLocalDateTime
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.encodeToStream
-import su.nepom.budget.event.ActualVersionContent
+import su.nepom.budget.event.ActualEvent
 import su.nepom.budget.event.Event
 import su.nepom.budget.event.StorableContent
 import su.nepom.budget.events.model.FileContent
@@ -33,7 +33,7 @@ class EventStoreWriter(
         else -> 4
     }
 
-    fun writeEvents(events: List<Event<ActualVersionContent>>) {
+    fun writeEvents(events: List<ActualEvent>) {
         if (events.isEmpty()) return
         events.validate()
         val filesContent = events.paged()
@@ -45,7 +45,7 @@ class EventStoreWriter(
         }
     }
 
-    private fun List<Event<ActualVersionContent>>.validate() {
+    private fun List<ActualEvent>.validate() {
         if (isEmpty()) return
         forEachIndexed { index, event ->
             if (index > 1) {
@@ -59,7 +59,7 @@ class EventStoreWriter(
         }
     }
 
-    private fun List<Event<ActualVersionContent>>.paged(): List<FileContent> {
+    private fun List<ActualEvent>.paged(): List<FileContent> {
         val paged = mutableListOf<FileContent>()
         var pos = 0
         while (pos < size) {

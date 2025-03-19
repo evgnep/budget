@@ -1,6 +1,7 @@
 package su.nepom.budget.events.model
 
 import su.nepom.budget.event.AccountContentV1
+import su.nepom.budget.event.ActualEvent
 import su.nepom.budget.event.ActualVersionContent
 import su.nepom.budget.event.CurrencyContentV1
 import su.nepom.budget.event.Event
@@ -13,8 +14,8 @@ fun StorableContent.toActualVersion(): ActualVersionContent = when(this) {
     is TransactionContentV1 -> this
 }
 
-fun Event<StorableContent>.toActualVersion(): Event<ActualVersionContent> {
+fun Event<StorableContent>.toActualVersion(): ActualEvent {
     val actualVersionContent = content.toActualVersion()
     return (if (actualVersionContent === content) this else copy(content = actualVersionContent))
-            as Event<ActualVersionContent>
+            as ActualEvent
 }

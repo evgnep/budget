@@ -12,8 +12,7 @@ import su.nepom.budget.access.ingester.access.UserAccess
 import su.nepom.budget.access.ingester.generator.procesed.dao.Accounts
 import su.nepom.budget.access.ingester.generator.procesed.dao.Transactions
 import su.nepom.budget.access.ingester.generator.procesed.database
-import su.nepom.budget.event.ActualVersionContent
-import su.nepom.budget.event.Event
+import su.nepom.budget.event.ActualEvent
 import su.nepom.budget.event.EventType
 import su.nepom.budget.event.TransactionContent
 import su.nepom.budget.event.TransactionContentItem
@@ -72,7 +71,7 @@ internal class TransactionsMapper(
         val deleted: Boolean,
         val action: Action,
     ) {
-        private val events = mutableListOf<Event<ActualVersionContent>>()
+        private val events = mutableListOf<ActualEvent>()
         private val dbActions = mutableListOf<() -> Unit>()
 
         fun build(): EventsAndActions {

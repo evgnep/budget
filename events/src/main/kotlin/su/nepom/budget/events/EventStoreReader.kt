@@ -1,11 +1,9 @@
 package su.nepom.budget.events
 
-import su.nepom.budget.event.ActualVersionContent
-import su.nepom.budget.event.Event
+import su.nepom.budget.event.ActualEvent
 import su.nepom.budget.events.impl.EventsSequenceImpl
 import su.nepom.budget.model.Place
 import java.nio.file.Path
-import kotlin.io.path.absolute
 import kotlin.io.path.absolutePathString
 import kotlin.io.path.isDirectory
 import kotlin.io.path.listDirectoryEntries
@@ -31,6 +29,11 @@ class EventStoreReader(
             }
         }
 
+    fun getMaxEventsNo(): Map<Place, Int> =
+        getFilesSequence()
+            .groupingBy { it.place }
+            .fold(0) { acc, eventFile -> maxOf(acc, eventFile.endEventNo) }
+
     fun getMaxEventNoForSource(source: Place): Int? =
         getFilesSequence { resolve(source.code) }
             .map { it.endEventNo }
@@ -44,7 +47,7 @@ class EventStoreReader(
     }
 }
 
-interface EventsSequence : Sequence<Event<ActualVersionContent>> {
+interface EventsSequence : Sequence<ActualEvent> {
     fun getNextEventNoByPlace(): Map<Place, Int>
 
     fun getReadingErrorsByPlace(): Map<Place, ReadingError>

@@ -5,6 +5,7 @@ jackson-yaml = { module = "com.fasterxml.jackson.dataformat:jackson-dataformat-y
 kotlin-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version = "0.6.2" }
 kotlin-serialization-core = { module = "org.jetbrains.kotlinx:kotlinx-serialization-core", version.ref = "kotlinSerialization" }
 kotlin-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinSerialization" }
+kotlin-coroutines = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version = "1.10.1" }
 
 ktorm-core = { module = "org.ktorm:ktorm-core", version.ref = "ktorm" }
 ktorm-sqlite = { module = "org.ktorm:ktorm-support-sqlite", version.ref = "ktorm" }
@@ -18,10 +19,11 @@ sqlite = { module = "org.xerial:sqlite-jdbc", version = "3.49.1.0" }
 ucanaccess = { module = "io.github.spannm:ucanaccess", version = "5.1.3" }
 
 ## Test
-test-junit5 = { module = "org.junit.jupiter:junit-jupiter", version = "5.12.0" }
-test-junit5-platform = { module = "org.junit.platform:junit-platform-launcher", version = "1.12.0" }
 test-assertj = { module = "org.assertj:assertj-core", version = "3.27.3" }
 test-jsonunit = { module = "net.javacrumbs.json-unit:json-unit-assertj", version = "4.1.0" }
+test-junit5 = { module = "org.junit.jupiter:junit-jupiter", version = "5.12.0" }
+test-junit5-platform = { module = "org.junit.platform:junit-platform-launcher", version = "1.12.0" }
+test-mockk-jvm = { module = "io.mockk:mockk-jvm", version = "1.13.17" }
 
 [versions]
 jackson = "2.18.3"
@@ -30,4 +32,4 @@ kotlinSerialization = "1.8.0"
 ktorm = "4.1.1"
 
 [bundles]
-test-junit5 = ["test-junit5", "test-junit5-platform", "test-assertj", "test-jsonunit"]
+test-junit5 = ["test-junit5", "test-junit5-platform", "test-assertj", "test-jsonunit", "test-mockk-jvm"]

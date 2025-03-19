@@ -20,10 +20,9 @@ import su.nepom.budget.access.ingester.generator.procesed.dao.Accounts
 import su.nepom.budget.access.ingester.generator.procesed.dao.Currencies
 import su.nepom.budget.access.ingester.generator.procesed.dao.Transactions
 import su.nepom.budget.access.ingester.generator.procesed.database
+import su.nepom.budget.event.ActualEvent
 import su.nepom.budget.events.EventStoreReader
 import su.nepom.budget.events.EventStoreWriter
-import su.nepom.budget.event.ActualVersionContent
-import su.nepom.budget.event.Event
 import su.nepom.budget.model.EventCoords
 import su.nepom.budget.model.Place
 import java.nio.file.Path
@@ -40,7 +39,7 @@ class EventsGenerator(
 
     private val eventStoreWriter = EventStoreWriter(Path.of(config.eventStore), SOURCE)
 
-    private val events = mutableListOf<Event<ActualVersionContent>>()
+    private val events = mutableListOf<ActualEvent>()
 
     private val dbActions = mutableListOf<() -> Unit>()
 

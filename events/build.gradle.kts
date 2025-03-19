@@ -5,6 +5,7 @@ plugins {
 
 dependencies {
     api(project(":common"))
+    implementation(libs.kotlin.coroutines)
 
     implementation(libs.kotlin.serialization.json)
     implementation(libs.logging.kotlin)

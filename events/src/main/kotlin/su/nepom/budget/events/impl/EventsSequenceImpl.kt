@@ -4,8 +4,7 @@ import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromStream
-import su.nepom.budget.event.ActualVersionContent
-import su.nepom.budget.event.Event
+import su.nepom.budget.event.ActualEvent
 import su.nepom.budget.events.EventStoreReader
 import su.nepom.budget.events.EventsSequence
 import su.nepom.budget.events.model.FileContent
@@ -19,7 +18,7 @@ import java.nio.file.Path
 private val logger = KotlinLogging.logger { }
 
 internal class EventsSequenceImpl(storeReader: EventStoreReader, from: Map<Place, Int>) :
-    EventsSequence, Iterator<Event<ActualVersionContent>> {
+    EventsSequence, Iterator<ActualEvent> {
 
     private var iteratorWasReturned = false
 
@@ -40,7 +39,7 @@ internal class EventsSequenceImpl(storeReader: EventStoreReader, from: Map<Place
 
     private var currentPlace: Place? = null
 
-    private var currentEvent: Event<ActualVersionContent>? = null
+    private var currentEvent: ActualEvent? = null
 
     private val readFiles = mutableMapOf<Place, ReadFile>()
 
@@ -56,7 +55,7 @@ internal class EventsSequenceImpl(storeReader: EventStoreReader, from: Map<Place
         logger.debug { "Next event no by place: $nextEventNoByPlace" }
     }
 
-    override fun iterator(): Iterator<Event<ActualVersionContent>> {
+    override fun iterator(): Iterator<ActualEvent> {
         if (iteratorWasReturned) throw IllegalStateException("Iterator was already returned")
         iteratorWasReturned = true
         return this
@@ -66,7 +65,7 @@ internal class EventsSequenceImpl(storeReader: EventStoreReader, from: Map<Place
 
     override fun getReadingErrorsByPlace(): Map<Place, EventsSequence.ReadingError> = readingErrors.toMap()
 
-    override fun next(): Event<ActualVersionContent> {
+    override fun next(): ActualEvent {
         do {
             currentEvent?.also {
                 currentEvent = null
@@ -123,7 +122,7 @@ internal class EventsSequenceImpl(storeReader: EventStoreReader, from: Map<Place
         return place
     }
 
-    private fun isAncestorsRead(event: Event<ActualVersionContent>): Boolean =
+    private fun isAncestorsRead(event: ActualEvent): Boolean =
         event.basedOn.all { (source, no) -> source == ourPlace || nextEventNoByPlace[source]?.let { it > no } ?: false }
 
     private fun addPlaceCycleError() {
@@ -185,7 +184,7 @@ internal class EventsSequenceImpl(storeReader: EventStoreReader, from: Map<Place
     }
 
     private data class ReadFile(
-        val events: List<Event<ActualVersionContent>>,
+        val events: List<ActualEvent>,
         val startEventNo: Int,
         val path: Path
     ) {
