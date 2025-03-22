@@ -1,6 +1,45 @@
 package su.nepom.budget.db.dao
 
+import kotlinx.datetime.Instant
 import su.nepom.budget.event.TransactionContent
+import su.nepom.budget.model.AccountId
+import su.nepom.budget.model.CurrencyId
+import su.nepom.budget.model.RawMoney
+import su.nepom.budget.model.RawTurnover
 
-interface TransactionDao: CrudDao<TransactionContent> {
+interface TransactionDao : CrudDao<TransactionContent> {
+    override fun getAll(): List<TransactionContent> {
+        throw UnsupportedOperationException("getAll is not supported for TransactionDao, use getByQuery instead")
+    }
+
+    fun getByQuery(query: Query): List<TransactionContent>
+
+    fun countByFilter(filter: Filter): Int
+
+    fun accountRest(accounts: Set<AccountId>, forDate: Instant? = null): Map<AccountId, RawMoney>
+
+    fun accountTurnover(accounts: Set<AccountId>, dateRange: ClosedRange<Instant>? = null): Map<AccountId, RawTurnover>
+
+    fun currencyRest(currencies: Set<CurrencyId>, forDate: Instant? = null): Map<CurrencyId, RawMoney>
+
+    fun currencyTurnover(
+        currencies: Set<CurrencyId>,
+        dateRange: ClosedRange<Instant>? = null
+    ): Map<CurrencyId, RawTurnover>
+
+    data class Filter(
+        val from: Instant? = null,
+        val to: Instant? = null,
+        val accounts: Set<AccountId> = setOf(), // if empty, then no filter
+        val deleted: Boolean? = false,
+        val descriptionLike: String? = null,
+        val flag: Boolean? = null,
+    )
+
+    data class Query(
+        val filter: Filter = Filter(),
+        val offset: Int = 0,
+        val limit: Int = 100,
+        val sortByDateAsc: Boolean = false,
+    )
 }

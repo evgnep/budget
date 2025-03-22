@@ -7,7 +7,7 @@ interface CrudDao<T> {
 
     fun getById(id: Uuid): T?
 
-    fun save(entity: T): T
+    fun count(): Int
 
-    fun delete(id: Uuid): Boolean
+    fun save(entity: T): T
 }

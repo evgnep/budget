@@ -13,5 +13,6 @@ plugins {
 include(
     "access-ingester",
     "common",
+    "db-sqlite",
     "events",
 )

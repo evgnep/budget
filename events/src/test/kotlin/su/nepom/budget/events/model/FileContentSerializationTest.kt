@@ -17,6 +17,7 @@ import su.nepom.budget.model.CurrencyCode
 import su.nepom.budget.model.CurrencyId
 import su.nepom.budget.model.EventCoords
 import su.nepom.budget.model.Place
+import su.nepom.budget.model.RawMoney
 import su.nepom.budget.model.Uuid
 import su.nepom.budget.utils.SecondsClock
 
@@ -37,8 +38,8 @@ private val TRANSACTION_CONTENT = TransactionContentV1(
     SecondsClock.now(),
     "some transaction",
     listOf(
-        TransactionContentV1.Item(AccountId(AccountCode("acc1")), 1020),
-        TransactionContentV1.Item(AccountId(AccountCode("acc2")), -1020, "cool", true)
+        TransactionContentV1.Item(AccountId(AccountCode("acc1")), RawMoney(1020)),
+        TransactionContentV1.Item(AccountId(AccountCode("acc2")), RawMoney(-1020), "cool", true)
     )
 )
 

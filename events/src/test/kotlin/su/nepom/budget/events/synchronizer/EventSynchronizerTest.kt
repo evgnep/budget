@@ -48,11 +48,11 @@ class EventSynchronizerTest {
     }
     private val session = mockk<Session>(relaxed = true) {
         every { dao(any()) } answers { callOriginal() }
-        every { currencyDao() } returns currencyDao
-        every { eventDao() } returns eventDao
+        every { currencyDao } returns this@EventSynchronizerTest.currencyDao
+        every { eventDao } returns this@EventSynchronizerTest.eventDao
     }
     private val db = mockk<Db> {
-        every { getSessionInBlockingMode(any()) } returns session
+        every { createSessionInBlockingMode(any()) } returns session
     }
     private val conflictResolver = mockk<ConflictResolver>()
     private val underTest = EventSynchronizer(eventReader, db, conflictResolver)

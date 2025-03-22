@@ -9,13 +9,13 @@ import su.nepom.budget.event.ActualVersionContent
 import su.nepom.budget.model.ObjectKind
 
 interface Session: AutoCloseable {
-    fun currencyDao(): CurrencyDao
+    val currencyDao: CurrencyDao
 
-    fun accountDao(): AccountDao
+    val accountDao: AccountDao
 
-    fun transactionDao(): TransactionDao
+    val transactionDao: TransactionDao
 
-    fun eventDao(): EventDao
+    val eventDao: EventDao
 
     fun commit()
 
@@ -23,9 +23,13 @@ interface Session: AutoCloseable {
 
     @Suppress("UNCHECKED_CAST")
     fun dao(kind: ObjectKind): CrudDao<ActualVersionContent> = when(kind) {
-        ObjectKind.CURRENCY -> currencyDao() as CrudDao<ActualVersionContent>
-        ObjectKind.ACCOUNT -> accountDao() as CrudDao<ActualVersionContent>
-        ObjectKind.TRANSACTION -> transactionDao() as CrudDao<ActualVersionContent>
+        ObjectKind.CURRENCY -> currencyDao as CrudDao<ActualVersionContent>
+        ObjectKind.ACCOUNT -> accountDao as CrudDao<ActualVersionContent>
+        ObjectKind.TRANSACTION -> transactionDao as CrudDao<ActualVersionContent>
+    }
+
+    fun save(vararg objects: ActualVersionContent) {
+        objects.forEach { dao(it.objectKind).save(it) }
     }
 
 }

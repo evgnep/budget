@@ -1,4 +1,6 @@
 [libraries]
+flyway-core = { module = "org.flywaydb:flyway-core", version = "11.4.0" }
+
 jackson-kotlin = { module = "com.fasterxml.jackson.module:jackson-module-kotlin", version.ref = "jackson" }
 jackson-yaml = { module = "com.fasterxml.jackson.dataformat:jackson-dataformat-yaml", version.ref = "jackson" }
 

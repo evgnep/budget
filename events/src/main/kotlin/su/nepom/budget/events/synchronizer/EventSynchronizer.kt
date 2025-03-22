@@ -27,7 +27,7 @@ class EventSynchronizer(
     fun synchronize(): EventSynchronizeResult {
         val result = EventSynchronizeResult()
 
-        db.getSessionInBlockingMode(dontCreateEvents = true).use { session ->
+        db.createSessionInBlockingMode(createEvents = false).use { session ->
             runBlocking {
                 try {
                     doIt(result, session)
@@ -48,7 +48,7 @@ class EventSynchronizer(
     }
 
     private suspend fun doIt(result: EventSynchronizeResult, session: Session) {
-        val from = ioOp { session.eventDao().getLastEventCoords() }
+        val from = ioOp { session.eventDao.getLastEventCoords() }
         val storage = createEventStorage(from) ?: return
         result.readingErrors.addAll(storage.loadEvents(reader, from))
         OBJECT_KINDS_IN_PROCESSED_ORDER.forEach { kind ->

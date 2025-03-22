@@ -1,7 +1,7 @@
 package su.nepom.budget.db
 
-interface Db {
-    fun getSession(): Session
+interface Db: AutoCloseable {
+    fun createSession(): Session
 
-    fun getSessionInBlockingMode(dontCreateEvents: Boolean): Session
+    fun createSessionInBlockingMode(createEvents: Boolean): Session
 }

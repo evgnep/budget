@@ -14,4 +14,6 @@ interface EventDao {
     fun getLastEventCoords(): Map<Place, Int>
 
     fun getLastEventForObject(uuid: Uuid, kind: ObjectKind): ActualEvent?
+
+    fun getEventsForSourceFrom(source: Place, from: Int): List<ActualEvent>
 }

@@ -2,6 +2,7 @@ package su.nepom.budget.event
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import su.nepom.budget.model.AccountCode
 import su.nepom.budget.model.AccountId
 import su.nepom.budget.model.AccountKind
 import su.nepom.budget.model.CurrencyId
@@ -26,3 +27,5 @@ data class AccountContentV1(
  * Actual version of Account content
  */
 typealias AccountContent = AccountContentV1
+
+fun makeAccountCode(name: String, kind: AccountKind) = AccountCode("$name ${kind.name}")

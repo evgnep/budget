@@ -6,4 +6,8 @@ import kotlinx.serialization.Serializable
 @Serializable
 value class CurrencyCode(val code: String): HumanReadableId {
     override val id: String get() = code
+
+    companion object {
+        val NULL = CurrencyCode("")
+    }
 }

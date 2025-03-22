@@ -25,7 +25,7 @@ internal class ObjectsKindSynchronizer(
 ) {
     private val objectDao = session.dao(objectKind)
 
-    private val eventDao = session.eventDao()
+    private val eventDao = session.eventDao
 
     suspend fun synchronize() {
         storage.eventsForObjectByKind(objectKind).collect { (uuid, events) ->

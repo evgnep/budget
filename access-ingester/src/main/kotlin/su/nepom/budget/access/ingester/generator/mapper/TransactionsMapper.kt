@@ -18,6 +18,7 @@ import su.nepom.budget.event.TransactionContent
 import su.nepom.budget.event.TransactionContentItem
 import su.nepom.budget.model.AccountId
 import su.nepom.budget.model.AccountKind
+import su.nepom.budget.model.RawMoney
 import su.nepom.budget.model.Uuid
 
 internal class TransactionsMapper(
@@ -138,36 +139,38 @@ internal class TransactionsMapper(
         private fun makeItemsForTransfer() = buildList<TransactionContentItem> {
             if (obj.moneyReal != 0L) {
                 val money = convertMoney(obj.moneyReal, obj.accountId)
-                add(TransactionContentItem(obj.accountId.getOrCreateAccount(AccountKind.MONEY), money))
-                add(TransactionContentItem(obj.accountTargetId!!.getOrCreateAccount(AccountKind.MONEY), -money))
+                add(TransactionContentItem(obj.accountId.getOrCreateAccount(AccountKind.MONEY), RawMoney(money)))
+                add(TransactionContentItem(
+                    obj.accountTargetId!!.getOrCreateAccount(AccountKind.MONEY), RawMoney(-money)))
             }
             if ((obj.moneyBudget ?: 0L) != 0L) {
                 val money = convertMoney(obj.moneyBudget!!, obj.accountId)
-                add(TransactionContentItem(obj.accountId.getOrCreateAccount(AccountKind.BUDGET), money))
-                add(TransactionContentItem(obj.accountTargetId!!.getOrCreateAccount(AccountKind.BUDGET), -money))
+                add(TransactionContentItem(obj.accountId.getOrCreateAccount(AccountKind.BUDGET), RawMoney(money)))
+                add(TransactionContentItem(
+                    obj.accountTargetId!!.getOrCreateAccount(AccountKind.BUDGET), RawMoney(-money)))
             }
         }
 
         private fun makeItemsForExchange() = buildList<TransactionContentItem> {
             val moneyFrom = convertMoney(obj.moneyReal, obj.accountId)
-            add(TransactionContentItem(obj.accountId.getOrCreateAccount(AccountKind.MONEY), moneyFrom))
-            add(TransactionContentItem(obj.accountId.getOrCreateAccount(AccountKind.BUDGET), moneyFrom))
+            add(TransactionContentItem(obj.accountId.getOrCreateAccount(AccountKind.MONEY), RawMoney(moneyFrom)))
+            add(TransactionContentItem(obj.accountId.getOrCreateAccount(AccountKind.BUDGET), RawMoney(moneyFrom)))
 
             val moneyTo = -convertMoney(obj.moneyTransfer!!, obj.accountTargetId!!)
-            add(TransactionContentItem(obj.accountTargetId.getOrCreateAccount(AccountKind.MONEY), moneyTo))
-            add(TransactionContentItem(obj.accountTargetId.getOrCreateAccount(AccountKind.BUDGET), moneyTo))
+            add(TransactionContentItem(obj.accountTargetId.getOrCreateAccount(AccountKind.MONEY), RawMoney(moneyTo)))
+            add(TransactionContentItem(obj.accountTargetId.getOrCreateAccount(AccountKind.BUDGET), RawMoney(moneyTo)))
         }
 
         private fun makeItemsForBudget() = buildList<TransactionContentItem> {
             val money = convertMoney(obj.moneyReal, obj.accountId)
-            add(TransactionContentItem(obj.accountId.getOrCreateAccount(AccountKind.MONEY), money))
-            add(TransactionContentItem(obj.accountBudgetId!!.getOrCreateAccount(AccountKind.BUDGET), money))
+            add(TransactionContentItem(obj.accountId.getOrCreateAccount(AccountKind.MONEY), RawMoney(money)))
+            add(TransactionContentItem(obj.accountBudgetId!!.getOrCreateAccount(AccountKind.BUDGET), RawMoney(money)))
         }
 
         private fun makeItemsForSimple() = buildList<TransactionContentItem> {
             val money = convertMoney(obj.moneyReal, obj.accountId)
-            add(TransactionContentItem(obj.accountId.getOrCreateAccount(AccountKind.MONEY), money))
-            add(TransactionContentItem(obj.accountId.getOrCreateAccount(AccountKind.BUDGET), money))
+            add(TransactionContentItem(obj.accountId.getOrCreateAccount(AccountKind.MONEY), RawMoney(money)))
+            add(TransactionContentItem(obj.accountId.getOrCreateAccount(AccountKind.BUDGET), RawMoney(money)))
         }
 
         private fun Int.getOrCreateAccount(kind: AccountKind): AccountId {
