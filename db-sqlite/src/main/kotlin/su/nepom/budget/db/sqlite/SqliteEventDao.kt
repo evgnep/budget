@@ -25,6 +25,7 @@ internal class SqliteEventDao(
     private val session: SqliteSession,
 ): EventDao, DatabaseHolder {
     override fun save(event: ActualEvent) {
+        session.beforeAnyOperation()
         if (event.coords.source == Global.currentPlace) {
             require(event.coords.no == 0) { "Coords.no must be zero for local event" }
         }
@@ -34,12 +35,15 @@ internal class SqliteEventDao(
 
     override fun getLastEventCoords(): Map<Place, Int> = session.db.eventProcessor.lastEventCoords
 
-    override fun getLastEventForObject(uuid: Uuid, kind: ObjectKind): ActualEvent? =
-        events.sortedBy { it.id.desc() }
+    override fun getLastEventForObject(uuid: Uuid, kind: ObjectKind): ActualEvent? {
+        session.beforeAnyOperation()
+        return events.sortedBy { it.id.desc() }
             .find { (it.objectUuid eq uuid.id) and (it.objectKind eq kind.name) }
             ?.toEvent()
+    }
 
     override fun getEventsForSourceFrom(source: Place, from: Int): List<ActualEvent> {
+        session.beforeAnyOperation()
         val lastNo = getLastEventCoords()[source] ?: 0
         if (from > lastNo) return listOf()
         return events.sortedBy { it.id }

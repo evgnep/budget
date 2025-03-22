@@ -32,4 +32,17 @@ interface Session: AutoCloseable {
         objects.forEach { dao(it.objectKind).save(it) }
     }
 
+    /**
+     * If you are using coroutines then all calls to db (and closing session too!) should be inside coroDbOp and
+     * you should not change dispatcher in block
+     */
+    suspend fun <T> coroDbOp(block: suspend Session.() -> T): T
+
+    suspend fun <T> coroUse(block: suspend Session.() -> T): T {
+        try {
+            return block()
+        } finally {
+            coroDbOp { close() }
+        }
+    }
 }

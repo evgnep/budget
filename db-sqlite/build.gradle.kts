@@ -4,6 +4,7 @@ plugins {
 
 dependencies {
     implementation(libs.flyway.core)
+    implementation(libs.kotlin.coroutines)
     implementation(libs.kotlin.datetime)
     implementation(libs.kotlin.serialization.json)
     implementation(libs.ktorm.core)

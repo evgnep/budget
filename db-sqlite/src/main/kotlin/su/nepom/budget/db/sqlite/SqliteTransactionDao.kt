@@ -63,10 +63,15 @@ import su.nepom.budget.model.uuidCode
 internal class SqliteTransactionDao(private val session: SqliteSession) : TransactionDao, DatabaseHolder {
     override fun getDb(): Database = session.db.database
 
-    override fun getById(id: Uuid): TransactionContent? =
-        fromTransactionsSelect().where { Transactions.uuid eq id.id }.toTransactions().firstOrNull()
+    override fun getById(id: Uuid): TransactionContent? {
+        session.beforeAnyOperation()
+        return fromTransactionsSelect().where { Transactions.uuid eq id.id }.toTransactions().firstOrNull()
+    }
 
-    override fun count() = from(Transactions).select(org.ktorm.dsl.count()).map { it.getInt(1) }.single()
+    override fun count(): Int {
+        session.beforeAnyOperation()
+        return from(Transactions).select(org.ktorm.dsl.count()).map { it.getInt(1) }.single()
+    }
 
     override fun save(entity: TransactionContent): TransactionContent {
         validate(entity)
@@ -83,6 +88,7 @@ internal class SqliteTransactionDao(private val session: SqliteSession) : Transa
     }
 
     override fun getByQuery(query: TransactionDao.Query): List<TransactionContent> {
+        session.beforeAnyOperation()
         val transactionUuids = fromTransactions()
             .selectDistinct(Transactions.uuid)
             .where(query.filter)
@@ -96,14 +102,17 @@ internal class SqliteTransactionDao(private val session: SqliteSession) : Transa
             .toTransactions()
     }
 
-    override fun countByFilter(filter: TransactionDao.Filter): Int =
-        fromTransactions()
+    override fun countByFilter(filter: TransactionDao.Filter): Int {
+        session.beforeAnyOperation()
+        return fromTransactions()
             .select(countDistinct(Transactions.uuid))
             .where(filter)
             .map { it.getInt(1) }.single()
+    }
 
-    override fun accountRest(accounts: Set<AccountId>, forDate: Instant?): Map<AccountId, RawMoney> =
-        if (forDate == null) session.db.accountRestCache.getAll().let {
+    override fun accountRest(accounts: Set<AccountId>, forDate: Instant?): Map<AccountId, RawMoney> {
+        session.beforeAnyOperation()
+        return if (forDate == null) session.db.accountRestCache.getAll().let {
             if (accounts.isEmpty()) it
             else it.filterKeys { k -> k in accounts }
         } else from(TransactionItems)
@@ -117,12 +126,14 @@ internal class SqliteTransactionDao(private val session: SqliteSession) : Transa
             }
             .groupBy(TransactionItems.accountUuid)
             .associate { AccountId(Uuid(it[TransactionItems.accountUuid]!!)) to RawMoney(it.getLong(2)) }
+    }
 
     override fun accountTurnover(
         accounts: Set<AccountId>,
         dateRange: ClosedRange<Instant>?
-    ): Map<AccountId, RawTurnover> =
-        from(TransactionItems)
+    ): Map<AccountId, RawTurnover> {
+        session.beforeAnyOperation()
+        return from(TransactionItems)
             .select(
                 TransactionItems.accountUuid,
                 turnoverSumIncome(),
@@ -134,9 +145,11 @@ internal class SqliteTransactionDao(private val session: SqliteSession) : Transa
             }
             .groupBy(TransactionItems.accountUuid)
             .associate { AccountId(Uuid(it[TransactionItems.accountUuid]!!)) to it.toRawTurnover() }
+    }
 
-    override fun currencyRest(currencies: Set<CurrencyId>, forDate: Instant?): Map<CurrencyId, RawMoney> =
-        if (forDate == null) {
+    override fun currencyRest(currencies: Set<CurrencyId>, forDate: Instant?): Map<CurrencyId, RawMoney> {
+        session.beforeAnyOperation()
+        return if (forDate == null) {
             val accountRests = session.db.accountRestCache.getAll()
             val allAccountsByCurrency = session.db.accountCache.getAll().values
                 .filter { it.kind == AccountKind.MONEY }
@@ -159,12 +172,14 @@ internal class SqliteTransactionDao(private val session: SqliteSession) : Transa
             }
             .groupBy(Accounts.currencyUuid)
             .associate { CurrencyId(Uuid(it[Accounts.currencyUuid]!!)) to RawMoney(it.getLong(2)) }
+    }
 
     override fun currencyTurnover(
         currencies: Set<CurrencyId>,
         dateRange: ClosedRange<Instant>?
-    ): Map<CurrencyId, RawTurnover> =
-        from(TransactionItems)
+    ): Map<CurrencyId, RawTurnover> {
+        session.beforeAnyOperation()
+        return from(TransactionItems)
             .innerJoin(Accounts, on = TransactionItems.accountUuid eq Accounts.uuid)
             .select(
                 Accounts.currencyUuid,
@@ -178,6 +193,7 @@ internal class SqliteTransactionDao(private val session: SqliteSession) : Transa
             }
             .groupBy(Accounts.currencyUuid)
             .associate { CurrencyId(Uuid(it[Accounts.currencyUuid]!!)) to it.toRawTurnover() }
+    }
 
     private fun validate(entity: TransactionContent) {
         require(entity.items.size >= 2) { "Transaction must contain at least two items" }

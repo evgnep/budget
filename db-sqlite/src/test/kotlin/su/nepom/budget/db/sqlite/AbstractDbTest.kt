@@ -32,8 +32,12 @@ import kotlin.time.Duration.Companion.seconds
 private val dbPath = Path.of("test-db.sqlite")
 
 internal abstract class AbstractDbTest {
+    private var sessionWasOpen = false
     lateinit var db: SqliteDatabase
-    val session by lazy { db.createSession() }
+    val session by lazy {
+        sessionWasOpen = true
+        db.createSession("AbstractDbTest")
+    }
     val eventDao by lazy { session.eventDao }
 
     @BeforeEach
@@ -57,7 +61,7 @@ internal abstract class AbstractDbTest {
 
     @AfterEach
     fun closeDb() {
-        session.close()
+        if (sessionWasOpen) session.close()
         db.close()
     }
 

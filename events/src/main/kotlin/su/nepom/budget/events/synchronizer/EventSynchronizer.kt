@@ -13,7 +13,6 @@ import su.nepom.budget.events.synchronizer.storage.EventStorage
 import su.nepom.budget.events.synchronizer.storage.InMemoryEventStorage
 import su.nepom.budget.model.ObjectKind
 import su.nepom.budget.model.Place
-import su.nepom.budget.utils.ioOp
 
 private val logger = KotlinLogging.logger { }
 
@@ -27,18 +26,18 @@ class EventSynchronizer(
     fun synchronize(): EventSynchronizeResult {
         val result = EventSynchronizeResult()
 
-        db.createSessionInBlockingMode(createEvents = false).use { session ->
-            runBlocking {
+        runBlocking {
+            db.createSessionInBlockingMode("EventSynchronizer", createEvents = false).coroUse {
                 try {
-                    doIt(result, session)
-                    ioOp { session.commit() }
+                    doIt(result)
+                    coroDbOp { commit() }
                     logger.info { "Synchronized ${result.imported} events" }
                 } catch (e: AbortException) {
-                    ioOp { session.rollback() }
+                    coroDbOp { rollback() }
                     logger.info { "Cancelled by user" }
                     result.imported = 0
                 } catch (e: Exception) {
-                    ioOp { session.rollback() }
+                    coroDbOp { rollback() }
                     logger.error(e) { "Error while synchronizing events" }
                     result.error = e.message
                 }
@@ -47,17 +46,17 @@ class EventSynchronizer(
         return result
     }
 
-    private suspend fun doIt(result: EventSynchronizeResult, session: Session) {
-        val from = ioOp { session.eventDao.getLastEventCoords() }
+    private suspend fun Session.doIt(result: EventSynchronizeResult) {
+        val from = coroDbOp { eventDao.getLastEventCoords() }
         val storage = createEventStorage(from) ?: return
         result.readingErrors.addAll(storage.loadEvents(reader, from))
         OBJECT_KINDS_IN_PROCESSED_ORDER.forEach { kind ->
-            ObjectsKindSynchronizer(kind, storage, session, conflictResolver, result).synchronize()
+            ObjectsKindSynchronizer(kind, storage, this, conflictResolver, result).synchronize()
         }
     }
 
-    private suspend fun createEventStorage(from: Map<Place, Int>): EventStorage? {
-        val newEvents = ioOp { reader.getMaxEventsNo() }.filterKeys { it != Global.currentPlace }
+    private suspend fun Session.createEventStorage(from: Map<Place, Int>): EventStorage? {
+        val newEvents = coroDbOp { reader.getMaxEventsNo() }.filterKeys { it != Global.currentPlace }
         if (newEvents == from.filterKeys { it != Global.currentPlace }) return null
         // now only InMemory. In future may be Database, if too many events
         return InMemoryEventStorage()

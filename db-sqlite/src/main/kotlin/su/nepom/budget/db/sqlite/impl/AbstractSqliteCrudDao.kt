@@ -35,12 +35,20 @@ internal abstract class AbstractSqliteCrudDao<
     protected open fun validateUpdate(old: Content, new: Content) {
     }
 
-    override fun getAll(): List<Content> = sequence.map(toContent)
+    override fun getAll(): List<Content> {
+        session.beforeAnyOperation()
+        return sequence.map(toContent)
+    }
 
-    override fun getById(id: Uuid): Content? =
-        sequence.find { idPredicate(it, id) }?.toContent()
+    override fun getById(id: Uuid): Content? {
+        session.beforeAnyOperation()
+        return sequence.find { idPredicate(it, id) }?.toContent()
+    }
 
-    override fun count(): Int = sequence.count()
+    override fun count(): Int  {
+        session.beforeAnyOperation()
+        return sequence.count()
+    }
 
     override fun save(entity: Content): Content {
         session.startTransactionIfNotYet()

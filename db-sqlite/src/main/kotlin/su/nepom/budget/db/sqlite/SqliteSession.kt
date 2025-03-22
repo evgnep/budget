@@ -1,6 +1,7 @@
 package su.nepom.budget.db.sqlite
 
 import io.github.oshai.kotlinlogging.KotlinLogging
+import kotlinx.coroutines.withContext
 import su.nepom.budget.Global
 import su.nepom.budget.db.Session
 import su.nepom.budget.db.sqlite.impl.setInTransactionUnsafe
@@ -10,26 +11,50 @@ import su.nepom.budget.event.Event
 import su.nepom.budget.event.EventType
 import su.nepom.budget.model.no
 import su.nepom.budget.utils.SecondsClock
-
-private val logger = KotlinLogging.logger { }
+import java.util.concurrent.locks.ReentrantLock
+import kotlin.concurrent.withLock
 
 internal class SqliteSession(
+    val name: String,
     val db: SqliteDatabase,
     val createEvents: Boolean,
 ) : Session, DatabaseHolder {
+    private val logger = KotlinLogging.logger(SqliteSession::class.qualifiedName!! + " [$name]")
+    private val lock = ReentrantLock()
+    private var sessionThread: Thread? = null
     private var closed: Boolean = false
+
     private val currencyDaoHolder by lazy { SqliteCurrencyDao(this) }
     private val eventDaoHolder by lazy { SqliteEventDao(this) }
     private val accountDaoHolder by lazy { SqliteAccountDao(this) }
     private val transactionDaoHolder by lazy { SqliteTransactionDao(this) }
 
-    fun raiseIfClosed() {
+    fun beforeAnyOperation() {
         if (closed) throw IllegalStateException("Session is closed")
+        checkThread()
+    }
+
+    private fun checkThread() {
+        val thread = Thread.currentThread()
+        if (sessionThread == null) {
+            lock.withLock {
+                if (sessionThread == null) {
+                    db.registerSessionInThread(this, thread)
+                    sessionThread = Thread.currentThread()
+                }
+            }
+        }
+
+        if (sessionThread != thread) {
+            throw IllegalStateException(
+                "You can use session only in one thread. " +
+                        "Current thread: ${thread.name}, session thread: ${sessionThread?.name}"
+            )
+        }
     }
 
     fun startTransactionIfNotYet() {
-        raiseIfClosed()
-        db.checkBlocker(this)
+        beforeAnyOperation()
         db.checkAndStartTransaction(this)
 
         if (db.database.transactionManager.currentTransaction == null) {
@@ -44,55 +69,60 @@ internal class SqliteSession(
     override val eventDao get() = eventDaoHolder
 
     override fun commit() {
-        raiseIfClosed()
-        if (!db.checkTransactionFinish(this)) {
+        beforeAnyOperation()
+        if (!db.isSessionOwnsWriteTransaction(this)) {
             logger.info { "Transaction wasn't started" }
             return
         }
         try {
-            db.database.transactionManager.currentTransaction?.commit()
             db.finishTransaction(this, true)
             logger.info { "Transaction commited" }
         } catch (e: Exception) {
-            db.database.transactionManager.currentTransaction?.rollback()
             db.finishTransaction(this, false)
             logger.info { "Transaction rollback after commit error" }
             throw e
         }
-        db.eventProcessor.onTransactionFinished()
     }
 
     override fun rollback() {
-        raiseIfClosed()
-        if (!db.checkTransactionFinish(this)) {
+        beforeAnyOperation()
+        if (!db.isSessionOwnsWriteTransaction(this)) {
             logger.info { "Transaction wasn't started" }
             return
         }
-        db.database.transactionManager.currentTransaction?.rollback()
         db.finishTransaction(this, false)
         logger.info { "Transaction rollback" }
     }
 
+    override suspend fun <T> coroDbOp(block: suspend Session.() -> T): T =
+        withContext(db.singleThreadDispatcher) { block() }
+
     override fun close() {
-        closed = true
-        if (db.isSessionOwnsTransaction(this)) {
-            if (db.checkTransactionFinish(this)) {
-                db.database.transactionManager.currentTransaction?.rollback()
-                db.finishTransaction(this, false)
-                logger.info { "Transaction rollback on close" }
-            }
+        if (closed) return
+        if (sessionThread == null) {
+            closed = true
+            db.onSessionClosed(this)
+            logger.info { "Closed, was inactive" }
         }
-        db.database.transactionManager.currentTransaction?.let {
-            it.rollback()
-            logger.info { "Other transaction rollback on close" }
+
+        checkThread()
+        closed = true
+        if (db.isSessionOwnsWriteTransaction(this)) {
+            db.finishTransaction(this, false)
+            logger.info { "Transaction rollback on close" }
+        }
+        db.database.transactionManager.currentTransaction?.run {
+            close()
+            logger.info { "Transaction closed" }
         }
         db.onSessionClosed(this)
-        logger.info { "Close" }
+        logger.info { "Closed" }
     }
 
     override fun getDb() = db.database
 
     fun saveEvent(entity: ActualVersionContent, eventType: EventType) {
+        beforeAnyOperation()
         db.catalogCaches[entity::class]?.setInTransactionUnsafe(entity)
         if (!createEvents) return
         val basedOn = eventDao.getLastEventCoords()
@@ -101,4 +131,6 @@ internal class SqliteSession(
         val event = Event(Global.currentPlace no 0, SecondsClock.now(), Global.currentUser, eventType, basedOn, entity)
         eventDao.save(event)
     }
+
+    override fun toString(): String = "Session[$name]"
 }

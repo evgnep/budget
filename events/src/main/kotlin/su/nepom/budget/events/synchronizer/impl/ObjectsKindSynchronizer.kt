@@ -14,19 +14,14 @@ import su.nepom.budget.model.ObjectKind
 import su.nepom.budget.model.Uuid
 import su.nepom.budget.model.isAncestorOf
 import su.nepom.budget.utils.SecondsClock
-import su.nepom.budget.utils.ioOp
 
 internal class ObjectsKindSynchronizer(
     private val objectKind: ObjectKind,
     private val storage: EventStorage,
-    session: Session,
+    private val session: Session,
     private val conflictResolver: ConflictResolver,
     private val result: EventSynchronizeResult,
 ) {
-    private val objectDao = session.dao(objectKind)
-
-    private val eventDao = session.eventDao
-
     suspend fun synchronize() {
         storage.eventsForObjectByKind(objectKind).collect { (uuid, events) ->
             ObjectProcessor(uuid, events).synchronize()
@@ -36,13 +31,13 @@ internal class ObjectsKindSynchronizer(
     private inner class ObjectProcessor(private val uuid: Uuid, private val events: List<ActualEvent>) {
         suspend fun synchronize() {
             require(events.isNotEmpty()) { "Events must not be empty" }
-            val ourDbLastEvent = ioOp { eventDao.getLastEventForObject(uuid, objectKind) }
+            val ourDbLastEvent = session.coroDbOp { eventDao.getLastEventForObject(uuid, objectKind) }
             val heads = findHeads(if (ourDbLastEvent == null) events else (events + ourDbLastEvent))
             val mergedHead = heads.singleOrNull() ?: resolveConflict(heads)
-            ioOp {
+            session.coroDbOp {
                 events.forEach { eventDao.save(it) }
                 if (heads.size > 1) eventDao.save(mergedHead)
-                objectDao.save(mergedHead.content)
+                save(mergedHead.content)
             }
             result.imported += events.size
         }

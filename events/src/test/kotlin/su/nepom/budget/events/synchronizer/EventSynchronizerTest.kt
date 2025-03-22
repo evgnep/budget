@@ -48,11 +48,16 @@ class EventSynchronizerTest {
     }
     private val session = mockk<Session>(relaxed = true) {
         every { dao(any()) } answers { callOriginal() }
+        every { save(any()) } answers { callOriginal() }
+        coEvery { coroUse<Any>(any()) } answers { callOriginal() }
+        coEvery { coroDbOp<Any>(any()) } coAnswers {
+            arg<suspend Session.() -> Any>(0).invoke(this@mockk)
+        }
         every { currencyDao } returns this@EventSynchronizerTest.currencyDao
         every { eventDao } returns this@EventSynchronizerTest.eventDao
     }
     private val db = mockk<Db> {
-        every { createSessionInBlockingMode(any()) } returns session
+        every { createSessionInBlockingMode(any(), any()) } returns session
     }
     private val conflictResolver = mockk<ConflictResolver>()
     private val underTest = EventSynchronizer(eventReader, db, conflictResolver)
