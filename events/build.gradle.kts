@@ -12,6 +12,7 @@ dependencies {
 
     testImplementation(libs.bundles.test.junit5)
     testImplementation(libs.logging.logback)
+    testImplementation(project(":db-sqlite"))
 }
 
 tasks.test {

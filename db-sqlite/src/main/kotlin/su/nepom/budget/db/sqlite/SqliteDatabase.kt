@@ -1,7 +1,6 @@
 package su.nepom.budget.db.sqlite
 
 import io.github.oshai.kotlinlogging.KotlinLogging
-import kotlinx.coroutines.asCoroutineDispatcher
 import org.flywaydb.core.Flyway
 import org.ktorm.database.Database
 import org.ktorm.entity.associate
@@ -21,8 +20,9 @@ import su.nepom.budget.model.AccountId
 import su.nepom.budget.model.CurrencyId
 import su.nepom.budget.model.Uuid
 import java.nio.file.Path
+import java.sql.Connection
+import java.util.*
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.Executors
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
 import kotlin.io.path.absolute
@@ -52,7 +52,7 @@ internal abstract class FlywayShouldRunFirst(pathToDb: Path) {
 }
 
 internal class SqliteDatabase(pathToDb: Path): FlywayShouldRunFirst(pathToDb), Db, DatabaseHolder {
-    val database = Database.connect(datasource)
+    private val connections = Collections.newSetFromMap(IdentityHashMap<Connection, Boolean>())
     private var closed = false
     private val lock = ReentrantLock()
     private val sessionByThread = HashMap<Thread, SqliteSession>()
@@ -61,6 +61,7 @@ internal class SqliteDatabase(pathToDb: Path): FlywayShouldRunFirst(pathToDb), D
      * In sqlite only one writing transaction is allowed
      */
     private var sessionWithWriteTransaction: SqliteSession? = null
+    val database = Database.connect { WrappedConnection(datasource.connection) }
     val eventProcessor = EventProcessor(database)
     val currencyCache = TableCopy(CurrencyContent::class.java) {
         currencies.associate { CurrencyId(Uuid(it.uuid)) to it.toCurrencyContent() }
@@ -74,10 +75,6 @@ internal class SqliteDatabase(pathToDb: Path): FlywayShouldRunFirst(pathToDb), D
         AccountContent::class to accountCache,
         AccountRestEntity::class to accountRestCache,
     )
-    val singleThreadDispatcher by lazy {
-        Executors.newSingleThreadExecutor({ Thread(it).also { t -> t.name = "SqliteDatabase-coro" } })
-            .asCoroutineDispatcher()
-    }
 
     init {
         database.transactionManager.currentTransaction?.rollback()
@@ -153,13 +150,31 @@ internal class SqliteDatabase(pathToDb: Path): FlywayShouldRunFirst(pathToDb), D
     override fun close() {
         lock.withLock {
             if (sessionByThread.isNotEmpty()) {
-                logger.warn { "There are still sessions open" }
                 val copy = sessionByThread.values.toList()
-                copy.forEach { it.close() }
+                logger.warn { "There are still sessions open: " + copy.joinToString { it.toString() }  }
+                copy.forEach { it.forceClose() }
             }
+            if (connections.isNotEmpty()) {
+                logger.warn { "There are still connections open: "  + connections.size  }
+            }
+            connections.toList().forEach { it.close() }
         }
         activeSqliteDatabases.remove(normalizedPathToDb)
-        database
         logger.info { "Close database at $normalizedPathToDb" }
     }
+
+    private inner class WrappedConnection(private val connection: Connection): Connection by connection {
+        init {
+            lock.withLock {
+                connections.add(connection)
+            }
+        }
+        override fun close() {
+            lock.withLock {
+                connections.remove(connection)
+            }
+        }
+    }
 }
+
+fun createSqliteDatabase(pathToDb: Path): Db = SqliteDatabase(pathToDb)

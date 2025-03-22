@@ -1,6 +1,7 @@
 package su.nepom.budget.db.sqlite
 
 import io.github.oshai.kotlinlogging.KotlinLogging
+import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.withContext
 import su.nepom.budget.Global
 import su.nepom.budget.db.Session
@@ -11,6 +12,7 @@ import su.nepom.budget.event.Event
 import su.nepom.budget.event.EventType
 import su.nepom.budget.model.no
 import su.nepom.budget.utils.SecondsClock
+import java.util.concurrent.Executors
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
 
@@ -23,6 +25,10 @@ internal class SqliteSession(
     private val lock = ReentrantLock()
     private var sessionThread: Thread? = null
     private var closed: Boolean = false
+    private val singleThreadDispatcher = lazy {
+        Executors.newSingleThreadExecutor { Thread(it).also { t -> t.name = "SqliteDatabase-coro-$name" } }
+            .asCoroutineDispatcher()
+    }
 
     private val currencyDaoHolder by lazy { SqliteCurrencyDao(this) }
     private val eventDaoHolder by lazy { SqliteEventDao(this) }
@@ -71,7 +77,7 @@ internal class SqliteSession(
     override fun commit() {
         beforeAnyOperation()
         if (!db.isSessionOwnsWriteTransaction(this)) {
-            logger.info { "Transaction wasn't started" }
+            logger.info { "Zero commit - transaction wasn't started" }
             return
         }
         try {
@@ -87,7 +93,7 @@ internal class SqliteSession(
     override fun rollback() {
         beforeAnyOperation()
         if (!db.isSessionOwnsWriteTransaction(this)) {
-            logger.info { "Transaction wasn't started" }
+            logger.info { "Zero rollback - transaction wasn't started" }
             return
         }
         db.finishTransaction(this, false)
@@ -95,7 +101,7 @@ internal class SqliteSession(
     }
 
     override suspend fun <T> coroDbOp(block: suspend Session.() -> T): T =
-        withContext(db.singleThreadDispatcher) { block() }
+        withContext(singleThreadDispatcher.value) { block() }
 
     override fun close() {
         if (closed) return
@@ -107,6 +113,7 @@ internal class SqliteSession(
 
         checkThread()
         closed = true
+        if (singleThreadDispatcher.isInitialized()) singleThreadDispatcher.value.close()
         if (db.isSessionOwnsWriteTransaction(this)) {
             db.finishTransaction(this, false)
             logger.info { "Transaction rollback on close" }
@@ -117,6 +124,12 @@ internal class SqliteSession(
         }
         db.onSessionClosed(this)
         logger.info { "Closed" }
+    }
+
+    fun forceClose() {
+        closed = true
+        if (singleThreadDispatcher.isInitialized()) singleThreadDispatcher.value.close()
+        logger.info { "Force closed" }
     }
 
     override fun getDb() = db.database

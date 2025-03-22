@@ -197,9 +197,6 @@ internal class SqliteTransactionDao(private val session: SqliteSession) : Transa
 
     private fun validate(entity: TransactionContent) {
         require(entity.items.size >= 2) { "Transaction must contain at least two items" }
-        entity.items.forEach {
-            require(it.money.value != 0L) { "Item money must not be zero" }
-        }
         val totalByCurrencyAndKind: Map<Pair<Uuid, AccountKind>, RawMoney> = entity.items.groupingBy {
             val account = session.db.accountCache.getOrThrow(it.account)
             account.currency.uuid to account.kind

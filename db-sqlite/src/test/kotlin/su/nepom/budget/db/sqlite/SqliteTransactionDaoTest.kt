@@ -424,11 +424,10 @@ internal class SqliteTransactionDaoTest : AbstractDbTest() {
         )
     }
 
-    // выборка по разным фильтрам, сортировка, паджинация
-
     companion object {
         @JvmStatic
         fun saveNewValid() = listOf(
+            Arguments.of("zero", createTransaction(accountC1Money to 0)),
             Arguments.of("budget income", createTransaction(accountC1Money to 10, account2C1Budget to 10)),
             Arguments.of("budget expenditure", createTransaction(accountC1Money to -10, account2C1Budget to -10)),
             Arguments.of(
