@@ -1,6 +1,8 @@
 [libraries]
 flyway-core = { module = "org.flywaydb:flyway-core", version = "11.4.0" }
 
+fx-controlfx = { module = "org.controlsfx:controlsfx", version = "11.2.2" }
+
 jackson-kotlin = { module = "com.fasterxml.jackson.module:jackson-module-kotlin", version.ref = "jackson" }
 jackson-yaml = { module = "com.fasterxml.jackson.dataformat:jackson-dataformat-yaml", version.ref = "jackson" }
 
@@ -29,9 +31,15 @@ test-mockk-jvm = { module = "io.mockk:mockk-jvm", version = "1.13.17" }
 
 [versions]
 jackson = "2.18.3"
+javafx = "21"
 jdk = "21"
 kotlinSerialization = "1.8.0"
 ktorm = "4.1.1"
 
 [bundles]
 test-junit5 = ["test-junit5", "test-junit5-platform", "test-assertj", "test-jsonunit", "test-mockk-jvm"]
+
+[plugins]
+moduleplugin = { id = "org.javamodularity.moduleplugin", version = "1.8.12" }
+javafxplugin = { id = "org.openjfx.javafxplugin", version = "0.0.13" }
+jlink = { id = "org.beryx.jlink", version = "3.1.1" }

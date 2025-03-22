@@ -14,5 +14,6 @@ include(
     "access-ingester",
     "common",
     "db-sqlite",
+    "desktop",
     "events",
 )
