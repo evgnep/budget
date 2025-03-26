@@ -57,7 +57,7 @@ class EventSynchronizerTest {
         every { eventDao } returns this@EventSynchronizerTest.eventDao
     }
     private val db = mockk<Db> {
-        every { createSessionInBlockingMode(any(), any()) } returns session
+        every { createSession(any(), blockingMode = true, createEvents = false) } returns session
     }
     private val conflictResolver = mockk<ConflictResolver>()
     private val underTest = EventSynchronizer(eventReader, db, conflictResolver)
@@ -79,6 +79,7 @@ class EventSynchronizerTest {
         assertThat(result.imported).isZero()
         assertThat(result.readingErrors).isEmpty()
         assertThat(result.error).isNull()
+        verify { db.createSession(any(), blockingMode = true, createEvents = false) }
     }
 
     @Test

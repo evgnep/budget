@@ -5,6 +5,7 @@ import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.withContext
 import su.nepom.budget.Global
 import su.nepom.budget.db.Session
+import su.nepom.budget.db.dao.PropertyDao
 import su.nepom.budget.db.sqlite.impl.setInTransactionUnsafe
 import su.nepom.budget.db.sqlite.utils.DatabaseHolder
 import su.nepom.budget.event.ActualVersionContent
@@ -19,7 +20,8 @@ import kotlin.concurrent.withLock
 internal class SqliteSession(
     val name: String,
     val db: SqliteDatabase,
-    val createEvents: Boolean,
+    private val createEvents: Boolean,
+    private val autoCommit: Boolean,
 ) : Session, DatabaseHolder {
     private val logger = KotlinLogging.logger(SqliteSession::class.qualifiedName!! + " [$name]")
     private val lock = ReentrantLock()
@@ -34,8 +36,26 @@ internal class SqliteSession(
     private val eventDaoHolder by lazy { SqliteEventDao(this) }
     private val accountDaoHolder by lazy { SqliteAccountDao(this) }
     private val transactionDaoHolder by lazy { SqliteTransactionDao(this) }
+    private val propertiesDaoHolder by lazy { SqlitePropertyDao(this) }
 
-    fun beforeAnyOperation() {
+    fun <T> doReadOp(block: () -> T): T {
+        beforeAnyOperation()
+        return block()
+    }
+
+    fun <T> doWriteOp(block: () -> T): T {
+        beforeAnyOperation()
+        db.checkAndStartTransaction(this)
+        if (db.database.transactionManager.currentTransaction == null) {
+            db.database.transactionManager.newTransaction()
+            logger.info { "Started transaction" }
+        }
+        val result = block()
+        if (autoCommit) commit()
+        return result
+    }
+
+    private fun beforeAnyOperation() {
         if (closed) throw IllegalStateException("Session is closed")
         checkThread()
     }
@@ -59,20 +79,11 @@ internal class SqliteSession(
         }
     }
 
-    fun startTransactionIfNotYet() {
-        beforeAnyOperation()
-        db.checkAndStartTransaction(this)
-
-        if (db.database.transactionManager.currentTransaction == null) {
-            db.database.transactionManager.newTransaction()
-            logger.info { "Started transaction" }
-        }
-    }
-
     override val currencyDao get() = currencyDaoHolder
     override val accountDao get() = accountDaoHolder
     override val transactionDao get() = transactionDaoHolder
     override val eventDao get() = eventDaoHolder
+    override val propertyDao: PropertyDao get() = propertiesDaoHolder
 
     override fun commit() {
         beforeAnyOperation()

@@ -13,6 +13,7 @@ import su.nepom.budget.db.sqlite.mapping.Transactions
 import su.nepom.budget.db.sqlite.mapping.accounts
 import su.nepom.budget.db.sqlite.mapping.currencies
 import su.nepom.budget.db.sqlite.mapping.events
+import su.nepom.budget.db.sqlite.mapping.properties
 import su.nepom.budget.event.AccountContent
 import su.nepom.budget.event.CurrencyContent
 import su.nepom.budget.event.TransactionContent
@@ -55,6 +56,7 @@ internal abstract class AbstractDbTest {
             database.events.clear()
             database.accounts.clear()
             database.currencies.clear()
+            database.properties.clear()
         }
         db = SqliteDatabase(dbPath)
     }

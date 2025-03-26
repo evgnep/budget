@@ -4,6 +4,7 @@ import su.nepom.budget.db.dao.AccountDao
 import su.nepom.budget.db.dao.CrudDao
 import su.nepom.budget.db.dao.CurrencyDao
 import su.nepom.budget.db.dao.EventDao
+import su.nepom.budget.db.dao.PropertyDao
 import su.nepom.budget.db.dao.TransactionDao
 import su.nepom.budget.event.ActualVersionContent
 import su.nepom.budget.model.ObjectKind
@@ -16,6 +17,8 @@ interface Session: AutoCloseable {
     val transactionDao: TransactionDao
 
     val eventDao: EventDao
+
+    val propertyDao: PropertyDao
 
     fun commit()
 

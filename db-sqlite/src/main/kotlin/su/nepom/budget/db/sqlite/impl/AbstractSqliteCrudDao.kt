@@ -35,23 +35,19 @@ internal abstract class AbstractSqliteCrudDao<
     protected open fun validateUpdate(old: Content, new: Content) {
     }
 
-    override fun getAll(): List<Content> {
-        session.beforeAnyOperation()
-        return sequence.map(toContent)
+    override fun getAll(): List<Content> = session.doReadOp {
+        sequence.map(toContent)
     }
 
-    override fun getById(id: Uuid): Content? {
-        session.beforeAnyOperation()
-        return sequence.find { idPredicate(it, id) }?.toContent()
+    override fun getById(id: Uuid): Content? = session.doReadOp {
+        sequence.find { idPredicate(it, id) }?.toContent()
     }
 
-    override fun count(): Int  {
-        session.beforeAnyOperation()
-        return sequence.count()
+    override fun count(): Int  = session.doReadOp {
+        sequence.count()
     }
 
-    override fun save(entity: Content): Content {
-        session.startTransactionIfNotYet()
+    override fun save(entity: Content): Content = session.doWriteOp {
         val current = sequence.find { idPredicate(it, entity.id.uuid) }?.toContent()
         if (current == null) {
             validateNew(entity)
@@ -62,7 +58,7 @@ internal abstract class AbstractSqliteCrudDao<
             session.saveEvent(entity, EventType.UPDATE)
             sequence.update(entity.toEntity())
         }
-        return entity
+        entity
     }
 
     override fun getDb() = session.db.database

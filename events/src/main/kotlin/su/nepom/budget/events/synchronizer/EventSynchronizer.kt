@@ -27,7 +27,7 @@ class EventSynchronizer(
         val result = EventSynchronizeResult()
 
         runBlocking {
-            db.createSessionInBlockingMode("EventSynchronizer", createEvents = false).coroUse {
+            db.createSession("EventSynchronizer", createEvents = false, blockingMode = true).coroUse {
                 try {
                     doIt(result)
                     coroDbOp { commit() }

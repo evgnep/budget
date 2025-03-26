@@ -131,19 +131,26 @@ internal class SqliteDatabase(pathToDb: Path): FlywayShouldRunFirst(pathToDb), D
         }
     }
 
-    override fun createSession(name: String): Session = createSession(name, true)
-
-    override fun createSessionInBlockingMode(name: String, createEvents: Boolean): Session = lock.withLock {
-        if (sessionInBlockingMode != null) {
-            throw IllegalStateException("$sessionInBlockingMode in blocking mode already exists")
+    override fun createSession(
+        name: String,
+        blockingMode: Boolean,
+        createEvents: Boolean,
+        autoCommit: Boolean
+    ): Session {
+        if (blockingMode) {
+            if (sessionInBlockingMode != null) {
+                throw IllegalStateException("$sessionInBlockingMode in blocking mode already exists")
+            }
+            if (sessionWithWriteTransaction != null) {
+                throw IllegalStateException("$sessionWithWriteTransaction already writes to db")
+            }
         }
-        if (sessionWithWriteTransaction != null) {
-            throw IllegalStateException("$sessionWithWriteTransaction already writes to db")
+        return SqliteSession(name, this, createEvents, autoCommit).also {
+            if (blockingMode) {
+                sessionInBlockingMode = it
+            }
         }
-        return createSession(name, createEvents).also { sessionInBlockingMode = it }
     }
-
-    private fun createSession(name: String, createEvents: Boolean) = SqliteSession(name, this, createEvents)
 
     override fun getDb() = database
 

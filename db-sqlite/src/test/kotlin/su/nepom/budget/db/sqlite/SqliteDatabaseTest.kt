@@ -25,8 +25,19 @@ internal class SqliteDatabaseTest: AbstractDbTest() {
     }
 
     @Test
+    fun autocommit() {
+        db.createSession("autocommit", autoCommit = true).use { session ->
+            session.save(currency)
+            session.save(createCurrency("kzt", "kazakh tenge"))
+            session.rollback()
+        }
+        // then
+        assertThat(dao.getAll()).hasSize(2)
+    }
+
+    @Test
     fun dontCreateEvents() {
-        db.createSessionInBlockingMode("blocking", false).use { session ->
+        db.createSession("blocking", createEvents = false, blockingMode = true).use { session ->
             session.currencyDao.save(currency)
             session.commit()
         }
@@ -74,11 +85,11 @@ internal class SqliteDatabaseTest: AbstractDbTest() {
     @Test
     fun blockingMode() {
         var ok = false
-        db.createSessionInBlockingMode("1", false).use { session ->
+        db.createSession("1", createEvents = false, blockingMode = true).use { session ->
             session.currencyDao.save(currency)
             session.commit()
 
-            assertThatThrownBy { db.createSessionInBlockingMode("2",false) }
+            assertThatThrownBy { db.createSession("2", createEvents = false, blockingMode = true) }
                 .hasMessageContaining("Session[1] in blocking mode already exists")
 
             thread {
@@ -93,7 +104,7 @@ internal class SqliteDatabaseTest: AbstractDbTest() {
         }
         assertThat(ok).isTrue()
 
-        db.createSessionInBlockingMode("5", true).close()
+        db.createSession("5", createEvents = false, blockingMode = true).close()
 
         db.createSession("6").use { session ->
             session.currencyDao.save(currency)
