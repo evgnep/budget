@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.layout.AnchorPane?>
+<AnchorPane prefHeight="400.0" prefWidth="600.0" xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1" fx:controller="su.nepom.budget.desktop.ui.configuration.EventsInfoController">
+   <children>
+      <TableView fx:id="eventsTableView" layoutX="14.0" layoutY="14.0" prefHeight="200.0" prefWidth="200.0" AnchorPane.bottomAnchor="5.0" AnchorPane.leftAnchor="5.0" AnchorPane.rightAnchor="5.0" AnchorPane.topAnchor="5.0">
+        <columns>
+          <TableColumn fx:id="eventPlaceColumn" editable="false" maxWidth="-Infinity" minWidth="75.0" prefWidth="-1.0" text="Источник" />
+          <TableColumn fx:id="eventCountColumn" editable="false" maxWidth="-Infinity" minWidth="75.0" prefWidth="-1.0" text="Количество" />
+        </columns>
+      </TableView>
+   </children>
+</AnchorPane>

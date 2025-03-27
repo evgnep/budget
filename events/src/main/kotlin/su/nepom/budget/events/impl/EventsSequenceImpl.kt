@@ -160,9 +160,7 @@ internal class EventsSequenceImpl(storeReader: EventStoreReader, from: Map<Place
         val fileToRead = unreadFiles.removeFirstOrNull() ?: throw LogicException("Empty files in $from")
         if (unreadFiles.isEmpty()) unreadFilesByPlace.remove(from)
         try {
-            val content = FileInputStream(fileToRead.path.toFile()).use { stream ->
-                Json.decodeFromStream<FileContent>(stream)
-            }
+            val content = fileToRead.path.readContent()
             readFile = ReadFile(content.events.map { it.toActualVersion() }, fileToRead.startEventNo, fileToRead.path)
             readFiles[from] = readFile
             return readFile
@@ -210,3 +208,8 @@ internal class EventsSequenceImpl(storeReader: EventStoreReader, from: Map<Place
 
     }
 }
+
+internal fun Path.readContent(): FileContent =
+    FileInputStream(toFile()).use { stream ->
+        Json.decodeFromStream<FileContent>(stream)
+    }

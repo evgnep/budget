@@ -2,6 +2,7 @@ package su.nepom.budget.events
 
 import su.nepom.budget.event.ActualEvent
 import su.nepom.budget.events.impl.EventsSequenceImpl
+import su.nepom.budget.events.impl.readContent
 import su.nepom.budget.model.Place
 import java.nio.file.Path
 import kotlin.io.path.absolutePathString
@@ -63,4 +64,14 @@ interface EventsSequence : Sequence<ActualEvent> {
 private fun String.getFirstEventNoAndCount(): Pair<Int, Int>? =
     eventFilenameRegex.matchEntire(this)?.let {
         it.groupValues[1].toInt() to it.groupValues[2].toInt()
+    }
+
+fun isValidFilename(filename: String): Boolean = eventFilenameRegex.matches(filename)
+
+fun isValidEventFile(file: Path): String? =
+    try {
+        file.readContent()
+        null
+    } catch (e: Exception) {
+        e.message ?: "Unknown error"
     }

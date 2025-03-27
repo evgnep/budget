@@ -1,7 +1,11 @@
 [libraries]
+dagger-lib = { module = "com.google.dagger:dagger", version.ref = "dagger"}
+dagger-compiler = { module = "com.google.dagger:dagger-compiler", version.ref = "dagger"}
+
 flyway-core = { module = "org.flywaydb:flyway-core", version = "11.4.0" }
 
-fx-controlfx = { module = "org.controlsfx:controlsfx", version = "11.2.2" }
+fx-controls = { module = "org.controlsfx:controlsfx", version = "11.2.2" }
+fx-validation = { module = "net.synedra:validatorfx", version = "0.6.1"}
 
 jackson-kotlin = { module = "com.fasterxml.jackson.module:jackson-module-kotlin", version.ref = "jackson" }
 jackson-yaml = { module = "com.fasterxml.jackson.dataformat:jackson-dataformat-yaml", version.ref = "jackson" }
@@ -30,6 +34,7 @@ test-junit5-platform = { module = "org.junit.platform:junit-platform-launcher", 
 test-mockk-jvm = { module = "io.mockk:mockk-jvm", version = "1.13.17" }
 
 [versions]
+dagger = "2.56"
 jackson = "2.18.3"
 javafx = "21"
 jdk = "21"

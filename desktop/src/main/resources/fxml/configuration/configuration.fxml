@@ -1,0 +1,167 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ButtonBar?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.Tab?>
+<?import javafx.scene.control.TabPane?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.control.Tooltip?>
+<?import javafx.scene.layout.AnchorPane?>
+<?import javafx.scene.layout.ColumnConstraints?>
+<?import javafx.scene.layout.GridPane?>
+<?import javafx.scene.layout.RowConstraints?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Font?>
+<AnchorPane minHeight="-Infinity" minWidth="-Infinity" prefHeight="532.0" prefWidth="475.0" xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1" fx:controller="su.nepom.budget.desktop.ui.configuration.ConfigurationController">
+    <children>
+        <VBox prefHeight="341.0" prefWidth="475.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
+            <children>
+                <TabPane prefHeight="309.0" prefWidth="422.0" tabClosingPolicy="UNAVAILABLE" VBox.vgrow="ALWAYS">
+                    <tabs>
+                        <Tab text="Данные">
+                     <content>
+                        <GridPane>
+                          <columnConstraints>
+                            <ColumnConstraints halignment="RIGHT" hgrow="NEVER" />
+                            <ColumnConstraints hgrow="ALWAYS" minWidth="10.0" prefWidth="100.0" />
+                          </columnConstraints>
+                          <rowConstraints>
+                            <RowConstraints vgrow="NEVER" />
+                            <RowConstraints vgrow="NEVER" />
+                            <RowConstraints vgrow="NEVER" />
+                              <RowConstraints vgrow="NEVER" />
+                              <RowConstraints vgrow="NEVER" />
+                              <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="ALWAYS" />
+                              <RowConstraints valignment="BOTTOM" vgrow="NEVER" />
+                          </rowConstraints>
+                           <children>
+                              <Label text="База данных" textAlignment="RIGHT">
+                                 <padding>
+                                    <Insets bottom="5.0" left="5.0" right="5.0" top="5.0" />
+                                 </padding>
+                              </Label>
+                              <AnchorPane GridPane.columnIndex="1">
+                                 <children>
+                                    <TextField fx:id="dataDbPathTextField" editable="false" layoutX="23.0" layoutY="1.0" AnchorPane.bottomAnchor="5.0" AnchorPane.leftAnchor="5.0" AnchorPane.rightAnchor="5.0" AnchorPane.topAnchor="5.0">
+                                       <tooltip>
+                                          <Tooltip text="Путь и имя файла БД фиксированы" wrapText="true" />
+                                       </tooltip></TextField>
+                                 </children>
+                                 <opaqueInsets>
+                                    <Insets />
+                                 </opaqueInsets>
+                              </AnchorPane>
+                              <VBox GridPane.columnSpan="2" GridPane.rowIndex="1">
+                                 <children>
+                                    <VBox fx:id="dataDbOKPane">
+                                       <children>
+                                          <AnchorPane>
+                                             <children>
+                                                <Label alignment="CENTER" text="База данных найдена" textFill="#136b4a" AnchorPane.bottomAnchor="5.0" AnchorPane.leftAnchor="5.0" AnchorPane.rightAnchor="5.0" AnchorPane.topAnchor="5.0">
+                                                   <font>
+                                                      <Font name="System Bold" size="14.0" />
+                                                   </font>
+                                                </Label>
+                                             </children>
+                                          </AnchorPane>
+                                          <AnchorPane>
+                                             <children>
+                                                <Label fx:id="dataDbStatLabel" alignment="CENTER" text="Статистика" AnchorPane.bottomAnchor="5.0" AnchorPane.leftAnchor="5.0" AnchorPane.rightAnchor="5.0" AnchorPane.topAnchor="5.0" />
+                                             </children>
+                                          </AnchorPane>
+                                       </children>
+                                    </VBox>
+                                    <VBox fx:id="dataDbFailPane">
+                                       <children>
+                                          <AnchorPane>
+                                             <children>
+                                                <Label alignment="CENTER" text="База данных не найдена" textFill="RED" AnchorPane.bottomAnchor="5.0" AnchorPane.leftAnchor="5.0" AnchorPane.rightAnchor="5.0" AnchorPane.topAnchor="5.0">
+                                                   <font>
+                                                      <Font name="System Bold" size="14.0" />
+                                                   </font>
+                                                </Label>
+                                             </children>
+                                          </AnchorPane>
+                                          <ButtonBar>
+                                            <buttons>
+                                              <Button mnemonicParsing="false" onAction="#createDbButtonClick" text="Создать новую базу данных" />
+                                                <Button mnemonicParsing="false" onAction="#repeatDbFindButtonClick" text="Повторить поиск" />
+                                            </buttons>
+                                             <padding>
+                                                <Insets bottom="5.0" left="5.0" right="5.0" top="5.0" />
+                                             </padding>
+                                          </ButtonBar>
+                                       </children>
+                                    </VBox>
+                                 </children>
+                              </VBox>
+                              <Label text="Папка с событиями" textAlignment="RIGHT" GridPane.rowIndex="2">
+                                 <padding>
+                                    <Insets bottom="5.0" left="5.0" right="5.0" top="5.0" />
+                                 </padding>
+                              </Label>
+                              <GridPane hgap="5.0" GridPane.columnIndex="1" GridPane.rowIndex="2">
+                                 <columnConstraints>
+                                    <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" />
+                                    <ColumnConstraints halignment="RIGHT" hgrow="NEVER" />
+                                    <ColumnConstraints halignment="RIGHT" hgrow="NEVER" />
+                                 </columnConstraints>
+                                 <rowConstraints>
+                                    <RowConstraints minHeight="10.0" vgrow="SOMETIMES" />
+                                 </rowConstraints>
+                                 <children>
+                                    <TextField fx:id="eventsPathTextField">
+                                       <GridPane.margin>
+                                          <Insets />
+                                       </GridPane.margin>
+                                       <tooltip>
+                                          <Tooltip text="Эта папка должна синхронизироваться между разными приложениями через Яндекс.Диск или аналогичные системы" wrapText="true" />
+                                       </tooltip>
+                                    </TextField>
+                                    <Button fx:id="eventsInfoButton" alignment="CENTER_RIGHT" mnemonicParsing="false" onAction="#showEventsInfoButtonClick" text="👁" GridPane.columnIndex="1" />
+                                    <Button fx:id="eventsFolderButton" alignment="CENTER_RIGHT" mnemonicParsing="false" onAction="#selectEventsFolderButtonClick" text="..." GridPane.columnIndex="2" />
+                                 </children>
+                                 <GridPane.margin>
+                                    <Insets bottom="5.0" left="5.0" right="5.0" top="5.0" />
+                                 </GridPane.margin>
+                              </GridPane>
+                              <ButtonBar GridPane.columnSpan="2" GridPane.rowIndex="6" GridPane.valignment="BOTTOM">
+                                <buttons>
+                                  <Button fx:id="okButton" alignment="CENTER" mnemonicParsing="false" onAction="#okButtonClick" text="Ок" />
+                                    <Button alignment="CENTER" layoutX="400.0" layoutY="10.0" mnemonicParsing="false" onAction="#cancelButtonClick" text="Отмена" />
+                                </buttons>
+                                 <GridPane.margin>
+                                    <Insets bottom="5.0" left="5.0" right="5.0" top="5.0" />
+                                 </GridPane.margin>
+                              </ButtonBar>
+                              <Label text="Ваше имя" textAlignment="RIGHT" GridPane.rowIndex="3">
+                                 <padding>
+                                    <Insets bottom="5.0" left="5.0" right="5.0" top="5.0" />
+                                 </padding>
+                              </Label>
+                              <Label text="Текущее место (латиницей, буквы и цифры)" textAlignment="RIGHT" GridPane.rowIndex="4">
+                                 <padding>
+                                    <Insets bottom="5.0" left="5.0" right="5.0" top="5.0" />
+                                 </padding>
+                              </Label>
+                              <TextField fx:id="usernameTextField" GridPane.columnIndex="1" GridPane.rowIndex="3">
+                                 <GridPane.margin>
+                                    <Insets bottom="5.0" left="5.0" right="5.0" top="5.0" />
+                                 </GridPane.margin>
+                              </TextField>
+                              <TextField fx:id="placeTextField" GridPane.columnIndex="1" GridPane.rowIndex="4">
+                                 <GridPane.margin>
+                                    <Insets bottom="5.0" left="5.0" right="5.0" top="5.0" />
+                                 </GridPane.margin>
+                              </TextField>
+                           </children>
+                        </GridPane>
+                     </content></Tab>
+                    </tabs>
+                </TabPane>
+            </children>
+        </VBox>
+    </children>
+</AnchorPane>
