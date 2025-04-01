@@ -10,6 +10,8 @@ import su.nepom.budget.event.ActualVersionContent
 import su.nepom.budget.model.ObjectKind
 
 interface Session: AutoCloseable {
+    val db: Db
+
     val currencyDao: CurrencyDao
 
     val accountDao: AccountDao

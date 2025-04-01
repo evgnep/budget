@@ -3,10 +3,11 @@ package su.nepom.budget.event
 import kotlinx.datetime.Instant
 import kotlinx.serialization.Serializable
 import su.nepom.budget.model.EventCoords
+import su.nepom.budget.model.ObjectWithId
 import su.nepom.budget.model.Uuid
 
 @Serializable
-data class Event<out T: StorableContent>(
+data class Event<out T: ObjectWithId>(
     val coords: EventCoords,
     val created: Instant,
     val creator: String,
@@ -23,5 +24,7 @@ enum class EventType {
     NEW,
     UPDATE,
 }
+
+typealias StorableEvent = Event<StorableContent>
 
 typealias ActualEvent = Event<ActualVersionContent>

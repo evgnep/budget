@@ -25,6 +25,16 @@ internal class SqliteDatabaseTest: AbstractDbTest() {
     }
 
     @Test
+    fun canCallGetTwice() {
+        dao.save(currency)
+
+        assertThat(dao.getAll()).hasSize(1)
+        assertThat(dao.getAll()).hasSize(1)
+        assertThat(dao.count()).isEqualTo(1)
+        assertThat(dao.getById(currency.uuid)).isEqualTo(currency)
+    }
+
+    @Test
     fun autocommit() {
         db.createSession("autocommit", autoCommit = true).use { session ->
             session.save(currency)

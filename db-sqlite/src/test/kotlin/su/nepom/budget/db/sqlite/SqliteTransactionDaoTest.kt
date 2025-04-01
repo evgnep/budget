@@ -14,7 +14,9 @@ import su.nepom.budget.Global
 import su.nepom.budget.db.dao.TransactionDao
 import su.nepom.budget.db.dao.TransactionDao.Filter
 import su.nepom.budget.db.dao.TransactionDao.Query
+import su.nepom.budget.db.model.AccountRest
 import su.nepom.budget.event.AccountContent
+import su.nepom.budget.event.Event
 import su.nepom.budget.event.EventType
 import su.nepom.budget.event.TransactionContent
 import su.nepom.budget.model.AccountId
@@ -56,6 +58,7 @@ internal class SqliteTransactionDaoTest : AbstractDbTest() {
         )
         session.commit()
         eventNo = session.eventDao.getLastEventCoords()[Global.currentPlace]!!
+        receivedEvents.clear()
     }
 
     @MethodSource
@@ -96,6 +99,7 @@ internal class SqliteTransactionDaoTest : AbstractDbTest() {
         val new = args.new.copy(id = args.old.id)
         session.save(args.old)
         session.commit()
+        receivedEvents.clear()
         // when
         session.save(new)
         session.commit()
@@ -109,6 +113,15 @@ internal class SqliteTransactionDaoTest : AbstractDbTest() {
             .containsExactlyInAnyOrderEntriesOf(mapOf(Global.currentPlace to eventNo + 2))
         assertThat(dao.accountRest(setOf())).containsExactlyInAnyOrderEntriesOf(
             args.rests.associate { AccountId(it.first.uuid) to RawMoney(it.second) }
+        )
+        assertThat(receivedEvents.filter { it.content is AccountRest }).satisfiesExactlyInAnyOrder(
+            *args.rests.map {
+                Consumer<Event<*>> { event ->
+                    val content = event.content as AccountRest
+                    assertThat(content.id).isEqualTo(AccountId(it.first.uuid))
+                    assertThat(content.rest).isEqualTo(it.second.rawMoney)
+                }
+            }.toTypedArray()
         )
     }
 

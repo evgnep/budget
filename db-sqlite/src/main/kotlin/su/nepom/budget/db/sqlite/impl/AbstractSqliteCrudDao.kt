@@ -21,11 +21,11 @@ internal abstract class AbstractSqliteCrudDao<
         EntityType : Entity<EntityType>,
         EntityTable : Table<EntityType>>(
     protected val session: SqliteSession,
-    sequenceGetter: DatabaseHolder.() -> EntitySequence<EntityType, EntityTable>,
+    protected val sequenceGetter: DatabaseHolder.() -> EntitySequence<EntityType, EntityTable>,
     private val toContent: EntityType.() -> Content,
     private val toEntity: Content.() -> EntityType,
 ) : CrudDao<Content>, DatabaseHolder {
-    protected val sequence = session.sequenceGetter()
+    protected val sequence get() = session.sequenceGetter()
 
     protected abstract fun idPredicate(table: EntityTable, id: Uuid): ColumnDeclaring<Boolean>
 

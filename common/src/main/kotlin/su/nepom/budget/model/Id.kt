@@ -14,6 +14,11 @@ interface Id {
     val readable: HumanReadableId?
 }
 
+interface ObjectWithId {
+    val id: Id
+    val uuid: Uuid get() = id.uuid
+}
+
 @Serializable
 data class UuidAndReadable<T : HumanReadableId>(override val uuid: Uuid, override val readable: T) : Id {
     constructor(readable: T) : this(Uuid.generate(), readable)

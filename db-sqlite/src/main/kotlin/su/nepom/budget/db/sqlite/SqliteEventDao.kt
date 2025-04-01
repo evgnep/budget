@@ -12,6 +12,7 @@ import org.ktorm.entity.find
 import org.ktorm.entity.map
 import org.ktorm.entity.sortedBy
 import su.nepom.budget.Global
+import su.nepom.budget.db.Db
 import su.nepom.budget.db.dao.EventDao
 import su.nepom.budget.db.sqlite.mapping.events
 import su.nepom.budget.db.sqlite.mapping.toEntity
@@ -24,11 +25,12 @@ import su.nepom.budget.model.Uuid
 internal class SqliteEventDao(
     private val session: SqliteSession,
 ): EventDao, DatabaseHolder {
-    override fun save(event: ActualEvent): Unit = session.doWriteOp {
+    override fun save(event: ActualEvent): Unit = session.doWriteOp(dontCommit = true) {
         if (event.coords.source == Global.currentPlace) {
             require(event.coords.no == 0) { "Coords.no must be zero for local event" }
         }
         events.add(event.toEntity())
+        session.db.eventsNotifier.addEvent(Db.SubscribeKind.from(event.content.objectKind), event)
     }
 
     override fun getLastEventCoords(): Map<Place, Int> = session.db.eventProcessor.lastEventCoords

@@ -6,9 +6,12 @@ import org.ktorm.database.Database
 import org.ktorm.entity.associate
 import org.sqlite.SQLiteDataSource
 import su.nepom.budget.db.Db
+import su.nepom.budget.db.DbListener
 import su.nepom.budget.db.Session
 import su.nepom.budget.db.sqlite.impl.AccountRestCache
 import su.nepom.budget.db.sqlite.impl.EventProcessor
+import su.nepom.budget.db.sqlite.impl.EventsNotifier
+import su.nepom.budget.db.sqlite.impl.ListenersStorage
 import su.nepom.budget.db.sqlite.impl.TableCopy
 import su.nepom.budget.db.sqlite.mapping.AccountRestEntity
 import su.nepom.budget.db.sqlite.mapping.accounts
@@ -75,6 +78,8 @@ internal class SqliteDatabase(pathToDb: Path): FlywayShouldRunFirst(pathToDb), D
         AccountContent::class to accountCache,
         AccountRestEntity::class to accountRestCache,
     )
+    private val listenersStorage = ListenersStorage()
+    val eventsNotifier = EventsNotifier(listenersStorage)
 
     init {
         database.transactionManager.currentTransaction?.rollback()
@@ -102,6 +107,7 @@ internal class SqliteDatabase(pathToDb: Path): FlywayShouldRunFirst(pathToDb), D
             sessionWithWriteTransaction = session
         }
         catalogCaches.values.forEach { it.onTransactionStart() }
+        eventsNotifier.onTransactionStart()
     }
 
     fun isSessionOwnsWriteTransaction(session: SqliteSession): Boolean = sessionWithWriteTransaction === session
@@ -115,6 +121,7 @@ internal class SqliteDatabase(pathToDb: Path): FlywayShouldRunFirst(pathToDb), D
             if (commit) commit() else rollback()
         }
         if (commit) eventProcessor.onTransactionFinished()
+        if (commit) eventsNotifier.onTransactionCommit() else eventsNotifier.onTransactionRollback()
         sessionWithWriteTransaction = null
     }
 
@@ -153,6 +160,9 @@ internal class SqliteDatabase(pathToDb: Path): FlywayShouldRunFirst(pathToDb), D
     }
 
     override fun getDb() = database
+
+    override fun subscribe(kinds: Set<Db.SubscribeKind>, listener: DbListener): Db.Subscription =
+        listenersStorage.addSubscribe(kinds, listener)
 
     override fun close() {
         lock.withLock {

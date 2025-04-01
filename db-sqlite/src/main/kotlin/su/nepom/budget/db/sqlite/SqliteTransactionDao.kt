@@ -30,7 +30,10 @@ import org.ktorm.entity.associateTo
 import org.ktorm.entity.filter
 import org.ktorm.schema.ColumnDeclaring
 import org.ktorm.support.sqlite.iif
+import su.nepom.budget.Global
+import su.nepom.budget.db.Db
 import su.nepom.budget.db.dao.TransactionDao
+import su.nepom.budget.db.model.AccountRest
 import su.nepom.budget.db.sqlite.mapping.AccountRestEntity
 import su.nepom.budget.db.sqlite.mapping.Accounts
 import su.nepom.budget.db.sqlite.mapping.TransactionItems
@@ -48,17 +51,21 @@ import su.nepom.budget.db.sqlite.utils.insert
 import su.nepom.budget.db.sqlite.utils.insertBatch
 import su.nepom.budget.db.sqlite.utils.toTimestamp
 import su.nepom.budget.db.sqlite.utils.uuidCode
+import su.nepom.budget.event.Event
 import su.nepom.budget.event.EventType
 import su.nepom.budget.event.TransactionContent
 import su.nepom.budget.event.TransactionContentItem
 import su.nepom.budget.model.AccountId
 import su.nepom.budget.model.AccountKind
 import su.nepom.budget.model.CurrencyId
+import su.nepom.budget.model.EventCoords
 import su.nepom.budget.model.RawMoney
 import su.nepom.budget.model.RawTurnover
 import su.nepom.budget.model.Uuid
 import su.nepom.budget.model.plus
+import su.nepom.budget.model.rawMoney
 import su.nepom.budget.model.uuidCode
+import su.nepom.budget.utils.SecondsClock
 
 internal class SqliteTransactionDao(private val session: SqliteSession) : TransactionDao, DatabaseHolder {
     override fun getDb(): Database = session.db.database
@@ -215,8 +222,25 @@ internal class SqliteTransactionDao(private val session: SqliteSession) : Transa
         rests.values.forEach { (restEntity, isNew) ->
             if (isNew) accountRests.add(restEntity)
             else restEntity.flushChanges()
-            session.db.accountRestCache.setInTransaction(AccountId(Uuid(restEntity.uuid)), RawMoney(restEntity.rest))
+            val accountId = AccountId(Uuid(restEntity.uuid))
+            val rawMoney = restEntity.rest.rawMoney
+            session.db.accountRestCache.setInTransaction(accountId, rawMoney)
+            restAccountRestEvent(accountId, rawMoney)
         }
+    }
+
+    private fun restAccountRestEvent(accountId: AccountId, rest: RawMoney) {
+        session.db.eventsNotifier.addEvent(
+            Db.SubscribeKind.ACCOUNT_REST,
+            Event(
+                EventCoords(Global.currentPlace, 0),
+                SecondsClock.now(),
+                Global.currentUser,
+                EventType.UPDATE,
+                listOf(),
+                AccountRest(accountId, rest)
+            )
+        )
     }
 
     private fun TransactionContentItem.updateRests(

@@ -19,7 +19,7 @@ import kotlin.concurrent.withLock
 
 internal class SqliteSession(
     val name: String,
-    val db: SqliteDatabase,
+    override val db: SqliteDatabase,
     private val createEvents: Boolean,
     private val autoCommit: Boolean,
 ) : Session, DatabaseHolder {
@@ -43,7 +43,7 @@ internal class SqliteSession(
         return block()
     }
 
-    fun <T> doWriteOp(block: () -> T): T {
+    fun <T> doWriteOp(dontCommit: Boolean = false, block: () -> T): T {
         beforeAnyOperation()
         db.checkAndStartTransaction(this)
         if (db.database.transactionManager.currentTransaction == null) {
@@ -51,7 +51,7 @@ internal class SqliteSession(
             logger.info { "Started transaction" }
         }
         val result = block()
-        if (autoCommit) commit()
+        if (autoCommit && !dontCommit) commit()
         return result
     }
 

@@ -8,6 +8,7 @@ import org.ktorm.dsl.deleteAll
 import org.ktorm.entity.clear
 import org.sqlite.SQLiteDataSource
 import su.nepom.budget.Global
+import su.nepom.budget.db.Db
 import su.nepom.budget.db.sqlite.mapping.AccountRests
 import su.nepom.budget.db.sqlite.mapping.Transactions
 import su.nepom.budget.db.sqlite.mapping.accounts
@@ -16,6 +17,7 @@ import su.nepom.budget.db.sqlite.mapping.events
 import su.nepom.budget.db.sqlite.mapping.properties
 import su.nepom.budget.event.AccountContent
 import su.nepom.budget.event.CurrencyContent
+import su.nepom.budget.event.Event
 import su.nepom.budget.event.TransactionContent
 import su.nepom.budget.event.TransactionContentItem
 import su.nepom.budget.model.AccountCode
@@ -40,6 +42,7 @@ internal abstract class AbstractDbTest {
         db.createSession("AbstractDbTest")
     }
     val eventDao by lazy { session.eventDao }
+    val receivedEvents = mutableListOf<Event<*>>()
 
     @BeforeEach
     fun clearDb() {
@@ -59,6 +62,8 @@ internal abstract class AbstractDbTest {
             database.properties.clear()
         }
         db = SqliteDatabase(dbPath)
+
+        db.subscribe(Db.SubscribeKind.ALL) { receivedEvents.addAll(it) }
     }
 
     @AfterEach

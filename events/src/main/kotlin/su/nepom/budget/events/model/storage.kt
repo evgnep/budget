@@ -1,10 +1,9 @@
 package su.nepom.budget.events.model
 
 import kotlinx.serialization.Serializable
-import su.nepom.budget.event.Event
-import su.nepom.budget.event.StorableContent
+import su.nepom.budget.event.StorableEvent
 
 @Serializable
 internal data class FileContent(
-    val events: List<Event<StorableContent>>,
+    val events: List<StorableEvent>,
 )

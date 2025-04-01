@@ -35,6 +35,13 @@ internal class SqliteCurrencyDaoTest : AbstractDbTest() {
                 requireNotNull(it)
                 assertThat(it.coords).isEqualTo(Global.currentPlace no 1)
             })
+        assertThat(receivedEvents).singleElement()
+            .satisfies(Consumer {
+                assertThat(it.coords).isEqualTo(Global.currentPlace no 0)
+                assertThat(it.creator).isEqualTo(Global.currentUser)
+                assertThat(it.type).isEqualTo(EventType.NEW)
+                assertThat(it.content).isEqualTo(currency)
+            })
     }
 
     @Test
@@ -71,5 +78,13 @@ internal class SqliteCurrencyDaoTest : AbstractDbTest() {
                 requireNotNull(it)
                 assertThat(it.coords).isEqualTo(Global.currentPlace no 2)
             })
+        assertThat(receivedEvents)
+            .hasSize(2)
+            .satisfies(Consumer {
+                assertThat(it.coords).isEqualTo(Global.currentPlace no 0)
+                assertThat(it.creator).isEqualTo(Global.currentUser)
+                assertThat(it.type).isEqualTo(EventType.UPDATE)
+                assertThat(it.content).isEqualTo(currency2)
+            }, Index.atIndex(1))
     }
 }
