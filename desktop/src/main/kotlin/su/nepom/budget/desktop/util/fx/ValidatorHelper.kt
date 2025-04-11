@@ -10,7 +10,7 @@ import net.synedra.validatorfx.Validator
 import su.nepom.budget.desktop.util.CheckError
 import su.nepom.budget.desktop.util.CheckOk
 import su.nepom.budget.desktop.util.CheckWarning
-import su.nepom.budget.desktop.util.CheckableDatabaseProperty
+import su.nepom.budget.desktop.util.db.CheckableDatabaseProperty
 import kotlin.jvm.optionals.getOrNull
 
 class ValidatorHelper private constructor(

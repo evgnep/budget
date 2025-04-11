@@ -7,13 +7,14 @@ import javafx.stage.Stage
 import su.nepom.budget.desktop.service.DbService
 import su.nepom.budget.desktop.service.EventStoreService
 import su.nepom.budget.desktop.service.SettingsService
+import su.nepom.budget.desktop.ui.UiModule
 import su.nepom.budget.desktop.ui.configuration.ConfigurationDialog
-import su.nepom.budget.desktop.ui.configuration.ConfigurationModule
+import su.nepom.budget.desktop.ui.currency.CurrencyDialog
 import su.nepom.budget.desktop.util.UtilModule
 
 @Component(
     modules = [
-        ConfigurationModule::class,
+        UiModule::class,
         UtilModule::class,
     ]
 )
@@ -28,6 +29,8 @@ interface BudgetComponent {
     fun eventStoreService(): EventStoreService
 
     fun settingsService(): SettingsService
+
+    fun createAndShowCurrencyDialog(): CurrencyDialog
 
     @Component.Builder
     interface Builder {

@@ -5,7 +5,7 @@ import jakarta.inject.Singleton
 import su.nepom.budget.Global
 import su.nepom.budget.desktop.util.CheckError
 import su.nepom.budget.desktop.util.CheckOk
-import su.nepom.budget.desktop.util.CheckableDatabaseStringProperty
+import su.nepom.budget.desktop.util.db.CheckableDatabaseStringProperty
 import su.nepom.budget.model.Place
 
 private val placePattern = Regex("[A-Za-z0-9]{3,20}")

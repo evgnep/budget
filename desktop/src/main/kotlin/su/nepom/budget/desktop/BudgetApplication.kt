@@ -24,7 +24,8 @@ class BudgetApplication : Application() {
         stage.setIcon()
         stage.scene = Scene(HBox(5.0).apply {
             children.addAll(
-                Button("Settings").apply { setOnMouseClicked { budgetComponent.configurationDialog().show() } }
+                Button("Settings").apply { setOnMouseClicked { budgetComponent.configurationDialog().show() } },
+                Button("Валюты").apply { setOnMouseClicked { budgetComponent.createAndShowCurrencyDialog() } },
             )
         })
         stage.width = 300.0

@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ButtonBar?>
+<?import javafx.scene.control.CheckBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.SplitPane?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.ColumnConstraints?>
+<?import javafx.scene.layout.GridPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.RowConstraints?>
+<SplitPane dividerPositions="0.4" prefHeight="582.0" prefWidth="637.0" xmlns="http://javafx.com/javafx/23.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="su.nepom.budget.desktop.ui.currency.CurrencyController">
+   <items>
+      <GridPane hgap="5.0" vgap="5.0">
+         <columnConstraints>
+            <ColumnConstraints hgrow="SOMETIMES" minWidth="350.0" />
+         </columnConstraints>
+         <rowConstraints>
+            <RowConstraints vgrow="NEVER" />
+            <RowConstraints vgrow="ALWAYS" />
+         </rowConstraints>
+         <children>
+            <HBox alignment="CENTER_RIGHT" spacing="5.0">
+               <children>
+                  <CheckBox fx:id="showHiddenCheckbox" mnemonicParsing="false" onAction="#onShowHiddenAction" text="Показывать скрытые" />
+                  <Button fx:id="createNewButton" mnemonicParsing="false" text="Создать новую" />
+               </children>
+               <GridPane.margin>
+                  <Insets />
+               </GridPane.margin>
+               <padding>
+                  <Insets bottom="5.0" left="5.0" right="5.0" top="5.0" />
+               </padding>
+            </HBox>
+            <TableView fx:id="currenciesTableView" GridPane.rowIndex="1">
+              <columns>
+                <TableColumn fx:id="nameColumn" editable="false" prefWidth="75.0" text="Название" />
+                <TableColumn fx:id="codeColumn" editable="false" prefWidth="75.0" text="Код" />
+                  <TableColumn fx:id="digitsAfterPointColumn" editable="false" prefWidth="75.0" text="Знаков" />
+                  <TableColumn fx:id="hiddenColumn" editable="false" prefWidth="75.0" text="Скрыта" />
+              </columns>
+            </TableView>
+         </children>
+         <padding>
+            <Insets bottom="5.0" left="5.0" right="5.0" top="5.0" />
+         </padding>
+      </GridPane>
+      <GridPane hgap="5.0" vgap="5.0">
+         <columnConstraints>
+            <ColumnConstraints halignment="RIGHT" hgrow="NEVER" minWidth="70.0" />
+            <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="100.0" />
+         </columnConstraints>
+         <rowConstraints>
+            <RowConstraints vgrow="NEVER" />
+            <RowConstraints vgrow="NEVER" />
+            <RowConstraints vgrow="NEVER" />
+            <RowConstraints />
+            <RowConstraints />
+         </rowConstraints>
+         <children>
+            <Label text="Название" />
+            <TextField fx:id="nameTextField" GridPane.columnIndex="1" />
+            <Label text="Код" GridPane.rowIndex="1" />
+            <TextField fx:id="codeTextField" GridPane.columnIndex="1" GridPane.rowIndex="1" />
+            <Label text="Число знаков после запятой" GridPane.rowIndex="2" />
+            <TextField fx:id="digitsAfterPointTextField" GridPane.columnIndex="1" GridPane.rowIndex="2" />
+            <ButtonBar GridPane.columnSpan="2" GridPane.rowIndex="4">
+              <buttons>
+                <Button fx:id="okButton" mnemonicParsing="false" text="Сохранить" />
+                  <Button fx:id="cancelButton" mnemonicParsing="false" text="Отмена" />
+              </buttons>
+               <GridPane.margin>
+                  <Insets />
+               </GridPane.margin>
+               <padding>
+                  <Insets top="30.0" />
+               </padding>
+            </ButtonBar>
+            <CheckBox fx:id="hiddenCheckbox" mnemonicParsing="false" text="Скрытая" GridPane.columnIndex="1" GridPane.rowIndex="3" />
+         </children>
+         <opaqueInsets>
+            <Insets />
+         </opaqueInsets>
+         <padding>
+            <Insets bottom="5.0" left="5.0" right="5.0" top="5.0" />
+         </padding>
+      </GridPane>
+   </items>
+</SplitPane>

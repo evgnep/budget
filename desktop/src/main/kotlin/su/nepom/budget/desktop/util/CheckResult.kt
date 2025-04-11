@@ -15,3 +15,7 @@ data object CheckOk : CheckResult
 data class CheckWarning(val message: String) : CheckResult
 
 data class CheckError(val message: String) : CheckResult
+
+interface Checkable<T> {
+    fun check(value: T?): CheckResult
+}

@@ -7,7 +7,7 @@ import su.nepom.budget.desktop.util.CheckError
 import su.nepom.budget.desktop.util.CheckOk
 import su.nepom.budget.desktop.util.CheckResult
 import su.nepom.budget.desktop.util.CheckWarning
-import su.nepom.budget.desktop.util.CheckableDatabaseStringProperty
+import su.nepom.budget.desktop.util.db.CheckableDatabaseStringProperty
 import su.nepom.budget.events.EventStoreReader
 import su.nepom.budget.events.EventStoreWriter
 import su.nepom.budget.events.isValidEventFile
