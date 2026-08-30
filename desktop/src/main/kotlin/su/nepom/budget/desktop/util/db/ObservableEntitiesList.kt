@@ -3,17 +3,17 @@ package su.nepom.budget.desktop.util.db
 import com.sun.javafx.collections.ObservableListWrapper
 import javafx.application.Platform
 import javafx.beans.property.ReadOnlyObjectProperty
+import su.nepom.budget.db.Db
 import su.nepom.budget.db.Session
 import su.nepom.budget.desktop.util.fx.WeakListeners
 import su.nepom.budget.event.Event
-import su.nepom.budget.model.ObjectWithId
 import su.nepom.budget.model.Uuid
 
-class ObservableEntitiesList<T : ObservableEntity<C>, C : ObjectWithId>(
+class ObservableEntitiesList<T : ObservableEntity<*>>(
     private val session: ReadOnlyObjectProperty<Session?>,
-    private val initialEntitiesGetter: (Session) -> Collection<C>,
-    private val processEvents: (Collection<Event<*>>, ObservableEntitiesList<T, C>) -> Unit,
-    private val factory: ObservableEntityFactory<T, C, *>,
+    private val initialEntitiesGetter: (Session) -> Collection<T>,
+    private val processEvents: (Collection<Event<*>>, ObservableEntitiesList<T>) -> Unit,
+    private val subscribeKinds: Set<Db.SubscribeKind>,
 ) : ObservableListWrapper<T>(mutableListOf(), { it.properties() }) {
 
     private val observableEntitiesByKey: MutableMap<Uuid, T> = associateByTo(mutableMapOf()) { it.uuid }
@@ -25,11 +25,8 @@ class ObservableEntitiesList<T : ObservableEntity<C>, C : ObjectWithId>(
             doInnerOperation {
                 if (session != null) {
                     val initialEntities = initialEntitiesGetter(session)
-                    val newEntities = initialEntities.mapTo(ArrayList(initialEntities.size)) {
-                        factory.create(it)
-                    }
-                    setAll(newEntities)
-                    weakListeners.subscribe(session.db, factory.subscribeKinds) { events ->
+                    setAll(initialEntities)
+                    weakListeners.subscribe(session.db, subscribeKinds) { events ->
                         Platform.runLater { processEvents(events) }
                     }
                 } else {

@@ -6,6 +6,7 @@ import javafx.scene.Node
 import javafx.scene.control.Alert
 import javafx.scene.control.Button
 import javafx.scene.control.ButtonType
+import javafx.scene.control.TextField
 import net.synedra.validatorfx.Check
 import net.synedra.validatorfx.Severity
 import net.synedra.validatorfx.Validator
@@ -25,7 +26,7 @@ private constructor(
     val okButton: Button,
     val cancelButton: Button,
     val validator: Validator,
-    private val factory: ObservableEntityFactory<O, *, Builder>,
+    private val factory: ObservableEntityFactory<O, Builder>,
     private val weakListeners: WeakListeners,
     private val fields: List<FieldInfo<Builder, O>>,
     private val session: ReadOnlyObjectProperty<Session?>,
@@ -76,14 +77,14 @@ private constructor(
                 cancelButton.isDisable = true
                 fields.forEach {
                     it.setField(item)
-                    it.field.isDisable = it.disabledInEditMode
+                    it.field.isDisable = it.disabledInEditMode || it.alwaysDisabled
                 }
             }
             FormState.EDIT -> {
                 okButton.isDisable = false
                 cancelButton.isDisable = false
                 fields.forEach {
-                    it.field.isDisable = it.disabledInEditMode
+                    it.field.isDisable = it.disabledInEditMode || it.alwaysDisabled
                 }
             }
             FormState.NEW -> {
@@ -92,7 +93,7 @@ private constructor(
                 item = null
                 fields.forEach {
                     it.setField(item)
-                    it.field.isDisable = false
+                    it.field.isDisable = it.alwaysDisabled
                 }
                 validator.clear()
             }
@@ -144,10 +145,10 @@ private constructor(
                 ).showAndWait().getOrNull() != ButtonType.YES
             ) return false
         }
+        val item = this.item ?: factory.createNew()
+        this.item = item
         val builder = factory.builder(item)
         fields.forEach { it.setValue(builder) }
-        val item = this.item ?: factory.create(null)
-        this.item = item
         runAndShowError { builder.saveAndUpdate(session, item) }.onFailure { return false }
         setState(FormState.VIEW)
         return true
@@ -160,12 +161,15 @@ private constructor(
     class FormDriverBuilder<Builder : ObservableEntityBuilder<O>, O : ObservableEntity<*>>(
         private val okButton: Button,
         private val cancelButton: Button,
-        private val factory: ObservableEntityFactory<O, *, Builder>,
+        private val factory: ObservableEntityFactory<O, Builder>,
         private val session: ReadOnlyObjectProperty<Session?>,
     ) {
         private val weakListeners = WeakListeners()
         private val validator = Validator()
         private val fields = mutableListOf<FieldInfo<Builder, O>>()
+
+        fun idField(field: TextField) =
+            field("id", field, field.textProperty(), { it?.uuid?.id ?: "-"}, {}, alwaysDisabled = true)
 
         fun <T> field(
             key: String,
@@ -174,6 +178,7 @@ private constructor(
             getValue: (O?) -> T,
             setValue: Builder.(T) -> Unit,
             disabledInEditMode: Boolean = false,
+            alwaysDisabled: Boolean = false,
             configurator: CheckBuilder<T>.() -> Unit = {},
         ): FormDriverBuilder<Builder, O> {
             val fieldInfo = FieldInfo<Builder, O>(
@@ -182,7 +187,8 @@ private constructor(
                 fieldProperty,
                 { fieldProperty.value = getValue(it) },
                 { it.setValue(fieldProperty.value) },
-                disabledInEditMode
+                disabledInEditMode,
+                alwaysDisabled
             )
             fields.add(fieldInfo)
             CheckBuilder(fieldInfo, fieldProperty).configurator()
@@ -251,13 +257,14 @@ private constructor(
         val setField: (O?) -> Unit,
         val setValue: (Builder) -> Unit,
         val disabledInEditMode: Boolean,
+        val alwaysDisabled: Boolean,
     )
 
     companion object {
         fun <Builder : ObservableEntityBuilder<O>, O : ObservableEntity<*>> builder(
             okButton: Button,
             cancelButton: Button,
-            factory: ObservableEntityFactory<O, *, Builder>,
+            factory: ObservableEntityFactory<O, Builder>,
             session: ReadOnlyObjectProperty<Session?>,
         ) = FormDriverBuilder(okButton, cancelButton, factory, session)
     }

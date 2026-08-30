@@ -21,13 +21,17 @@ import su.nepom.budget.desktop.util.fx.table.CheckBoxTableCell
 import java.net.URL
 import java.util.*
 
+@Suppress("unused")
 class CurrencyController @Inject constructor(
     private val dbService: DbService,
-    currencyService: CurrencyService,
+    private val currencyService: CurrencyService,
 ) : Controller, Initializable {
     private val currencies = FilteredList(currencyService.currencies) { !it.content.hidden }
     private val currenciesSorted = SortedList(currencies)
     private lateinit var masterDetailFormDriver: MasterDetailFormDriver<CurrencyObservable>
+
+    @FXML
+    private lateinit var idTextField: TextField
 
     @FXML
     private lateinit var createNewButton: Button
@@ -88,8 +92,9 @@ class CurrencyController @Inject constructor(
             FormDriver.builder(
                 okButton,
                 cancelButton,
-                CurrencyObservable,
+                currencyService.currencyFactory,
                 dbService.sessionProperty)
+                .idField(idTextField)
                 .field(
                     "name",
                     nameTextField,

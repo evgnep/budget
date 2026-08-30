@@ -13,6 +13,7 @@
 <?import javafx.scene.layout.GridPane?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.RowConstraints?>
+
 <SplitPane dividerPositions="0.4" prefHeight="582.0" prefWidth="637.0" xmlns="http://javafx.com/javafx/23.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="su.nepom.budget.desktop.ui.currency.CurrencyController">
    <items>
       <GridPane hgap="5.0" vgap="5.0">
@@ -55,6 +56,7 @@
             <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="100.0" />
          </columnConstraints>
          <rowConstraints>
+            <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="NEVER" />
             <RowConstraints vgrow="NEVER" />
             <RowConstraints vgrow="NEVER" />
             <RowConstraints vgrow="NEVER" />
@@ -62,13 +64,13 @@
             <RowConstraints />
          </rowConstraints>
          <children>
-            <Label text="Название" />
-            <TextField fx:id="nameTextField" GridPane.columnIndex="1" />
-            <Label text="Код" GridPane.rowIndex="1" />
-            <TextField fx:id="codeTextField" GridPane.columnIndex="1" GridPane.rowIndex="1" />
-            <Label text="Число знаков после запятой" GridPane.rowIndex="2" />
-            <TextField fx:id="digitsAfterPointTextField" GridPane.columnIndex="1" GridPane.rowIndex="2" />
-            <ButtonBar GridPane.columnSpan="2" GridPane.rowIndex="4">
+            <Label text="Название" GridPane.rowIndex="1" />
+            <TextField fx:id="nameTextField" GridPane.columnIndex="1" GridPane.rowIndex="1" />
+            <Label text="Код" GridPane.rowIndex="2" />
+            <TextField fx:id="codeTextField" GridPane.columnIndex="1" GridPane.rowIndex="2" />
+            <Label text="Число знаков после запятой" GridPane.rowIndex="3" />
+            <TextField fx:id="digitsAfterPointTextField" GridPane.columnIndex="1" GridPane.rowIndex="3" />
+            <ButtonBar GridPane.columnSpan="2" GridPane.rowIndex="5">
               <buttons>
                 <Button fx:id="okButton" mnemonicParsing="false" text="Сохранить" />
                   <Button fx:id="cancelButton" mnemonicParsing="false" text="Отмена" />
@@ -80,7 +82,9 @@
                   <Insets top="30.0" />
                </padding>
             </ButtonBar>
-            <CheckBox fx:id="hiddenCheckbox" mnemonicParsing="false" text="Скрытая" GridPane.columnIndex="1" GridPane.rowIndex="3" />
+            <CheckBox fx:id="hiddenCheckbox" mnemonicParsing="false" text="Скрытая" GridPane.columnIndex="1" GridPane.rowIndex="4" />
+            <Label text="id" />
+            <TextField fx:id="idTextField" GridPane.columnIndex="1" />
          </children>
          <opaqueInsets>
             <Insets />

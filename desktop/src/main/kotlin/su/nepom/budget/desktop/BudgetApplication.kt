@@ -26,6 +26,7 @@ class BudgetApplication : Application() {
             children.addAll(
                 Button("Settings").apply { setOnMouseClicked { budgetComponent.configurationDialog().show() } },
                 Button("Валюты").apply { setOnMouseClicked { budgetComponent.createAndShowCurrencyDialog() } },
+                Button("Счета").apply { setOnMouseClicked { budgetComponent.createAndShowAccountDialog() } },
             )
         })
         stage.width = 300.0

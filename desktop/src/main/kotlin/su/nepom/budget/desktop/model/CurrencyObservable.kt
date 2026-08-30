@@ -10,12 +10,15 @@ import su.nepom.budget.desktop.util.db.SimpleObjectWithIdProperty
 import su.nepom.budget.event.CurrencyContent
 import su.nepom.budget.model.CurrencyId
 import su.nepom.budget.model.Uuid
+import java.util.Currency
 
 class CurrencyObservable(
     contentValue: CurrencyContent
 ) : ObservableEntity<CurrencyContent> {
-    override val contentProperty = SimpleObjectWithIdProperty(this, "content", contentValue)
+    val contentProperty = SimpleObjectWithIdProperty(this, "content", contentValue)
+    val content: CurrencyContent get() = contentProperty.get()
 
+    override val uuid: Uuid get() = contentProperty.get().uuid
     override val uuidObservable = contentProperty.map { it.uuid }
     val name = contentProperty.map { it.name }
     val digitsAfterPoint = contentProperty.map { it.digitsAfterPoint }
@@ -25,25 +28,23 @@ class CurrencyObservable(
     override fun properties(): Array<Observable> =
         arrayOf(uuidObservable, name, digitsAfterPoint, officialCode, hidden)
 
-    companion object : ObservableEntityFactory<CurrencyObservable, CurrencyContent, Builder> {
-        override fun create(content: CurrencyContent?) =
-            CurrencyObservable(content ?: CurrencyContent(CurrencyId(Uuid.generate()), "", 2, "", false))
-
-        override val subscribeKinds get() = setOf(Db.SubscribeKind.CURRENCY)
-
-        override fun builder(entity: CurrencyObservable?) = Builder(entity)
-    }
-
-    class Builder(source: CurrencyObservable?) : ObservableEntityBuilder<CurrencyObservable> {
-        var name: String = source?.content?.name ?: ""
-        var digitsAfterPoint: Int = source?.content?.digitsAfterPoint ?: 2
-        var officialCode: String = source?.content?.officialCode ?: ""
-        var hidden: Boolean = source?.content?.hidden ?: false
+    class Builder(source: CurrencyObservable) : ObservableEntityBuilder<CurrencyObservable> {
+        var name: String = source.content.name
+        var digitsAfterPoint: Int = source.content.digitsAfterPoint
+        var officialCode: String = source.content.officialCode
+        var hidden: Boolean = source.content.hidden
 
         override fun saveAndUpdate(session: Session, target: CurrencyObservable) {
             val content = CurrencyContent(target.content.id, name, digitsAfterPoint, officialCode, hidden)
             session.currencyDao.save(content)
-            target.content = content
+            target.contentProperty.set(content)
         }
+    }
+
+    class Factory : ObservableEntityFactory<CurrencyObservable, Builder> {
+        override fun createNew(): CurrencyObservable =
+            CurrencyObservable(CurrencyContent(CurrencyId(Uuid.generate()), "", 2, "", false))
+
+        override fun builder(entity: CurrencyObservable) = Builder(entity)
     }
 }

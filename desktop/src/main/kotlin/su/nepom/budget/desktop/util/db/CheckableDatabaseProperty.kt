@@ -27,7 +27,7 @@ open class CheckableDatabaseProperty<T>(
         if (session.value != null) setIfValidAndIgnoreNull(readFromDb(), false)
     }
 
-    val value: T get() = property.value
+    val value: T? get() = property.value
 
     fun setIfValidAndIgnoreNull(value: T?): CheckResult = setIfValidAndIgnoreNull(value, true)
 

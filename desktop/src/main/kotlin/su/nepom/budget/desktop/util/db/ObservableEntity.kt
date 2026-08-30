@@ -10,13 +10,15 @@ import su.nepom.budget.model.ObjectWithId
 import su.nepom.budget.model.Uuid
 
 interface ObservableEntity<C : ObjectWithId> {
-    val contentProperty: ObjectProperty<C>
+    /*val contentProperty: ObjectProperty<C>
 
     var content: C
         get() = contentProperty.value
         set(value) { contentProperty.set(value) }
 
     val uuid: Uuid get() = content.uuid
+*/
+    val uuid: Uuid
 
     val uuidObservable: ObservableValue<Uuid>
 
@@ -27,16 +29,15 @@ interface ObservableEntityBuilder<T : ObservableEntity<*>> {
     fun saveAndUpdate(session: Session, target: T)
 }
 
-interface ObservableEntityFactory<T : ObservableEntity<C>, C : ObjectWithId, B : ObservableEntityBuilder<T>> {
-    fun create(content: C?): T
+interface ObservableEntityFactory<T : ObservableEntity<*>, B : ObservableEntityBuilder<T>> {
+    fun createNew(): T
 
-    val subscribeKinds: Set<Db.SubscribeKind>
-
-    fun builder(entity: T?): B
+    fun builder(entity: T): B
 }
 
 class SimpleObjectWithIdProperty<T : ObjectWithId>(bean: Any, name: String, initialValue: T) :
     SimpleObjectProperty<T>(bean, name, initialValue) {
+
     override fun set(newValue: T) {
         require(value.uuid == newValue.uuid) { "Cannot change uuid" }
         super.set(newValue)

@@ -53,7 +53,7 @@ class ConfigurationDialog @Inject constructor(
 
     private fun checkCanWork(): Boolean =
         dbService.db != null &&
-                eventsStoreService.eventStoreFolder.value.isNotEmpty() &&
+                eventsStoreService.eventStoreFolder.value?.isNotEmpty() == true &&
                 Global.currentUser.isNotEmpty() &&
                 Global.currentPlace != Place.NULL
 
