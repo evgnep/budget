@@ -65,6 +65,9 @@ class TransactionController @Inject constructor(
         const val PAGE_SIZE = 100
     }
 
+    /** Filter to apply once when the window opens (e.g. from the balances window). */
+    class InitialFilter(val accounts: Set<AccountId>, val from: LocalDate?, val to: LocalDate?)
+
     private class TriState(val label: String, val value: Boolean?) {
         override fun toString() = label
     }
@@ -85,6 +88,8 @@ class TransactionController @Inject constructor(
     }
 
     private lateinit var stage: Stage
+
+    private var initialFilter: InitialFilter? = null
 
     private val weakListeners = WeakListeners()
     private val rows = FXCollections.observableArrayList<TransactionObservable>()
@@ -142,6 +147,7 @@ class TransactionController @Inject constructor(
         setupFilterPanel()
         setupListTable()
         wireDetail()
+        applyInitialFilter()
 
         weakListeners.addListenerAndCallNow(dbService.sessionProperty) { _, _, session ->
             if (session != null) {
@@ -330,6 +336,21 @@ class TransactionController @Inject constructor(
         val state = transactionDetailController.formState
         if (state == FormState.EDIT || state == FormState.NEW) return
         refreshPause.playFromStart()
+    }
+
+    fun setInitialFilter(filter: InitialFilter) {
+        initialFilter = filter
+    }
+
+    private fun applyInitialFilter() {
+        val filter = initialFilter ?: return
+        dateRangeComboBox.selectionModel.select(DateRangePreset.CUSTOM)
+        updateCustomDateVisibility()
+        fromDatePicker.value = filter.from
+        toDatePicker.value = filter.to
+        selectedAccounts.clear()
+        selectedAccounts.addAll(filter.accounts)
+        updateAccountsSummary()
     }
 
     private fun resetFilter() {

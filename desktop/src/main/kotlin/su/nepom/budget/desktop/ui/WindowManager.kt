@@ -10,6 +10,7 @@ import javafx.scene.control.MenuItem
 import javafx.scene.layout.BorderPane
 import javafx.stage.Stage
 import su.nepom.budget.desktop.ui.history.HistoryController
+import su.nepom.budget.desktop.ui.transaction.TransactionController
 import su.nepom.budget.desktop.util.fx.Controller
 import su.nepom.budget.desktop.util.fx.Disposable
 import su.nepom.budget.desktop.util.fx.FxmlService
@@ -29,15 +30,37 @@ class WindowManager @Inject constructor(
 
     private val openWindows = mutableListOf<OpenWindow>()
 
-    fun openTransactions() {
+    fun openTransactions(initialFilter: TransactionController.InitialFilter? = null) {
         open("Операции") { stage, collect ->
             stage.setIcon("operations")
-            val content = fxmlService.load<Parent>("transaction/transactions.fxml", stage, null, collect)
+            val content = fxmlService.load<Parent>("transaction/transactions.fxml", stage, null) { controller ->
+                collect(controller)
+                if (initialFilter != null && controller is TransactionController) {
+                    controller.setInitialFilter(initialFilter)
+                }
+            }
             BorderPane().apply {
                 top = MenuBar(
                     Menu(
                         "Окно", null,
                         MenuItem("Новое окно").apply { setOnAction { openTransactions() } },
+                        MenuItem("Закрыть").apply { setOnAction { stage.close() } },
+                    )
+                )
+                center = content
+            }
+        }
+    }
+
+    fun openBalances() {
+        open("Остатки и обороты") { stage, collect ->
+            stage.setIcon("accounts")
+            val content = fxmlService.load<Parent>("balance/balances.fxml", stage, null, collect)
+            BorderPane().apply {
+                top = MenuBar(
+                    Menu(
+                        "Окно", null,
+                        MenuItem("Новое окно").apply { setOnAction { openBalances() } },
                         MenuItem("Закрыть").apply { setOnAction { stage.close() } },
                     )
                 )

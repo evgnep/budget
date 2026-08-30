@@ -57,10 +57,15 @@ class BudgetApplication : Application() {
             setOnAction { budgetComponent.windowManager().openTransactions() }
         }
 
+        val balancesButton = Button("Остатки").apply {
+            maxWidth = Double.MAX_VALUE
+            setOnAction { budgetComponent.windowManager().openBalances() }
+        }
+
         rootPane = BorderPane().apply {
             top = buildMenuBar()
             left = ToolBar(
-                transactionsButton, Separator(), accountsButton, currenciesButton, Separator(),
+                transactionsButton, balancesButton, Separator(), accountsButton, currenciesButton, Separator(),
             ).apply {
                 orientation = Orientation.VERTICAL
             }
@@ -89,7 +94,10 @@ class BudgetApplication : Application() {
         val openTransactionsItem = MenuItem("Список операций").apply {
             setOnAction { budgetComponent.windowManager().openTransactions() }
         }
-        val windowsMenu = Menu("Окна", null, openTransactionsItem)
+        val openBalancesItem = MenuItem("Остатки и обороты").apply {
+            setOnAction { budgetComponent.windowManager().openBalances() }
+        }
+        val windowsMenu = Menu("Окна", null, openTransactionsItem, openBalancesItem)
 
         return MenuBar(fileMenu, windowsMenu)
     }
