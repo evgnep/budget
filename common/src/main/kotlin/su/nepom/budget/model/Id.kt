@@ -19,6 +19,10 @@ interface ObjectWithId {
     val uuid: Uuid get() = id.uuid
 }
 
+interface ContentHolder<C: ObjectWithId> {
+    val content: C
+}
+
 @Serializable
 data class UuidAndReadable<T : HumanReadableId>(override val uuid: Uuid, override val readable: T) : Id {
     constructor(readable: T) : this(Uuid.generate(), readable)

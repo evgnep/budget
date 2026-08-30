@@ -16,7 +16,7 @@ class CurrencyObservable(
     contentValue: CurrencyContent
 ) : ObservableEntity<CurrencyContent> {
     val contentProperty = SimpleObjectWithIdProperty(this, "content", contentValue)
-    val content: CurrencyContent get() = contentProperty.get()
+    override val content: CurrencyContent get() = contentProperty.get()
 
     override val uuid: Uuid get() = contentProperty.get().uuid
     override val uuidObservable = contentProperty.map { it.uuid }

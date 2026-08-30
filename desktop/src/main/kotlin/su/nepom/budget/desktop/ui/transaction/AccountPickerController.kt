@@ -23,6 +23,8 @@ import su.nepom.budget.desktop.service.AccountService
 import su.nepom.budget.desktop.service.CurrencyService
 import su.nepom.budget.desktop.util.fx.Controller
 import su.nepom.budget.model.AccountId
+import su.nepom.budget.model.AccountKind
+import su.nepom.budget.model.CurrencyId
 import java.net.URL
 import java.util.ResourceBundle
 
@@ -37,6 +39,11 @@ class AccountPickerController @Inject constructor(
         val name: String get() = account.content.name
         val description: String get() = account.content.description
         val tags: String get() = account.content.tags.sorted().joinToString(", ")
+        val kind: String
+            get() = when (account.content.kind) {
+                AccountKind.MONEY -> "Деньги"
+                AccountKind.BUDGET -> "Бюджет"
+            }
     }
 
     private val allRows = FXCollections.observableArrayList<Row>()
@@ -45,9 +52,14 @@ class AccountPickerController @Inject constructor(
     private var multi = true
     private var onDone: ((Set<AccountId>?) -> Unit)? = null
     private var preselectedIds: Set<String> = emptySet()
+    private var lockedCurrency: CurrencyId? = null
+    private var lockedKind: AccountKind? = null
 
     @FXML
     private lateinit var nameFilterTextField: TextField
+
+    @FXML
+    private lateinit var currencyFilterLabel: Label
 
     @FXML
     private lateinit var currencyFilterComboBox: ComboBox<CurrencyObservable>
@@ -80,6 +92,9 @@ class AccountPickerController @Inject constructor(
     private lateinit var currencyColumn: TableColumn<Row, String>
 
     @FXML
+    private lateinit var kindColumn: TableColumn<Row, String>
+
+    @FXML
     private lateinit var tagsColumn: TableColumn<Row, String>
 
     @FXML
@@ -99,10 +114,18 @@ class AccountPickerController @Inject constructor(
         override fun fromString(string: String?): CurrencyObservable? = null
     }
 
-    fun configure(preselected: Set<AccountId>, multi: Boolean, onDone: (Set<AccountId>?) -> Unit) {
+    fun configure(
+        preselected: Set<AccountId>,
+        multi: Boolean,
+        currency: CurrencyId? = null,
+        kind: AccountKind? = null,
+        onDone: (Set<AccountId>?) -> Unit,
+    ) {
         this.multi = multi
         this.onDone = onDone
         this.preselectedIds = preselected.map { it.uuid.id }.toSet()
+        this.lockedCurrency = currency
+        this.lockedKind = kind
     }
 
     override fun initialize(location: URL?, resources: ResourceBundle?) {
@@ -118,12 +141,21 @@ class AccountPickerController @Inject constructor(
         selectedColumn.isEditable = true
         nameColumn.setCellValueFactory { SimpleStringProperty(it.value.name) }
         currencyColumn.setCellValueFactory { SimpleStringProperty(it.value.currencyName) }
+        kindColumn.setCellValueFactory { SimpleStringProperty(it.value.kind) }
         tagsColumn.setCellValueFactory { SimpleStringProperty(it.value.tags) }
         descriptionColumn.setCellValueFactory { SimpleStringProperty(it.value.description) }
 
         currencyFilterComboBox.items = currencyService.currencies
         currencyFilterComboBox.converter = currencyConverter
         tagFilterComboBox.items = accountService.tags
+
+        // currency is fixed from the caller - the user filter is pointless, hide it
+        if (lockedCurrency != null) {
+            listOf(currencyFilterLabel, currencyFilterComboBox).forEach {
+                it.isVisible = false
+                it.isManaged = false
+            }
+        }
 
         nameFilterTextField.textProperty().addListener { _, _, _ -> updateFilter() }
         currencyFilterComboBox.valueProperty().addListener { _, _, _ -> updateFilter() }
@@ -169,9 +201,13 @@ class AccountPickerController @Inject constructor(
         val currencyFilter = currencyFilterComboBox.value?.uuid
         val tagFilter = tagFilterComboBox.value
         val showHidden = showHiddenCheckbox.isSelected
+        val lockedCurrency = lockedCurrency
+        val lockedKind = lockedKind
         filtered.setPredicate { row ->
             val content = row.account.content
-            (showHidden || !content.hidden) &&
+            (lockedCurrency == null || content.currency == lockedCurrency) &&
+                (lockedKind == null || content.kind == lockedKind) &&
+                (showHidden || !content.hidden) &&
                 (nameFilter.isEmpty() ||
                     content.name.lowercase().contains(nameFilter) ||
                     content.description.lowercase().contains(nameFilter)) &&

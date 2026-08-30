@@ -19,7 +19,7 @@ class TransactionObservable(
     contentValue: TransactionContent,
 ) : ObservableEntity<TransactionContent> {
     val contentProperty = SimpleObjectWithIdProperty(this, "content", contentValue)
-    val content: TransactionContent get() = contentProperty.get()
+    override val content: TransactionContent get() = contentProperty.get()
 
     override val uuid: Uuid get() = content.uuid
     override val uuidObservable = contentProperty.map { it.uuid }

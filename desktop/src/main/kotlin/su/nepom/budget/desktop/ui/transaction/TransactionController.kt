@@ -35,15 +35,20 @@ import su.nepom.budget.desktop.util.formatDateTime
 import su.nepom.budget.desktop.util.toEndOfDayInstant
 import su.nepom.budget.desktop.util.toStartOfDayInstant
 import su.nepom.budget.desktop.ui.history.History
+import su.nepom.budget.event.AccountContent
 import su.nepom.budget.event.TransactionContent
+import su.nepom.budget.event.TransactionContentItem
 import su.nepom.budget.model.AccountId
-import su.nepom.budget.model.AccountKind
+import su.nepom.budget.model.ContentHolder
 import su.nepom.budget.model.CurrencyId
 import su.nepom.budget.model.ObjectKind
+import su.nepom.budget.model.OperationType
 import su.nepom.budget.model.RawMoney
+import su.nepom.budget.model.Uuid
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.temporal.TemporalAdjusters
+import kotlin.math.abs
 import kotlin.math.ceil
 
 @Suppress("unused", "UNCHECKED_CAST")
@@ -124,9 +129,9 @@ class TransactionController @Inject constructor(
     // list
     @FXML private lateinit var transactionsTable: TableView<TransactionObservable>
     @FXML private lateinit var dateColumn: TableColumn<TransactionObservable, String>
+    @FXML private lateinit var typeColumn: TableColumn<TransactionObservable, String>
     @FXML private lateinit var descriptionColumn: TableColumn<TransactionObservable, String>
-    @FXML private lateinit var accountsColumn: TableColumn<TransactionObservable, String>
-    @FXML private lateinit var amountColumn: TableColumn<TransactionObservable, String>
+    @FXML private lateinit var operationColumn: TableColumn<TransactionObservable, String>
     @FXML private lateinit var flagColumn: TableColumn<TransactionObservable, Boolean>
     @FXML private lateinit var deletedColumn: TableColumn<TransactionObservable, Boolean>
 
@@ -219,12 +224,12 @@ class TransactionController @Inject constructor(
 
     private fun setupListTable() {
         transactionsTable.items = rows
-        listOf(dateColumn, descriptionColumn, accountsColumn, amountColumn, flagColumn, deletedColumn)
+        listOf(dateColumn, typeColumn, descriptionColumn, operationColumn, flagColumn, deletedColumn)
             .forEach { it.isSortable = false }
         dateColumn.setCellValueFactory { SimpleStringProperty(it.value.content.date.formatDateTime()) }
+        typeColumn.setCellValueFactory { SimpleStringProperty(operationTypeLabel(operationType(it.value.content))) }
         descriptionColumn.setCellValueFactory { SimpleStringProperty(it.value.content.description) }
-        accountsColumn.setCellValueFactory { SimpleStringProperty(accountNames(it.value.content)) }
-        amountColumn.setCellValueFactory { SimpleStringProperty(amountSummary(it.value.content)) }
+        operationColumn.setCellValueFactory { SimpleStringProperty(operationText(it.value.content)) }
         flagColumn.setCellValueFactory { it.value.flag as javafx.beans.value.ObservableValue<Boolean> }
         flagColumn.cellFactory = CheckBoxTableCell.forTableColumn(flagColumn)
         deletedColumn.setCellValueFactory { it.value.deleted as javafx.beans.value.ObservableValue<Boolean> }
@@ -354,23 +359,58 @@ class TransactionController @Inject constructor(
 
     // --- list rendering helpers ---
 
-    private fun accountNames(tx: TransactionContent): String =
-        tx.items.mapNotNull { accountService.accounts[it.account.uuid]?.content?.name }
-            .distinct()
-            .joinToString(", ")
+    private fun operationType(tx: TransactionContent): OperationType =
+        OperationType.calculate(tx.items, accountService.accounts.observableEntitiesByKey)
 
-    private fun amountSummary(tx: TransactionContent): String {
-        val byCurrency = mutableMapOf<CurrencyId, Long>()
-        tx.items.forEach { item ->
-            val acc = accountService.accounts[item.account.uuid] ?: return@forEach
-            if (acc.content.kind == AccountKind.MONEY && item.money.value > 0) {
-                byCurrency.merge(acc.content.currency, item.money.value) { a, b -> a + b }
+    private fun operationTypeLabel(type: OperationType) = when (type) {
+        OperationType.INCOME -> "Приход"
+        OperationType.EXPENSE -> "Расход"
+        OperationType.TRANSFER -> "Перевод"
+        OperationType.CURRENCY_EXCHANGE -> "Обмен"
+        OperationType.MIXED -> "Сложная"
+    }
+
+    private fun currencyOf(item: TransactionContentItem): CurrencyId? =
+        accountService.accounts[item.account.uuid]?.content?.currency
+
+    private fun formatMoney(raw: RawMoney, currencyId: CurrencyId?): String {
+        val cur = currencyId?.let { currencyService.currencies[it.uuid] }?.content
+        val digits = cur?.digitsAfterPoint ?: 2
+        return "${raw.format(digits)} ${cur?.name ?: ""}".trim()
+    }
+
+    private fun operationText(tx: TransactionContent): String {
+        val hidden = selectedAccounts.mapTo(mutableSetOf()) { it.uuid }
+        fun accountsPart(items: List<TransactionContentItem>, separator: String) =
+            items.map { it.account.uuid }
+                .filter { it !in hidden }
+                .distinct()
+                .mapNotNull { accountService.accounts[it]?.content?.name }
+                .joinToString(separator)
+
+        fun withAccounts(head: String, accounts: String) = if (accounts.isEmpty()) head else "$head: $accounts"
+
+        return when (operationType(tx)) {
+            OperationType.INCOME, OperationType.EXPENSE, OperationType.TRANSFER -> {
+                val sorted = tx.items.sortedBy { it.money.value }
+                val amount = RawMoney(abs(sorted.first().money.value))
+                withAccounts(formatMoney(amount, currencyOf(sorted.first())), accountsPart(sorted, " - "))
             }
-        }
-        return byCurrency.entries.joinToString(", ") { (currencyId, raw) ->
-            val cur = currencyService.currencies[currencyId.uuid]
-            val digits = cur?.content?.digitsAfterPoint ?: 2
-            "${RawMoney(raw).format(digits)} ${cur?.content?.name ?: ""}".trim()
+
+            OperationType.CURRENCY_EXCHANGE -> {
+                val currencies = tx.items.mapNotNull { currencyOf(it) }.distinct()
+                val groups = currencies.map { c -> c to tx.items.filter { currencyOf(it) == c } }
+                val source = groups.minByOrNull { (_, items) -> items.first().money.value } ?: groups.first()
+                val target = groups.firstOrNull { it !== source } ?: groups.last()
+                val srcSum = formatMoney(RawMoney(abs(source.second.first().money.value)), source.first)
+                val tgtSum = formatMoney(RawMoney(abs(target.second.first().money.value)), target.first)
+                withAccounts("$srcSum -> $tgtSum", accountsPart(tx.items, ", "))
+            }
+
+            OperationType.MIXED -> {
+                val first = tx.items.first()
+                withAccounts(formatMoney(first.money, currencyOf(first)), accountsPart(tx.items, ", "))
+            }
         }
     }
 }

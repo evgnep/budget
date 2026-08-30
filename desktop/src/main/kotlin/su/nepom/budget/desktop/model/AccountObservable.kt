@@ -23,7 +23,7 @@ class AccountObservable(
   private val currencies: ObservableEntitiesList<CurrencyObservable>,
 ) : ObservableEntity<AccountContent> {
   val contentProperty = SimpleObjectWithIdProperty(this, "content", contentValue)
-  val content: AccountContent get() = contentProperty.get()
+  override val content: AccountContent get() = contentProperty.get()
   val restProperty = SimpleObjectProperty<RawMoney>(this, "rest", rest)
 
   override val uuid: Uuid get() = content.uuid

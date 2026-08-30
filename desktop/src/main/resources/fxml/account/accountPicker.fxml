@@ -21,7 +21,7 @@
          <children>
             <Label text="Поиск" />
             <TextField fx:id="nameFilterTextField" HBox.hgrow="ALWAYS" />
-            <Label text="Валюта" />
+            <Label fx:id="currencyFilterLabel" text="Валюта" />
             <ComboBox fx:id="currencyFilterComboBox" prefWidth="110.0" />
             <Label text="Тег" />
             <ComboBox fx:id="tagFilterComboBox" prefWidth="110.0" />
@@ -41,6 +41,7 @@
           <TableColumn fx:id="selectedColumn" prefWidth="40.0" text="" />
           <TableColumn fx:id="nameColumn" editable="false" prefWidth="180.0" text="Название" />
           <TableColumn fx:id="currencyColumn" editable="false" prefWidth="90.0" text="Валюта" />
+          <TableColumn fx:id="kindColumn" editable="false" prefWidth="80.0" text="Тип" />
           <TableColumn fx:id="tagsColumn" editable="false" prefWidth="150.0" text="Теги" />
           <TableColumn fx:id="descriptionColumn" editable="false" prefWidth="220.0" text="Описание" />
         </columns>

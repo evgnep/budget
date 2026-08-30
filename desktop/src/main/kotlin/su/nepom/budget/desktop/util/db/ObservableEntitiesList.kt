@@ -16,8 +16,10 @@ class ObservableEntitiesList<T : ObservableEntity<*>>(
     private val subscribeKinds: Set<Db.SubscribeKind>,
 ) : ObservableListWrapper<T>(mutableListOf(), { it.properties() }) {
 
-    private val observableEntitiesByKey: MutableMap<Uuid, T> = associateByTo(mutableMapOf()) { it.uuid }
-    private var innerOperationCounter = 0
+  val observableEntitiesByKey: Map<Uuid, T>
+    field: MutableMap<Uuid, T> = associateByTo(mutableMapOf()) { it.uuid }
+
+  private var innerOperationCounter = 0
     private val weakListeners = WeakListeners()
 
     init {
