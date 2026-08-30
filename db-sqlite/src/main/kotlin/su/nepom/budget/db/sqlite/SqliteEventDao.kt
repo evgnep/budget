@@ -41,6 +41,12 @@ internal class SqliteEventDao(
             ?.toEvent()
     }
 
+    override fun getEventsForObject(uuid: Uuid, kind: ObjectKind): List<ActualEvent> = session.doReadOp {
+        events.sortedBy { it.id.desc() }
+            .filter { (it.objectUuid eq uuid.id) and (it.objectKind eq kind.name) }
+            .map { it.toEvent() }
+    }
+
     override fun getEventsForSourceFrom(source: Place, from: Int): List<ActualEvent> = session.doReadOp {
         val lastNo = getLastEventCoords()[source] ?: 0
         if (from > lastNo) listOf()

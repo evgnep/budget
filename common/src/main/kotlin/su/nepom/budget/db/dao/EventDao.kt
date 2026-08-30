@@ -15,5 +15,7 @@ interface EventDao {
 
     fun getLastEventForObject(uuid: Uuid, kind: ObjectKind): ActualEvent?
 
+    fun getEventsForObject(uuid: Uuid, kind: ObjectKind): List<ActualEvent>
+
     fun getEventsForSourceFrom(source: Place, from: Int): List<ActualEvent>
 }
