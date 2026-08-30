@@ -5,7 +5,7 @@ pluginManagement {
 }
 
 plugins {
-    val kotlinVer = "2.1.10"
+    val kotlinVer = "2.4.0"
     kotlin("jvm") version kotlinVer apply false
     kotlin("plugin.serialization") version kotlinVer apply false
 }

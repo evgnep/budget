@@ -34,7 +34,7 @@ test-junit5-platform = { module = "org.junit.platform:junit-platform-launcher", 
 test-mockk-jvm = { module = "io.mockk:mockk-jvm", version = "1.13.17" }
 
 [versions]
-dagger = "2.56"
+dagger = "2.60.1"
 jackson = "2.18.3"
 javafx = "21"
 jdk = "21"
