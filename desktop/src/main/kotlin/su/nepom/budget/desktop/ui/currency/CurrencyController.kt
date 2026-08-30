@@ -12,15 +12,18 @@ import javafx.scene.control.TableColumn
 import javafx.scene.control.TableView
 import su.nepom.budget.desktop.model.CurrencyObservable
 import su.nepom.budget.desktop.service.CurrencyService
+import su.nepom.budget.desktop.ui.history.History
 import su.nepom.budget.desktop.util.fx.Controller
 import su.nepom.budget.desktop.util.fx.MasterDetailFormDriver
 import su.nepom.budget.desktop.util.fx.table.CheckBoxTableCell
+import su.nepom.budget.model.ObjectKind
 import java.net.URL
 import java.util.*
 
 @Suppress("unused")
 class CurrencyController @Inject constructor(
     private val currencyService: CurrencyService,
+    private val history: History,
 ) : Controller, Initializable {
     private val currencies = FilteredList(currencyService.currencies) { !it.content.hidden }
     private val currenciesSorted = SortedList(currencies)
@@ -31,6 +34,9 @@ class CurrencyController @Inject constructor(
 
     @FXML
     private lateinit var createNewButton: Button
+
+    @FXML
+    private lateinit var historyButton: Button
 
     @FXML
     private lateinit var hiddenColumn: TableColumn<CurrencyObservable, Boolean>
@@ -70,5 +76,17 @@ class CurrencyController @Inject constructor(
             currencyDetailController.formDriver,
             createNewButton
         )
+
+        historyButton.disableProperty()
+            .bind(currenciesTableView.selectionModel.selectedItemProperty().isNull)
+        historyButton.setOnAction {
+            val selected = currenciesTableView.selectionModel.selectedItem ?: return@setOnAction
+            history.show(
+                currenciesTableView.scene?.window,
+                selected.uuid,
+                ObjectKind.CURRENCY,
+                "История валюты: ${selected.content.name}",
+            )
+        }
     }
 }

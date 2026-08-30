@@ -17,10 +17,12 @@ import su.nepom.budget.desktop.model.AccountObservable
 import su.nepom.budget.desktop.model.CurrencyObservable
 import su.nepom.budget.desktop.service.AccountService
 import su.nepom.budget.desktop.service.CurrencyService
+import su.nepom.budget.desktop.ui.history.History
 import su.nepom.budget.desktop.util.fx.Controller
 import su.nepom.budget.desktop.util.fx.MasterDetailFormDriver
 import su.nepom.budget.desktop.util.fx.table.CheckBoxTableCell
 import su.nepom.budget.model.AccountKind
+import su.nepom.budget.model.ObjectKind
 import java.net.URL
 import java.util.*
 
@@ -28,6 +30,7 @@ import java.util.*
 class AccountController @Inject constructor(
     private val accountService: AccountService,
     private val currencyService: CurrencyService,
+    private val history: History,
 ) : Controller, Initializable {
     private val accounts = FilteredList(accountService.accounts) { !it.content.hidden }
     private val accountsSorted = SortedList(accounts)
@@ -39,6 +42,9 @@ class AccountController @Inject constructor(
 
     @FXML
     private lateinit var createNewButton: Button
+
+    @FXML
+    private lateinit var historyButton: Button
 
     @FXML
     private lateinit var accountsTableView: TableView<AccountObservable>
@@ -123,6 +129,18 @@ class AccountController @Inject constructor(
             accountDetailController.formDriver,
             createNewButton
         )
+
+        historyButton.disableProperty()
+            .bind(accountsTableView.selectionModel.selectedItemProperty().isNull)
+        historyButton.setOnAction {
+            val selected = accountsTableView.selectionModel.selectedItem ?: return@setOnAction
+            history.show(
+                accountsTableView.scene?.window,
+                selected.uuid,
+                ObjectKind.ACCOUNT,
+                "История счёта: ${selected.content.name}",
+            )
+        }
     }
 
     private fun updateFilter() {

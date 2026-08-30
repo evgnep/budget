@@ -43,6 +43,7 @@
             <HBox alignment="CENTER_RIGHT" spacing="5.0" GridPane.rowIndex="1">
                <children>
                   <CheckBox fx:id="showHiddenCheckbox" mnemonicParsing="false" text="Показывать скрытые" />
+                  <Button fx:id="historyButton" mnemonicParsing="false" text="История" />
                   <Button fx:id="createNewButton" mnemonicParsing="false" text="Создать новый" />
                </children>
                <padding>

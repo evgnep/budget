@@ -34,13 +34,13 @@
                   <CheckBox fx:id="deletedCheckbox" mnemonicParsing="false" text="Удалена" />
                </children>
             </HBox>
-            <Label text="Изменено" GridPane.rowIndex="4" />
-            <HBox alignment="CENTER_LEFT" spacing="5.0" GridPane.columnIndex="1" GridPane.rowIndex="4">
+            <Label fx:id="eventInfoLabel" text="Изменено" GridPane.rowIndex="4" />
+            <HBox fx:id="eventInfoBox" alignment="CENTER_LEFT" spacing="5.0" GridPane.columnIndex="1" GridPane.rowIndex="4">
                <children>
                   <TextField fx:id="changedAtField" editable="false" prefWidth="120.0" />
                   <Label text="Автор" />
                   <TextField fx:id="creatorField" editable="false" prefWidth="100.0" HBox.hgrow="ALWAYS" />
-                  <Label text="Место" />
+                  <Label text="Где" />
                   <TextField fx:id="placeField" editable="false" prefWidth="90.0" />
                </children>
             </HBox>

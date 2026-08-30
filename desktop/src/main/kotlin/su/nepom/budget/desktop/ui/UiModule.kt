@@ -4,6 +4,7 @@ import dagger.Module
 import su.nepom.budget.desktop.ui.account.AccountModule
 import su.nepom.budget.desktop.ui.configuration.ConfigurationModule
 import su.nepom.budget.desktop.ui.currency.CurrencyModule
+import su.nepom.budget.desktop.ui.history.HistoryModule
 import su.nepom.budget.desktop.ui.transaction.TransactionModule
 
 @Module(
@@ -12,6 +13,7 @@ import su.nepom.budget.desktop.ui.transaction.TransactionModule
         CurrencyModule::class,
         AccountModule::class,
         TransactionModule::class,
+        HistoryModule::class,
     ]
 )
 interface UiModule

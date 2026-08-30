@@ -34,10 +34,12 @@ import su.nepom.budget.desktop.util.format
 import su.nepom.budget.desktop.util.formatDateTime
 import su.nepom.budget.desktop.util.toEndOfDayInstant
 import su.nepom.budget.desktop.util.toStartOfDayInstant
+import su.nepom.budget.desktop.ui.history.History
 import su.nepom.budget.event.TransactionContent
 import su.nepom.budget.model.AccountId
 import su.nepom.budget.model.AccountKind
 import su.nepom.budget.model.CurrencyId
+import su.nepom.budget.model.ObjectKind
 import su.nepom.budget.model.RawMoney
 import java.time.DayOfWeek
 import java.time.LocalDate
@@ -50,6 +52,7 @@ class TransactionController @Inject constructor(
     private val accountService: AccountService,
     private val currencyService: CurrencyService,
     private val accountPicker: AccountPicker,
+    private val history: History,
 ) : Controller, StageAwareController {
 
     private companion object {
@@ -109,6 +112,7 @@ class TransactionController @Inject constructor(
     @FXML private lateinit var sortComboBox: ComboBox<SortOption>
     @FXML private lateinit var resetFilterButton: Button
     @FXML private lateinit var applyFilterButton: Button
+    @FXML private lateinit var historyButton: Button
     @FXML private lateinit var newButton: Button
 
     // pager
@@ -154,6 +158,13 @@ class TransactionController @Inject constructor(
             transactionDetailController.onMasterSelectionChanged(selected)
         }
         newButton.addEventHandler(ActionEvent.ACTION) { transactionDetailController.onNewStarted() }
+
+        historyButton.disableProperty()
+            .bind(transactionsTable.selectionModel.selectedItemProperty().isNull)
+        historyButton.setOnAction {
+            val selected = transactionsTable.selectionModel.selectedItem ?: return@setOnAction
+            history.show(stage, selected.uuid, ObjectKind.TRANSACTION, "История операции")
+        }
     }
 
     private fun setupFilterPanel() {

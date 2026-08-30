@@ -19,6 +19,7 @@ import javafx.scene.control.TableView
 import javafx.scene.control.TextField
 import javafx.scene.control.cell.CheckBoxTableCell
 import javafx.scene.control.cell.TextFieldTableCell
+import javafx.scene.layout.HBox
 import javafx.scene.layout.VBox
 import javafx.scene.paint.Color
 import javafx.stage.Stage
@@ -69,6 +70,7 @@ class TransactionDetailController @Inject constructor(
     }
 
     private lateinit var stage: Stage
+    private var viewOnly = false
 
     private val transactionFactory = TransactionObservable.Factory()
 
@@ -103,6 +105,8 @@ class TransactionDetailController @Inject constructor(
     @FXML private lateinit var itemBalanceColumn: TableColumn<ItemRow, String>
     @FXML private lateinit var itemDescriptionColumn: TableColumn<ItemRow, String>
     @FXML private lateinit var itemFlagColumn: TableColumn<ItemRow, Boolean>
+    @FXML private lateinit var eventInfoLabel: Label
+    @FXML private lateinit var eventInfoBox: HBox
     @FXML private lateinit var changedAtField: TextField
     @FXML private lateinit var creatorField: TextField
     @FXML private lateinit var placeField: TextField
@@ -139,6 +143,20 @@ class TransactionDetailController @Inject constructor(
 
     // saved transaction may be outside the current page/filter - keep showing its event info
     fun showEventInfoForCurrentItem() = updateEventInfo(formDriver.item)
+
+    // TODO show a past version of a transaction (from the history form), view only
+    fun showReadOnly(content: TransactionContent) {
+        viewOnly = true
+        formDriver.showReadOnly(TransactionObservable(content))
+        // keep the items table usable for selection/copy, just turn off cell editing and the buttons
+        itemsEditorBox.isDisable = false
+        itemsTable.isEditable = false
+        // the history form shows place / no / author / date itself
+        listOf(addItemButton, removeItemButton, copyButton, eventInfoLabel, eventInfoBox).forEach {
+            it.isVisible = false
+            it.isManaged = false
+        }
+    }
 
     private fun setupItemsEditor() {
         itemsTable.items = itemRows
@@ -343,6 +361,7 @@ class TransactionDetailController @Inject constructor(
     }
 
     private fun pickAccountForRow(row: ItemRow) {
+        if (viewOnly) return
         val pre = row.account.get()?.let { setOf(AccountId(it.uuid)) } ?: emptySet()
         val picked = accountPicker.pick(stage, pre, multi = false) ?: return
         val id = picked.firstOrNull() ?: return

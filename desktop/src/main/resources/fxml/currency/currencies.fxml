@@ -26,6 +26,7 @@
             <HBox alignment="CENTER_RIGHT" spacing="5.0">
                <children>
                   <CheckBox fx:id="showHiddenCheckbox" mnemonicParsing="false" onAction="#onShowHiddenAction" text="Показывать скрытые" />
+                  <Button fx:id="historyButton" mnemonicParsing="false" text="История" />
                   <Button fx:id="createNewButton" mnemonicParsing="false" text="Создать новую" />
                </children>
                <GridPane.margin>

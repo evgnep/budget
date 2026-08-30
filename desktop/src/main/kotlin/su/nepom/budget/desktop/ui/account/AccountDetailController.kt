@@ -23,8 +23,10 @@ import su.nepom.budget.desktop.service.CurrencyService
 import su.nepom.budget.desktop.service.DbService
 import su.nepom.budget.desktop.util.fx.Controller
 import su.nepom.budget.desktop.util.fx.FormDriver
+import su.nepom.budget.event.AccountContent
 import su.nepom.budget.model.AccountKind
 import su.nepom.budget.model.CurrencyId
+import su.nepom.budget.model.RawMoney
 import su.nepom.budget.model.Uuid
 import java.net.URL
 import java.util.*
@@ -161,6 +163,19 @@ class AccountDetailController @Inject constructor(
     // TODO called by the host form to keep the currency list in sync with its "show hidden" filter
     fun setShowHiddenCurrencies(showHidden: Boolean) {
         visibleCurrencies.setPredicate { showHidden || !it.content.hidden }
+    }
+
+    // TODO show a past version of an account (from the history form), view only
+    fun showReadOnly(content: AccountContent) {
+        // make sure the account's currency is in the combo list even if it is hidden now
+        setShowHiddenCurrencies(true)
+        formDriver.showReadOnly(AccountObservable(content, RawMoney.ZERO, currencyService.currencies))
+        // keep the tag list usable for selection/copy, just hide the editing controls
+        tagsEditorBox.isDisable = false
+        listOf(tagInputComboBox, addTagButton, removeTagButton).forEach {
+            it.isVisible = false
+            it.isManaged = false
+        }
     }
 
     private fun setupTagsEditor() {

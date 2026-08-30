@@ -6,7 +6,10 @@ import javafx.scene.Node
 import javafx.scene.control.Alert
 import javafx.scene.control.Button
 import javafx.scene.control.ButtonType
+import javafx.scene.control.CheckBox
+import javafx.scene.control.ComboBoxBase
 import javafx.scene.control.TextField
+import javafx.scene.control.TextInputControl
 import net.synedra.validatorfx.Check
 import net.synedra.validatorfx.Severity
 import net.synedra.validatorfx.Validator
@@ -58,6 +61,20 @@ private constructor(
         return true
     }
 
+    var readOnly = false
+        private set
+
+    // TODO view-only mode for the history form: show the item, no editing possible
+    fun showReadOnly(item: O?) {
+        readOnly = true
+        okButton.isVisible = false
+        okButton.isManaged = false
+        cancelButton.isVisible = false
+        cancelButton.isManaged = false
+        this.item = item
+        setState(if (item == null) FormState.EMPTY else FormState.VIEW)
+    }
+
     private fun setState(state: FormState) {
         this.state = state
         ignoreChanges = true
@@ -77,7 +94,8 @@ private constructor(
                 cancelButton.isDisable = true
                 fields.forEach {
                     it.setField(item)
-                    it.field.isDisable = it.disabledInEditMode || it.alwaysDisabled
+                    if (readOnly) it.field.applyReadOnly()
+                    else it.field.isDisable = it.disabledInEditMode || it.alwaysDisabled
                 }
             }
             FormState.EDIT -> {
@@ -116,7 +134,7 @@ private constructor(
     }
 
     private fun onSomethingChanged() {
-        if ((state == FormState.VIEW) && !ignoreChanges) {
+        if ((state == FormState.VIEW) && !ignoreChanges && !readOnly) {
             setState(FormState.EDIT)
         }
     }
@@ -275,4 +293,21 @@ enum class FormState {
     VIEW,
     EDIT,
     NEW,
+}
+
+// TODO make a field non-editable but still usable for text selection / copy (history form)
+private fun Node.applyReadOnly() {
+    when (this) {
+        is TextInputControl -> {
+            isDisable = false
+            isEditable = false
+            isFocusTraversable = false
+        }
+        is ComboBoxBase<*>, is CheckBox -> {
+            isDisable = false
+            isMouseTransparent = true
+            isFocusTraversable = false
+        }
+        else -> isDisable = true
+    }
 }

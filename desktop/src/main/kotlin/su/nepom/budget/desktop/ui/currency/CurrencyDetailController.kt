@@ -11,6 +11,7 @@ import su.nepom.budget.desktop.service.CurrencyService
 import su.nepom.budget.desktop.service.DbService
 import su.nepom.budget.desktop.util.fx.Controller
 import su.nepom.budget.desktop.util.fx.FormDriver
+import su.nepom.budget.event.CurrencyContent
 import java.net.URL
 import java.util.*
 
@@ -92,5 +93,10 @@ class CurrencyDetailController @Inject constructor(
                 { it?.content?.hidden ?: false },
                 { hidden = it })
             .build()
+    }
+
+    // TODO show a past version of a currency (from the history form), view only
+    fun showReadOnly(content: CurrencyContent) {
+        formDriver.showReadOnly(CurrencyObservable(content))
     }
 }

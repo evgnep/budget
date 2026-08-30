@@ -65,6 +65,7 @@
                   <Label fx:id="pageLabel" />
                   <Button fx:id="nextPageButton" mnemonicParsing="false" text="▶" />
                   <Region HBox.hgrow="ALWAYS" />
+                  <Button fx:id="historyButton" mnemonicParsing="false" text="История" />
                   <Button fx:id="newButton" mnemonicParsing="false" style="-fx-font-weight: bold;" text="Создать" />
                </children>
             </HBox>
