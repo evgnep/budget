@@ -6,6 +6,7 @@ import javafx.stage.Stage
 import javafx.stage.Window
 import su.nepom.budget.desktop.util.fx.FxmlService
 import su.nepom.budget.desktop.util.fx.StageOwner
+import su.nepom.budget.desktop.util.fx.setIcon
 import su.nepom.budget.model.AccountId
 import su.nepom.budget.model.AccountKind
 import su.nepom.budget.model.CurrencyId
@@ -25,6 +26,7 @@ class AccountPickerDialog(
 
     init {
         stage.initModality(Modality.APPLICATION_MODAL)
+        stage.setIcon("history")
         if (owner != null) stage.initOwner(owner)
         stage.title = "Выбор счетов"
         stage.scene = Scene(fxmlService.load("account/accountPicker.fxml", stage, this) { controller ->

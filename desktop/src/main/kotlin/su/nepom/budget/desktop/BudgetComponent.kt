@@ -8,10 +8,10 @@ import su.nepom.budget.desktop.service.DbService
 import su.nepom.budget.desktop.service.EventStoreService
 import su.nepom.budget.desktop.service.SettingsService
 import su.nepom.budget.desktop.ui.UiModule
-import su.nepom.budget.desktop.ui.account.AccountDialog
+import su.nepom.budget.desktop.ui.account.AccountView
 import su.nepom.budget.desktop.ui.configuration.ConfigurationDialog
-import su.nepom.budget.desktop.ui.currency.CurrencyDialog
-import su.nepom.budget.desktop.ui.transaction.TransactionDialog
+import su.nepom.budget.desktop.ui.currency.CurrencyView
+import su.nepom.budget.desktop.ui.WindowManager
 import su.nepom.budget.desktop.util.UtilModule
 
 @Component(
@@ -32,11 +32,11 @@ interface BudgetComponent {
 
     fun settingsService(): SettingsService
 
-    fun createAndShowCurrencyDialog(): CurrencyDialog
+    fun currencyView(): CurrencyView
 
-    fun createAndShowAccountDialog(): AccountDialog
+    fun accountView(): AccountView
 
-    fun createAndShowTransactionDialog(): TransactionDialog
+    fun windowManager(): WindowManager
 
     @Component.Builder
     interface Builder {

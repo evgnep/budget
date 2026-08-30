@@ -1,16 +1,15 @@
 package su.nepom.budget.desktop.ui.history
 
 import jakarta.inject.Inject
-import javafx.stage.Window
-import su.nepom.budget.desktop.util.fx.FxmlService
+import su.nepom.budget.desktop.ui.WindowManager
 import su.nepom.budget.model.ObjectKind
 import su.nepom.budget.model.Uuid
 
 // TODO opens the history form for a given object; call from any entity form
 class History @Inject constructor(
-    private val fxmlService: FxmlService,
+    private val windowManager: WindowManager,
 ) {
-    fun show(owner: Window?, uuid: Uuid, kind: ObjectKind, title: String) {
-        HistoryDialog(fxmlService, owner, uuid, kind, title)
+    fun show(uuid: Uuid, kind: ObjectKind, title: String) {
+        windowManager.openHistory(uuid, kind, title)
     }
 }

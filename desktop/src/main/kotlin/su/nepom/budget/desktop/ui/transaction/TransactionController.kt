@@ -25,6 +25,7 @@ import su.nepom.budget.desktop.service.AccountService
 import su.nepom.budget.desktop.service.CurrencyService
 import su.nepom.budget.desktop.service.DbService
 import su.nepom.budget.desktop.util.fx.Controller
+import su.nepom.budget.desktop.util.fx.Disposable
 import su.nepom.budget.desktop.util.fx.FormState
 import su.nepom.budget.desktop.util.fx.MasterDetailFormDriver
 import su.nepom.budget.desktop.util.fx.StageAwareController
@@ -58,7 +59,7 @@ class TransactionController @Inject constructor(
     private val currencyService: CurrencyService,
     private val accountPicker: AccountPicker,
     private val history: History,
-) : Controller, StageAwareController {
+) : Controller, StageAwareController, Disposable {
 
     private companion object {
         const val PAGE_SIZE = 100
@@ -152,6 +153,12 @@ class TransactionController @Inject constructor(
         }
     }
 
+    override fun dispose() {
+        weakListeners.dispose()
+        refreshPause.stop()
+        descriptionPause.stop()
+    }
+
     private fun wireDetail() {
         transactionDetailController.setStage(stage)
         masterDetailFormDriver = MasterDetailFormDriver(
@@ -168,7 +175,7 @@ class TransactionController @Inject constructor(
             .bind(transactionsTable.selectionModel.selectedItemProperty().isNull)
         historyButton.setOnAction {
             val selected = transactionsTable.selectionModel.selectedItem ?: return@setOnAction
-            history.show(stage, selected.uuid, ObjectKind.TRANSACTION, "История операции")
+            history.show(selected.uuid, ObjectKind.TRANSACTION, "История операции")
         }
     }
 

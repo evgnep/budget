@@ -1,0 +1,77 @@
+package su.nepom.budget.desktop.ui
+
+import jakarta.inject.Inject
+import jakarta.inject.Singleton
+import javafx.scene.Parent
+import javafx.scene.Scene
+import javafx.scene.control.Menu
+import javafx.scene.control.MenuBar
+import javafx.scene.control.MenuItem
+import javafx.scene.layout.BorderPane
+import javafx.stage.Stage
+import su.nepom.budget.desktop.ui.history.HistoryController
+import su.nepom.budget.desktop.util.fx.Controller
+import su.nepom.budget.desktop.util.fx.Disposable
+import su.nepom.budget.desktop.util.fx.FxmlService
+import su.nepom.budget.desktop.util.fx.setIcon
+import su.nepom.budget.model.ObjectKind
+import su.nepom.budget.model.Uuid
+
+/**
+ * Opens standalone windows. Every call creates a new instance, so the same screen can be
+ * open several times at once. Windows have no owner - each one is independent in z-order.
+ */
+@Singleton
+class WindowManager @Inject constructor(
+    private val fxmlService: FxmlService,
+) {
+    private class OpenWindow(val stage: Stage, val titleBase: String)
+
+    private val openWindows = mutableListOf<OpenWindow>()
+
+    fun openTransactions() {
+        open("Операции") { stage, collect ->
+            stage.setIcon("operations")
+            val content = fxmlService.load<Parent>("transaction/transactions.fxml", stage, null, collect)
+            BorderPane().apply {
+                top = MenuBar(
+                    Menu(
+                        "Окно", null,
+                        MenuItem("Новое окно").apply { setOnAction { openTransactions() } },
+                        MenuItem("Закрыть").apply { setOnAction { stage.close() } },
+                    )
+                )
+                center = content
+            }
+        }
+    }
+
+    fun openHistory(uuid: Uuid, kind: ObjectKind, title: String) {
+        open(title) { stage, collect ->
+            stage.setIcon("history")
+            fxmlService.load("history/history.fxml", stage, null) { controller ->
+                collect(controller)
+                if (controller is HistoryController) controller.configure(uuid, kind)
+            }
+        }
+    }
+
+    private fun open(titleBase: String, buildRoot: (Stage, (Controller) -> Unit) -> Parent) {
+        val disposables = mutableListOf<Disposable>()
+        val stage = Stage()
+        stage.title = nextTitle(titleBase)
+        stage.scene = Scene(buildRoot(stage) { if (it is Disposable) disposables += it })
+        val window = OpenWindow(stage, titleBase)
+        openWindows += window
+        stage.setOnHidden {
+            openWindows -= window
+            disposables.forEach(Disposable::dispose)
+        }
+        stage.show()
+    }
+
+    private fun nextTitle(titleBase: String): String {
+        val same = openWindows.count { it.titleBase == titleBase }
+        return if (same == 0) titleBase else "$titleBase (${same + 1})"
+    }
+}

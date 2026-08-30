@@ -82,7 +82,6 @@ class CurrencyController @Inject constructor(
         historyButton.setOnAction {
             val selected = currenciesTableView.selectionModel.selectedItem ?: return@setOnAction
             history.show(
-                currenciesTableView.scene?.window,
                 selected.uuid,
                 ObjectKind.CURRENCY,
                 "История валюты: ${selected.content.name}",

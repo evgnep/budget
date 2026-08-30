@@ -17,11 +17,21 @@ class WeakListeners {
 
     private val dbListenerRefs = mutableListOf<Any>()
 
+    private val subscriptions = mutableListOf<Db.Subscription>()
+
+    private val detachActions = mutableListOf<() -> Unit>()
+
     private var db: Db? = null
 
+    // TODO detaches everything registered here; safe to call once when the owner window closes
     fun dispose() {
+        detachActions.forEach { it() }
+        detachActions.clear()
+        subscriptions.forEach { it.unsubscribe() }
+        subscriptions.clear()
         listenerRefs.clear()
         dbListenerRefs.clear()
+        db = null
     }
 
     fun <T> remove(listener: ChangeListener<T>) {
@@ -44,7 +54,9 @@ class WeakListeners {
     }
 
     fun <T> addListenerAndCallNow(observable: ObservableValue<T>, listener: ChangeListener<T>) {
-        observable.addListener(this(listener))
+        val weak = this(listener)
+        observable.addListener(weak)
+        detachActions.add { observable.removeListener(weak) }
         listener.changed(observable, observable.value, observable.value)
     }
 
@@ -58,6 +70,6 @@ class WeakListeners {
             this.db = db
         }
         dbListenerRefs.add(listener)
-        db.subscribe(kinds, listener = WeakDbListener(listener))
+        subscriptions.add(db.subscribe(kinds, listener = WeakDbListener(listener)))
     }
 }

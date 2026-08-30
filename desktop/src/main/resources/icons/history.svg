@@ -1,0 +1,13 @@
+<svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+  <rect x="4" y="4" width="120" height="120" rx="28" fill="#EEF2FF"/>
+  <g fill="none" stroke="#4F46E5" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round">
+    <!-- clock-back / history circle with trailing arrow -->
+    <path d="M42 44 A26 26 0 1 1 38 82"/>
+    <path d="M42 32 L42 44 L54 46"/>
+  </g>
+  <!-- clock hands -->
+  <g stroke="#4F46E5" stroke-width="5" stroke-linecap="round">
+    <line x1="64" y1="64" x2="64" y2="50"/>
+    <line x1="64" y1="64" x2="74" y2="70"/>
+  </g>
+</svg>

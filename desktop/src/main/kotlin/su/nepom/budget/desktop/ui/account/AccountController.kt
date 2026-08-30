@@ -135,7 +135,6 @@ class AccountController @Inject constructor(
         historyButton.setOnAction {
             val selected = accountsTableView.selectionModel.selectedItem ?: return@setOnAction
             history.show(
-                accountsTableView.scene?.window,
                 selected.uuid,
                 ObjectKind.ACCOUNT,
                 "История счёта: ${selected.content.name}",

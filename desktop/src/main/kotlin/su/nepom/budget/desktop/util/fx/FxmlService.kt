@@ -12,7 +12,7 @@ class FxmlService @Inject constructor(
     fun <T> load(
         relativeResourcePath: String,
         stage: Stage,
-        stageOwner: StageOwner,
+        stageOwner: StageOwner?,
         controllerSetup: (Controller) -> Unit = {}
     ): T {
         val loader = FXMLLoader(
@@ -23,7 +23,7 @@ class FxmlService @Inject constructor(
         val scene = loader.load<T>()
         val controller = loader.getController<T>()
         if (controller is StageOwnerAwareController) {
-            controller.initialize(stageOwner)
+            controller.initialize(requireNotNull(stageOwner) { "$relativeResourcePath needs a StageOwner" })
         }
         if (controller is StageAwareController) {
             controller.initialize(stage)
