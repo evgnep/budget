@@ -15,6 +15,11 @@ interface TransactionModule {
 
     @Binds
     @IntoMap
+    @ClassKey(TransactionDetailController::class)
+    fun transactionDetailController(v: TransactionDetailController): Controller
+
+    @Binds
+    @IntoMap
     @ClassKey(AccountPickerController::class)
     fun accountPickerController(v: AccountPickerController): Controller
 }

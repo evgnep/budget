@@ -13,7 +13,7 @@ class AccountDialog @Inject constructor(
 
     private fun makeStage(): Stage {
         val stage = Stage()
-        stage.scene = Scene(fxmlService.load("accounts.fxml", stage, this))
+        stage.scene = Scene(fxmlService.load("account/accounts.fxml", stage, this))
         stage.title = "Счета"
         stage.show()
         return stage

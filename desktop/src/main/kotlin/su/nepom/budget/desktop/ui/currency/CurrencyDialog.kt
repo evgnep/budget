@@ -13,7 +13,7 @@ class CurrencyDialog @Inject constructor(
 
     private fun makeStage(): Stage {
         val stage = Stage()
-        stage.scene = Scene(fxmlService.load("currencies.fxml", stage, this))
+        stage.scene = Scene(fxmlService.load("currency/currencies.fxml", stage, this))
         stage.title = "Валюты"
         stage.show()
         return stage

@@ -2,11 +2,9 @@
 
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.Button?>
-<?import javafx.scene.control.ButtonBar?>
 <?import javafx.scene.control.CheckBox?>
 <?import javafx.scene.control.ComboBox?>
 <?import javafx.scene.control.Label?>
-<?import javafx.scene.control.ListView?>
 <?import javafx.scene.control.SplitPane?>
 <?import javafx.scene.control.TableColumn?>
 <?import javafx.scene.control.TableView?>
@@ -15,7 +13,6 @@
 <?import javafx.scene.layout.GridPane?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.RowConstraints?>
-<?import javafx.scene.layout.VBox?>
 
 <SplitPane dividerPositions="0.45" prefHeight="582.0" prefWidth="700.0" xmlns="http://javafx.com/javafx/23.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="su.nepom.budget.desktop.ui.account.AccountController">
    <items>
@@ -67,59 +64,6 @@
             <Insets bottom="5.0" left="5.0" right="5.0" top="5.0" />
          </padding>
       </GridPane>
-      <GridPane hgap="5.0" vgap="5.0">
-         <columnConstraints>
-            <ColumnConstraints halignment="RIGHT" hgrow="NEVER" minWidth="70.0" />
-            <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="150.0" />
-         </columnConstraints>
-         <rowConstraints>
-            <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="NEVER" />
-            <RowConstraints vgrow="NEVER" />
-            <RowConstraints vgrow="NEVER" />
-            <RowConstraints vgrow="NEVER" />
-            <RowConstraints vgrow="NEVER" />
-            <RowConstraints vgrow="NEVER" />
-            <RowConstraints vgrow="NEVER" />
-            <RowConstraints />
-         </rowConstraints>
-         <children>
-            <Label text="id" />
-            <TextField fx:id="idTextField" GridPane.columnIndex="1" />
-            <Label text="Название" GridPane.rowIndex="1" />
-            <TextField fx:id="nameTextField" GridPane.columnIndex="1" GridPane.rowIndex="1" />
-            <Label text="Описание" GridPane.rowIndex="2" />
-            <TextField fx:id="descriptionTextField" GridPane.columnIndex="1" GridPane.rowIndex="2" />
-            <Label text="Валюта" GridPane.rowIndex="3" />
-            <ComboBox fx:id="currencyComboBox" maxWidth="1.7976931348623157E308" GridPane.columnIndex="1" GridPane.rowIndex="3" />
-            <Label text="Тип" GridPane.rowIndex="4" />
-            <ComboBox fx:id="kindComboBox" maxWidth="1.7976931348623157E308" GridPane.columnIndex="1" GridPane.rowIndex="4" />
-            <CheckBox fx:id="hiddenCheckbox" mnemonicParsing="false" text="Скрытый" GridPane.columnIndex="1" GridPane.rowIndex="5" />
-            <Label text="Теги" GridPane.rowIndex="6" GridPane.valignment="TOP" />
-            <VBox fx:id="tagsEditorBox" spacing="5.0" GridPane.columnIndex="1" GridPane.rowIndex="6">
-               <children>
-                  <ListView fx:id="tagsListView" prefHeight="90.0" />
-                  <HBox spacing="5.0">
-                     <children>
-                        <ComboBox fx:id="tagInputComboBox" editable="true" maxWidth="1.7976931348623157E308" HBox.hgrow="ALWAYS" />
-                        <Button fx:id="addTagButton" mnemonicParsing="false" text="Добавить" />
-                        <Button fx:id="removeTagButton" mnemonicParsing="false" text="Удалить" />
-                     </children>
-                  </HBox>
-               </children>
-            </VBox>
-            <ButtonBar GridPane.columnSpan="2" GridPane.rowIndex="7">
-              <buttons>
-                <Button fx:id="okButton" mnemonicParsing="false" text="Сохранить" />
-                  <Button fx:id="cancelButton" mnemonicParsing="false" text="Отмена" />
-              </buttons>
-               <padding>
-                  <Insets top="30.0" />
-               </padding>
-            </ButtonBar>
-         </children>
-         <padding>
-            <Insets bottom="5.0" left="5.0" right="5.0" top="5.0" />
-         </padding>
-      </GridPane>
+      <fx:include fx:id="accountDetail" source="accountDetail.fxml" />
    </items>
 </SplitPane>

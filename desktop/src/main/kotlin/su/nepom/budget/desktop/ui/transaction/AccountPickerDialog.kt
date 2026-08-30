@@ -23,7 +23,7 @@ class AccountPickerDialog(
         stage.initModality(Modality.APPLICATION_MODAL)
         if (owner != null) stage.initOwner(owner)
         stage.title = "Выбор счетов"
-        stage.scene = Scene(fxmlService.load("transaction/accountPicker.fxml", stage, this) { controller ->
+        stage.scene = Scene(fxmlService.load("account/accountPicker.fxml", stage, this) { controller ->
             (controller as AccountPickerController).configure(preselected, multi) { picked ->
                 result = picked
                 stage.close()

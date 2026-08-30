@@ -12,4 +12,9 @@ interface AccountModule {
     @IntoMap
     @ClassKey(AccountController::class)
     fun accountController(v: AccountController): Controller
+
+    @Binds
+    @IntoMap
+    @ClassKey(AccountDetailController::class)
+    fun accountDetailController(v: AccountDetailController): Controller
 }

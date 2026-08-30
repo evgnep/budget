@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<VBox spacing="5.0" xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1" fx:controller="su.nepom.budget.desktop.ui.transaction.TransactionDetailController">
+   <padding>
+      <Insets bottom="5.0" left="5.0" right="5.0" top="5.0" />
+   </padding>
+   <children>
+      <GridPane hgap="5.0" vgap="5.0">
+         <columnConstraints>
+            <ColumnConstraints halignment="RIGHT" hgrow="NEVER" minWidth="80.0" />
+            <ColumnConstraints hgrow="SOMETIMES" minWidth="150.0" />
+         </columnConstraints>
+         <rowConstraints>
+            <RowConstraints vgrow="NEVER" />
+            <RowConstraints vgrow="NEVER" />
+            <RowConstraints vgrow="NEVER" />
+            <RowConstraints vgrow="NEVER" />
+            <RowConstraints vgrow="NEVER" />
+         </rowConstraints>
+         <children>
+            <Label text="id" />
+            <TextField fx:id="idTextField" GridPane.columnIndex="1" />
+            <Label text="Дата" GridPane.rowIndex="1" />
+            <DatePicker fx:id="dateEditPicker" maxWidth="1.7976931348623157E308" GridPane.columnIndex="1" GridPane.rowIndex="1" />
+            <Label text="Описание" GridPane.rowIndex="2" />
+            <TextField fx:id="descriptionEditField" GridPane.columnIndex="1" GridPane.rowIndex="2" />
+            <HBox spacing="15.0" GridPane.columnIndex="1" GridPane.rowIndex="3">
+               <children>
+                  <CheckBox fx:id="flagCheckbox" mnemonicParsing="false" text="Флаг" />
+                  <CheckBox fx:id="deletedCheckbox" mnemonicParsing="false" text="Удалена" />
+               </children>
+            </HBox>
+            <Label text="Изменено" GridPane.rowIndex="4" />
+            <HBox alignment="CENTER_LEFT" spacing="5.0" GridPane.columnIndex="1" GridPane.rowIndex="4">
+               <children>
+                  <TextField fx:id="changedAtField" editable="false" prefWidth="120.0" />
+                  <Label text="Автор" />
+                  <TextField fx:id="creatorField" editable="false" prefWidth="100.0" HBox.hgrow="ALWAYS" />
+                  <Label text="Место" />
+                  <TextField fx:id="placeField" editable="false" prefWidth="90.0" />
+               </children>
+            </HBox>
+         </children>
+      </GridPane>
+      <Label text="Строки (двойной клик по счёту - выбор)" />
+      <VBox fx:id="itemsEditorBox" spacing="5.0" VBox.vgrow="ALWAYS">
+         <children>
+            <TableView fx:id="itemsTable" VBox.vgrow="ALWAYS">
+              <columns>
+                <TableColumn fx:id="itemAccountColumn" prefWidth="160.0" text="Счёт" />
+                <TableColumn fx:id="itemCurrencyColumn" editable="false" prefWidth="70.0" text="Валюта" />
+                <TableColumn fx:id="itemKindColumn" editable="false" prefWidth="70.0" text="Тип" />
+                <TableColumn fx:id="itemAmountColumn" prefWidth="110.0" text="Сумма" />
+                <TableColumn fx:id="itemBalanceColumn" editable="false" prefWidth="110.0" text="Остаток счёта" />
+                <TableColumn fx:id="itemDescriptionColumn" prefWidth="200.0" text="Описание" />
+                <TableColumn fx:id="itemFlagColumn" prefWidth="60.0" text="Флаг" />
+              </columns>
+               <columnResizePolicy>
+                  <TableView fx:constant="CONSTRAINED_RESIZE_POLICY" />
+               </columnResizePolicy>
+            </TableView>
+            <HBox spacing="5.0">
+               <children>
+                  <Button fx:id="addItemButton" mnemonicParsing="false" text="Добавить строку" />
+                  <Button fx:id="removeItemButton" mnemonicParsing="false" text="Удалить строку" />
+               </children>
+            </HBox>
+         </children>
+      </VBox>
+      <Label fx:id="balanceLabel" wrapText="true" />
+      <ButtonBar>
+        <buttons>
+          <Button fx:id="okButton" mnemonicParsing="false" text="Сохранить" />
+          <Button fx:id="copyButton" mnemonicParsing="false" prefHeight="26.0" prefWidth="210.0" text="Скопировать" />
+          <Button fx:id="cancelButton" mnemonicParsing="false" text="Отмена" />
+        </buttons>
+      </ButtonBar>
+   </children>
+</VBox>

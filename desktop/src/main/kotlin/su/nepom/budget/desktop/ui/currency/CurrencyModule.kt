@@ -12,4 +12,9 @@ interface CurrencyModule {
     @IntoMap
     @ClassKey(CurrencyController::class)
     fun currencyController(v: CurrencyController): Controller
+
+    @Binds
+    @IntoMap
+    @ClassKey(CurrencyDetailController::class)
+    fun currencyDetailController(v: CurrencyDetailController): Controller
 }
