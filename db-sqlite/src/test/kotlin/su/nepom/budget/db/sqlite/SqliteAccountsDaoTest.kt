@@ -53,6 +53,15 @@ internal class SqliteAccountsDaoTest : AbstractDbTest() {
     }
 
     @Test
+    fun getAllTags() {
+        session.accountDao.save(createAccount("account1", currency1).copy(tags = setOf("food", "home")))
+        session.accountDao.save(createAccount("account2", currency1).copy(tags = setOf("home", "car")))
+        session.commit()
+        // then
+        assertThat(session.accountDao.getAllTags()).containsExactlyInAnyOrder("food", "home", "car")
+    }
+
+    @Test
     fun update() {
         val account1 = createAccount("account", currency1)
         val account2 = account1.copy(name = "other", description = "other desc", tags = setOf("<>"))

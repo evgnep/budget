@@ -3,17 +3,22 @@ package su.nepom.budget.desktop.ui.account
 import jakarta.inject.Inject
 import javafx.beans.binding.Bindings
 import javafx.beans.property.Property
+import javafx.beans.property.SimpleObjectProperty
 import javafx.collections.FXCollections
 import javafx.collections.transformation.FilteredList
 import javafx.collections.transformation.SortedList
 import javafx.fxml.FXML
 import javafx.fxml.Initializable
+import javafx.scene.control.Alert
 import javafx.scene.control.Button
+import javafx.scene.control.ButtonType
 import javafx.scene.control.CheckBox
 import javafx.scene.control.ComboBox
+import javafx.scene.control.ListView
 import javafx.scene.control.TableColumn
 import javafx.scene.control.TableView
 import javafx.scene.control.TextField
+import javafx.scene.layout.VBox
 import javafx.util.StringConverter
 import su.nepom.budget.desktop.model.AccountObservable
 import su.nepom.budget.desktop.model.CurrencyObservable
@@ -29,6 +34,7 @@ import su.nepom.budget.model.CurrencyId
 import su.nepom.budget.model.Uuid
 import java.net.URL
 import java.util.*
+import kotlin.jvm.optionals.getOrNull
 
 @Suppress("unused", "UNCHECKED_CAST")
 class AccountController @Inject constructor(
@@ -87,16 +93,39 @@ class AccountController @Inject constructor(
     private lateinit var orderNoColumn: TableColumn<AccountObservable, Int>
 
     @FXML
+    private lateinit var tagsColumn: TableColumn<AccountObservable, String>
+
+    @FXML
     private lateinit var nameFilterTextField: TextField
 
     @FXML
     private lateinit var currencyFilterComboBox: ComboBox<CurrencyObservable>
 
     @FXML
+    private lateinit var tagFilterComboBox: ComboBox<String>
+
+    @FXML
     private lateinit var showHiddenCheckbox: CheckBox
 
     @FXML
     private lateinit var resetFilterButton: Button
+
+    @FXML
+    private lateinit var tagsEditorBox: VBox
+
+    @FXML
+    private lateinit var tagsListView: ListView<String>
+
+    @FXML
+    private lateinit var tagInputComboBox: ComboBox<String>
+
+    @FXML
+    private lateinit var addTagButton: Button
+
+    @FXML
+    private lateinit var removeTagButton: Button
+
+    private val tagsProperty = SimpleObjectProperty<Set<String>>(this, "tags", emptySet())
 
     private val currencyConverter = object : StringConverter<CurrencyObservable>() {
         override fun toString(currency: CurrencyObservable?) = currency?.content?.name ?: ""
@@ -120,6 +149,12 @@ class AccountController @Inject constructor(
         hiddenColumn.setCellValueFactory { it.value.hidden }
         hiddenColumn.cellFactory = CheckBoxTableCell.forTableColumn(hiddenColumn)
         orderNoColumn.setCellValueFactory { it.value.orderNo }
+        tagsColumn.setCellValueFactory {
+            Bindings.createStringBinding(
+                { it.value.content.tags.sorted().joinToString(", ") },
+                it.value.contentProperty
+            )
+        }
 
         currencyFilterComboBox.items = visibleCurrencies
         currencyFilterComboBox.converter = currencyConverter
@@ -127,9 +162,14 @@ class AccountController @Inject constructor(
         currencyComboBox.converter = currencyConverter
         kindComboBox.items = FXCollections.observableArrayList(*AccountKind.entries.toTypedArray())
         kindComboBox.converter = kindConverter
+        tagFilterComboBox.items = accountService.tags
+        tagInputComboBox.items = accountService.tags
+
+        setupTagsEditor()
 
         nameFilterTextField.textProperty().addListener { _, _, _ -> updateFilter() }
         currencyFilterComboBox.valueProperty().addListener { _, _, _ -> updateFilter() }
+        tagFilterComboBox.valueProperty().addListener { _, _, _ -> updateFilter() }
         showHiddenCheckbox.selectedProperty().addListener { _, _, _ ->
             updateCurrenciesFilter()
             updateFilter()
@@ -138,6 +178,7 @@ class AccountController @Inject constructor(
         resetFilterButton.setOnAction {
             nameFilterTextField.clear()
             currencyFilterComboBox.value = null
+            tagFilterComboBox.value = null
         }
 
         masterDetailFormDriver = MasterDetailFormDriver(
@@ -188,6 +229,12 @@ class AccountController @Inject constructor(
                     hiddenCheckbox.selectedProperty(),
                     { it?.content?.hidden ?: false },
                     { hidden = it })
+                .field(
+                    "tags",
+                    tagsEditorBox,
+                    tagsProperty,
+                    { it?.content?.tags ?: emptySet() },
+                    { tags = it })
                 .build(),
             createNewButton
         )
@@ -196,12 +243,44 @@ class AccountController @Inject constructor(
     private fun updateFilter() {
         val nameFilter = nameFilterTextField.text.trim().lowercase()
         val currencyFilter = currencyFilterComboBox.value?.uuid
+        val tagFilter = tagFilterComboBox.value
         val showHidden = showHiddenCheckbox.isSelected
         accounts.setPredicate { account ->
             (showHidden || !account.content.hidden) &&
                 (nameFilter.isEmpty() || account.content.name.lowercase().contains(nameFilter)) &&
-                (currencyFilter == null || account.content.currency.uuid == currencyFilter)
+                (currencyFilter == null || account.content.currency.uuid == currencyFilter) &&
+                (tagFilter == null || tagFilter in account.content.tags)
         }
+    }
+
+    private fun setupTagsEditor() {
+        tagsProperty.addListener { _, _, value ->
+            val wanted = value?.sorted() ?: emptyList()
+            if (tagsListView.items.toList() != wanted) tagsListView.items.setAll(wanted)
+        }
+        addTagButton.setOnAction { addTag() }
+        removeTagButton.setOnAction { removeTag() }
+        tagInputComboBox.editor.setOnAction { addTag() }
+    }
+
+    private fun addTag() {
+        val tag = (tagInputComboBox.value ?: tagInputComboBox.editor.text).trim()
+        if (tag.isEmpty()) return
+        if (tag !in accountService.tags && !confirmNewTag()) return
+        if (tag !in tagsListView.items) tagsListView.items.add(tag)
+        tagInputComboBox.editor.clear()
+        tagInputComboBox.value = null
+        tagsProperty.set(tagsListView.items.toSortedSet())
+    }
+
+    private fun confirmNewTag(): Boolean =
+        Alert(Alert.AlertType.CONFIRMATION, "Это новый тег. Добавить?", ButtonType.YES, ButtonType.NO)
+            .showAndWait().getOrNull() == ButtonType.YES
+
+    private fun removeTag() {
+        val selected = tagsListView.selectionModel.selectedItem ?: return
+        tagsListView.items.remove(selected)
+        tagsProperty.set(tagsListView.items.toSortedSet())
     }
 
     private fun updateCurrenciesFilter() {

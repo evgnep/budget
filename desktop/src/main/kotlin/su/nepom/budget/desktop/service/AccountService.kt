@@ -2,6 +2,9 @@ package su.nepom.budget.desktop.service
 
 import jakarta.inject.Inject
 import jakarta.inject.Singleton
+import javafx.collections.FXCollections
+import javafx.collections.ListChangeListener
+import javafx.collections.ObservableList
 import su.nepom.budget.db.Db
 import su.nepom.budget.desktop.model.AccountObservable
 import su.nepom.budget.desktop.util.db.ObservableEntitiesList
@@ -23,6 +26,21 @@ class AccountService @Inject constructor(
             ::processEvents,
             setOf(Db.SubscribeKind.ACCOUNT)
         )
+
+    /**
+     * All tags used by accounts, sorted. Updates live when accounts change.
+     */
+    val tags: ObservableList<String> = FXCollections.observableArrayList()
+
+    init {
+        accounts.addListener(ListChangeListener { recomputeTags() })
+        recomputeTags()
+    }
+
+    private fun recomputeTags() {
+        val all = accounts.flatMapTo(sortedSetOf()) { it.content.tags }
+        if (all != tags.toHashSet()) tags.setAll(all)
+    }
 
     private fun newObservable(content: AccountContent) =
         AccountObservable(content, RawMoney.ZERO, currencyService.currencies)
