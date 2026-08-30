@@ -119,6 +119,7 @@ internal class SqliteDatabase(pathToDb: Path): FlywayShouldRunFirst(pathToDb), D
         catalogCaches.values.forEach { if (commit) it.onTransactionCommit() else it.onTransactionRollback() }
         database.transactionManager.currentTransaction?.run {
             if (commit) commit() else rollback()
+            close()
         }
         if (commit) eventProcessor.onTransactionFinished()
         if (commit) eventsNotifier.onTransactionCommit() else eventsNotifier.onTransactionRollback()
@@ -190,6 +191,7 @@ internal class SqliteDatabase(pathToDb: Path): FlywayShouldRunFirst(pathToDb), D
             lock.withLock {
                 connections.remove(connection)
             }
+            connection.close()
         }
     }
 }
