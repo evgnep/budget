@@ -16,9 +16,20 @@ Multi-module Gradle project (Kotlin DSL).
 - Run the Access importer: `gradlew :access-ingester:run` (reads `access-ingester/src/main/resources/application.yml`)
 
 All modules use JUnit 5 (`useJUnitPlatform()`) and JVM toolchain / JavaFX version `21` (see
-`gradle/libs.versions.toml`). Kotlin `2.4.0`.
+`gradle/libs.versions.toml`). Kotlin `2.4.0`. Base package for every module is `su.nepom.budget`
+(group `su.nepom`), so test filters look like `--tests "su.nepom.budget.<...>"`.
 
 Dependencies are declared through the `libs` version catalog in `gradle/libs.versions.toml`.
+
+CI (`.github/workflows/build.yml`) runs `./gradlew build --stacktrace` on push to `master` and on
+every PR (Temurin JDK 21), and uploads `**/build/reports/tests/` as an artifact.
+
+### Packaging the desktop app
+
+`gradle :desktop:jpackageImage` -> `desktop/build/jpackage/budget/` - a self-contained app-image
+(trimmed JRE via the `org.beryx.runtime` plugin, no installer, windowless `budget.exe` launcher).
+Main class is `su.nepom.budget.desktop.BudgetApplicationKt`. The explicit JVM `modules` / `runtime`
+option list lives in `desktop/build.gradle.kts`; re-check it with `gradle :desktop:suggestModules`.
 
 ### Not part of the build
 
@@ -69,16 +80,64 @@ folder of JSON files. SQLite is a materialized projection of the events.
   "processed" SQLite bookkeeping DB, and generates the initial event stream. `Reader` + per-table
   readers under `access/dao/`, `EventsGenerator` + `generator/mapper/` produce events. Config is YAML.
 
-- **desktop** - JavaFX UI, wired with **Dagger** (`BudgetComponent`, `@Component.Builder` takes the main
-  `Stage`; modules `UiModule`, `UtilModule`, and per-dialog modules). `kapt` runs the Dagger compiler.
-  - `service/` - `DbService` opens `./budget.sqlite` and holds the UI `Session` (`autoCommit = true`) as
-    a JavaFX property; `EventStoreService` builds reader/writer from settings + `Global.currentPlace`;
-    `SettingsService` persists app settings via `PropertyDao`.
-  - `util/db/` - `ObservableEntity` / `ObservableEntitiesList` bridge DB rows and JavaFX observable
-    collections, updating live from `Db.subscribe` callbacks (marshalled onto the FX thread).
-  - `util/fx/` - reusable form/table plumbing (`FormDriver`, `MasterDetailFormDriver`, `FxmlService`,
-    `Controller`/`ControllerMap`, `ValidatorHelper` using validatorfx). FXML lives in
-    `src/main/resources/fxml/`.
+- **desktop** - JavaFX UI, wired with **Dagger** (`kapt` runs the compiler). Entry point
+  `BudgetApplication` (a JavaFX `Application`); `main()` sets `Global.setCurrentUser("")` then builds
+  `DaggerBudgetComponent` with the main `Stage` (`@Component.Builder.mainStage(...)`). The main window
+  is a `BorderPane` with a vertical nav `ToolBar`; the accounts / currencies / sync screens swap into
+  its center, while "Операции", "Остатки", history and dialogs open as separate windows. Closing the
+  main window calls `Platform.exit()`; `BudgetApplication.stop()` calls `EventStoreService.onStop()`.
+
+  - **DI shape.** `BudgetComponent` (`@Singleton`) pulls in `UiModule` (which `includes` one module
+    per feature package - `configuration`, `currency`, `account`, `conflict`, `balance`, `transaction`,
+    `history`, `sync`) and `UtilModule`. Each feature `*Module` binds its controllers `@IntoMap
+    @ClassKey(...)` into a `ControllerMap` (`Map<Class<*>, Provider<Controller>>`). `FxmlService.load(
+    "<pkg>/<file>.fxml", stage, stageOwner, controllerSetup)` loads from `/fxml/`, resolves the
+    controller from that map (never `fx:controller` in FXML), runs `controllerSetup`, then calls
+    `StageAwareController` / `StageOwnerAwareController.initialize(...)` if implemented.
+
+  - `service/` (all `@Singleton`):
+    - `DbService` - opens `./budget.sqlite` (absolute, normalized) and exposes the UI `Session`
+      (`autoCommit = true`) as a `ReadOnlyObjectProperty<Session?>`; `openExisting()` / `create()`.
+    - `SettingsService` - `creator` and `place` are `CheckableDatabaseStringProperty`s (persisted via
+      `session.propertyDao`); on change they push into `Global.setCurrentUser` / `setCurrentPlace`.
+    - `EventStoreService` - the autosave + sync engine. Runs on a background `CoroutineScope(
+      Dispatchers.Default)` under a `Mutex`; opens its own `createEvents = false` session for writing
+      the file store. Subscribes to `Db` changes and, after local (non-`AccountRest`) events, schedules
+      a debounced flush (10 min "if no new events", hard 30 min cap); `saveNow()` / `syncNow()` force
+      it. Sync delegates to `events`' `EventSynchronizer`. Publishes read-only FX properties
+      `hasEventsToSync`, `syncInProgress`, `savingGap`, `storeInfo`, `lastSyncResult`; `eventStoreFolder`
+      is a checkable DB property; `onStop()` does a final flush with `runBlocking`.
+    - `WindowStateService` - persists each window's bounds + maximized flag to `./settings.json`
+      (debounced 400 ms). Call `bind(stage, key)` before `stage.show()`; off-screen positions are not
+      restored.
+    - `AccountService` / `CurrencyService` - in-memory lookups used by pickers and formatters.
+
+  - `ui/WindowManager` (`@Singleton`) - opens detached, ownerless `Stage`s. Every call makes a fresh
+    instance, so the same screen can be open several times; titles are auto-numbered ("Операции (2)");
+    controllers implementing `Disposable` are disposed on hide. `openTransactions(initialFilter?)`,
+    `openBalances()`, `openHistory(uuid, kind, title)`.
+
+  - `ui/conflict/DesktopConflictResolver` - implements `events`' `ConflictResolver`; the sync loop runs
+    off the FX thread, so it marshals a modal dialog per conflict via `Platform.runLater` +
+    `CompletableDeferred`.
+
+  - `util/db/` - `ObservableEntity<C>` wraps one DB row as JavaFX `Observable`s plus its `content`.
+    `ObservableEntitiesList<T>` is an `ObservableListWrapper` kept live from the DB: it loads initial
+    rows from the `Session`, subscribes per `Db.SubscribeKind`, applies change events on the FX thread,
+    and only mutates during internal ops (keyed by `Uuid`). The concrete entities are
+    `model/{Account,Currency,Transaction}Observable`. `CheckableDatabaseProperty<T>` is a single value
+    stored through `propertyDao`, validated on set and reloaded when the session changes.
+
+  - `util/fx/` - reusable form/table plumbing. `FormDriver` is a state machine
+    (`EMPTY`/`VIEW`/`EDIT`/`NEW`) over validatorfx-checked fields: OK validates, shows error/warning
+    alerts, then either `builder.saveAndUpdate(session)` or (conflict-resolution mode) hands the built
+    `ActualVersionContent` to a `contentSink`; `editItem` / `showReadOnly` cover the history form.
+    `MasterDetailFormDriver` ties a table `SelectionModel` + a "new" button to a `FormDriver`, reverting
+    the selection when the form refuses to leave edit state. Also `ValidatorHelper`, `runAndShowError`,
+    `WeakListeners`. FXML lives in `src/main/resources/fxml/`.
+
+  - Runtime files land next to the working dir: `./budget.sqlite`, `./settings.json`, `logs/`
+    (logback).
 
 ### Working with the domain
 
