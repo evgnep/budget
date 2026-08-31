@@ -2,10 +2,10 @@ package su.nepom.budget.db.sqlite.impl
 
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.ktorm.dsl.associate
-import org.ktorm.dsl.count
 import org.ktorm.dsl.eq
 import org.ktorm.dsl.groupBy
 import org.ktorm.dsl.select
+import org.ktorm.dsl.sum
 import org.ktorm.dsl.where
 import org.ktorm.entity.add
 import org.ktorm.entity.associate
@@ -34,7 +34,7 @@ internal class AccountRestCache(db: SqliteDatabase) :
     private fun checkRests(db: SqliteDatabase) {
         val correct = db.database.useTransaction {
             val realRests = db.from(TransactionItems)
-                .select(TransactionItems.accountUuid, count())
+                .select(TransactionItems.accountUuid, sum(TransactionItems.money))
                 .where { TransactionItems.transactionDeleted eq false }
                 .groupBy(TransactionItems.accountUuid)
                 .associate { AccountId(Uuid(it[TransactionItems.accountUuid]!!)) to RawMoney(it.getLong(2)) }
