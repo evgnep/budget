@@ -48,3 +48,4 @@ test-junit5 = ["test-junit5", "test-junit5-platform", "test-assertj", "test-json
 moduleplugin = { id = "org.javamodularity.moduleplugin", version = "1.8.12" }
 javafxplugin = { id = "org.openjfx.javafxplugin", version = "0.0.13" }
 jlink = { id = "org.beryx.jlink", version = "3.1.1" }
+runtime = { id = "org.beryx.runtime", version = "1.13.1" }
