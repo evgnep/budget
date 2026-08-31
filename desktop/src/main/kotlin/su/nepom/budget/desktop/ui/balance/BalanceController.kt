@@ -25,7 +25,7 @@ import su.nepom.budget.desktop.model.CurrencyObservable
 import su.nepom.budget.desktop.service.AccountService
 import su.nepom.budget.desktop.service.CurrencyService
 import su.nepom.budget.desktop.service.DbService
-import su.nepom.budget.desktop.util.format
+import su.nepom.budget.utils.format
 import su.nepom.budget.desktop.util.fx.Controller
 import su.nepom.budget.desktop.util.fx.Disposable
 import su.nepom.budget.desktop.util.fx.WeakListeners

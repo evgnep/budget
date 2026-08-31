@@ -12,6 +12,7 @@ dependencies {
     implementation(libs.logging.kotlin)
 
     testImplementation("org.jetbrains.kotlin:kotlin-test")
+    testImplementation(libs.bundles.test.junit5)
 }
 
 tasks.test {

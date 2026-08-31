@@ -32,8 +32,8 @@ import su.nepom.budget.desktop.util.fx.MasterDetailFormDriver
 import su.nepom.budget.desktop.util.fx.StageAwareController
 import su.nepom.budget.desktop.util.fx.WeakListeners
 import su.nepom.budget.desktop.util.fx.runAndShowError
-import su.nepom.budget.desktop.util.format
 import su.nepom.budget.desktop.util.formatDateTime
+import su.nepom.budget.utils.format
 import su.nepom.budget.desktop.util.toEndOfDayInstant
 import su.nepom.budget.desktop.util.toStartOfDayInstant
 import su.nepom.budget.desktop.ui.history.History

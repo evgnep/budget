@@ -33,9 +33,6 @@ option list lives in `desktop/build.gradle.kts`; re-check it with `gradle :deskt
 
 ### Not part of the build
 
-- `utils/` - has a `build.gradle.kts` but is **not** in `settings.gradle.kts`; ignore it.
-- `demo/` - a separate standalone Gradle project (`leetcode.demo`, a JavaFX hello-world scratchpad),
-  unrelated to budget.
 - `budget.sqlite`, `logs/`, `_data/`, `db-sqlite/test-db.sqlite` - local runtime artifacts, not sources.
 
 ## Architecture

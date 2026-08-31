@@ -34,11 +34,13 @@ import su.nepom.budget.desktop.util.fx.Controller
 import su.nepom.budget.desktop.util.fx.FormDriver
 import su.nepom.budget.desktop.util.fx.FormState
 import su.nepom.budget.desktop.util.fx.runAndShowError
-import su.nepom.budget.desktop.util.format
 import su.nepom.budget.desktop.util.formatDateTime
-import su.nepom.budget.desktop.util.toBigDecimal
 import su.nepom.budget.desktop.util.toLocalDate
-import su.nepom.budget.desktop.util.toRawMoneyOrNull
+import su.nepom.budget.utils.evalMoneyFormula
+import su.nepom.budget.utils.format
+import su.nepom.budget.utils.toBigDecimal
+import su.nepom.budget.utils.toRawMoney
+import su.nepom.budget.utils.toRawMoneyOrNull
 import su.nepom.budget.event.AccountContent
 import su.nepom.budget.event.TransactionContent
 import su.nepom.budget.event.TransactionContentItem
@@ -332,6 +334,12 @@ class TransactionDetailController @Inject constructor(
         }
         itemAmountColumn.setCellValueFactory { it.value.amount }
         itemAmountColumn.cellFactory = TextFieldTableCell.forTableColumn()
+        // evaluate an arithmetic formula in the cell and store the rounded result
+        itemAmountColumn.setOnEditCommit { e ->
+            val row = e.rowValue ?: return@setOnEditCommit
+            row.amount.set(evaluateAmountFormula(e.newValue.orEmpty(), digitsOf(row.account.get())))
+            syncItemsFromRows()
+        }
         itemBalanceColumn.setCellValueFactory {
             val acc = it.value.account.get()
             SimpleStringProperty(
@@ -387,6 +395,12 @@ class TransactionDetailController @Inject constructor(
             incomeAmountField, expenseAmountField, transferAmountField,
             exchangeAmount1Field, exchangeAmount2Field,
         ).forEach { it.textProperty().addListener { _, _, _ -> onTabFieldChanged() } }
+
+        installFormulaEvaluation(incomeAmountField) { digitsOf(incomeMoney.value) }
+        installFormulaEvaluation(expenseAmountField) { digitsOf(expenseMoney.value) }
+        installFormulaEvaluation(transferAmountField) { digitsOf(transferFrom.value) }
+        installFormulaEvaluation(exchangeAmount1Field) { digitsOf(exchangeMoney1.value) }
+        installFormulaEvaluation(exchangeAmount2Field) { digitsOf(exchangeMoney2.value) }
 
         operationTabProperty.addListener { _, _, tab ->
             tab ?: return@addListener
@@ -874,6 +888,24 @@ class TransactionDetailController @Inject constructor(
         }
         balanceLabel.text = text
         balanceLabel.textFill = if (allBalanced) Color.GREEN else Color.RED
+    }
+
+    // on focus loss, replace the field text with the evaluated formula result
+    private fun installFormulaEvaluation(field: TextField, digits: () -> Int) {
+        field.focusedProperty().addListener { _, wasFocused, focused ->
+            if (wasFocused && !focused && field.isEditable) {
+                val evaluated = evaluateAmountFormula(field.text.orEmpty(), digits())
+                if (evaluated != field.text) field.text = evaluated
+            }
+        }
+    }
+
+    // returns the formula result rounded to the currency scale, or the original text if it is empty
+    // or not a valid formula
+    private fun evaluateAmountFormula(text: String, digits: Int): String {
+        if (text.isBlank()) return text
+        val value = evalMoneyFormula(text) ?: return text
+        return runCatching { value.toRawMoney(digits).format(digits) }.getOrDefault(text)
     }
 
     private fun digitsOf(account: AccountObservable?): Int =
