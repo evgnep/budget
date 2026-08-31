@@ -6,14 +6,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Multi-module Gradle project (Kotlin DSL). 
 
-- Java `z:\jdk\jdk-21.0.2`
-- Build everything: `gradlew build`
-- Run all tests: `gradlew test`
-- Test one module: `gradlew :db-sqlite:test`
-- Run one test class: `gradlew :events:test --tests "su.nepom.budget.events.synchronizer.EventSynchronizerTest"`
-- Run one test method: `gradlew :db-sqlite:test --tests "*SqliteAccountsDaoTest.some test name"`
-- Run the desktop app: `gradlew :desktop:run`
-- Run the Access importer: `gradlew :access-ingester:run` (reads `access-ingester/src/main/resources/application.yml`)
+- Java `z:\jdk\jdk-21.0.2`, add `JAVA_HOME='...'` to every gradle command below 
+- Build everything: `./gradlew gradlew build`
+- Run all tests: `./gradlew test`
+- Test one module: `./gradlew :db-sqlite:test`
+- Run one test class: `./gradlew :events:test --tests "su.nepom.budget.events.synchronizer.EventSynchronizerTest"`
+- Run one test method: `./gradlew :db-sqlite:test --tests "*SqliteAccountsDaoTest.some test name"`
+- Run the desktop app: `./gradlew :desktop:run`
+- Run the Access importer: `./gradlew :access-ingester:run` (reads `access-ingester/src/main/resources/application.yml`)
 
 All modules use JUnit 5 (`useJUnitPlatform()`) and JVM toolchain / JavaFX version `21` (see
 `gradle/libs.versions.toml`). Kotlin `2.4.0`. Base package for every module is `su.nepom.budget`

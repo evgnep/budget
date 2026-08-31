@@ -64,6 +64,16 @@ private constructor(
     var readOnly = false
         private set
 
+    // when false, existing items (VIEW state) are shown read-only; NEW items stay editable
+    var editingEnabled = true
+        private set
+
+    fun setEditingEnabled(enabled: Boolean) {
+        if (editingEnabled == enabled) return
+        editingEnabled = enabled
+        if (state == FormState.VIEW) setState(FormState.VIEW)
+    }
+
     // conflict-resolution mode: OK returns the built content through this sink instead of saving to
     // the DB; when set, cancelSink is used for the Cancel button and Cancel stays always enabled
     var contentSink: ((su.nepom.budget.event.ActualVersionContent) -> Unit)? = null
@@ -106,14 +116,19 @@ private constructor(
                 cancelButton.isDisable = true
                 fields.forEach {
                     it.setField(item)
-                    if (readOnly) it.field.applyReadOnly()
-                    else it.field.isDisable = it.disabledInEditMode || it.alwaysDisabled
+                    if (readOnly || !editingEnabled) {
+                        it.field.applyReadOnly()
+                    } else {
+                        it.field.applyEditable()
+                        it.field.isDisable = it.disabledInEditMode || it.alwaysDisabled
+                    }
                 }
             }
             FormState.EDIT -> {
                 okButton.isDisable = false
                 cancelButton.isDisable = false
                 fields.forEach {
+                    it.field.applyEditable()
                     it.field.isDisable = it.disabledInEditMode || it.alwaysDisabled
                 }
             }
@@ -123,6 +138,7 @@ private constructor(
                 item = null
                 fields.forEach {
                     it.setField(item)
+                    it.field.applyEditable()
                     it.field.isDisable = it.alwaysDisabled
                 }
                 validator.clear()
@@ -148,7 +164,7 @@ private constructor(
     }
 
     private fun onSomethingChanged() {
-        if ((state == FormState.VIEW) && !ignoreChanges && !readOnly) {
+        if ((state == FormState.VIEW) && !ignoreChanges && !readOnly && editingEnabled) {
             setState(FormState.EDIT)
         }
     }
@@ -331,5 +347,20 @@ private fun Node.applyReadOnly() {
             isFocusTraversable = false
         }
         else -> isDisable = true
+    }
+}
+
+// undo applyReadOnly so the field can be edited again
+private fun Node.applyEditable() {
+    when (this) {
+        is TextInputControl -> {
+            isEditable = true
+            isFocusTraversable = true
+        }
+        is ComboBoxBase<*>, is CheckBox -> {
+            isMouseTransparent = false
+            isFocusTraversable = true
+        }
+        else -> isDisable = false
     }
 }

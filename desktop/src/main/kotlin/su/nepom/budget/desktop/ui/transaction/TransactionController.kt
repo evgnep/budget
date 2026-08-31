@@ -8,6 +8,7 @@ import javafx.collections.FXCollections
 import javafx.event.ActionEvent
 import javafx.fxml.FXML
 import javafx.scene.control.Button
+import javafx.scene.control.CheckBox
 import javafx.scene.control.ComboBox
 import javafx.scene.control.DatePicker
 import javafx.scene.control.Label
@@ -124,6 +125,7 @@ class TransactionController @Inject constructor(
     @FXML private lateinit var resetFilterButton: Button
     @FXML private lateinit var applyFilterButton: Button
     @FXML private lateinit var historyButton: Button
+    @FXML private lateinit var allowEditCheckbox: CheckBox
     @FXML private lateinit var newButton: Button
 
     // pager
@@ -176,6 +178,11 @@ class TransactionController @Inject constructor(
             transactionDetailController.onMasterSelectionChanged(selected)
         }
         newButton.addEventHandler(ActionEvent.ACTION) { transactionDetailController.onNewStarted() }
+
+        allowEditCheckbox.selectedProperty().addListener { _, _, on ->
+            transactionDetailController.setEditingAllowed(on)
+        }
+        transactionDetailController.setEditingAllowed(allowEditCheckbox.isSelected)
 
         historyButton.disableProperty()
             .bind(transactionsTable.selectionModel.selectedItemProperty().isNull)

@@ -233,6 +233,11 @@ class TransactionDetailController @Inject constructor(
         this.stage = stage
     }
 
+    // when off, existing transactions open read-only; new transactions and copying stay available
+    fun setEditingAllowed(allowed: Boolean) {
+        formDriver.setEditingEnabled(allowed)
+    }
+
     fun onMasterSelectionChanged(selected: TransactionObservable?) {
         updateEventInfo(selected)
         // form state is set by MasterDetailFormDriver on the same selection event - defer so we read it settled

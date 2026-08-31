@@ -66,6 +66,7 @@
                   <Button fx:id="nextPageButton" mnemonicParsing="false" text="▶" />
                   <Region HBox.hgrow="ALWAYS" />
                   <Button fx:id="historyButton" mnemonicParsing="false" text="История" />
+                  <CheckBox fx:id="allowEditCheckbox" mnemonicParsing="false" selected="false" text="Разрешить редактирование" />
                   <Button fx:id="newButton" mnemonicParsing="false" style="-fx-font-weight: bold;" text="Создать" />
                </children>
             </HBox>
