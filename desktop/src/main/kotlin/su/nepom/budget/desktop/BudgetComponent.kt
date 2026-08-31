@@ -7,6 +7,7 @@ import javafx.stage.Stage
 import su.nepom.budget.desktop.service.DbService
 import su.nepom.budget.desktop.service.EventStoreService
 import su.nepom.budget.desktop.service.SettingsService
+import su.nepom.budget.desktop.service.WindowStateService
 import su.nepom.budget.desktop.ui.UiModule
 import su.nepom.budget.desktop.ui.account.AccountView
 import su.nepom.budget.desktop.ui.configuration.ConfigurationDialog
@@ -32,6 +33,8 @@ interface BudgetComponent {
     fun eventStoreService(): EventStoreService
 
     fun settingsService(): SettingsService
+
+    fun windowStateService(): WindowStateService
 
     fun currencyView(): CurrencyView
 

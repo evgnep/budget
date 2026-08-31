@@ -44,6 +44,7 @@ import kotlin.io.path.exists
 import kotlin.io.path.isDirectory
 import kotlin.io.path.isRegularFile
 import kotlin.io.path.listDirectoryEntries
+import kotlin.io.path.name
 import kotlin.io.path.walk
 import kotlin.time.Duration.Companion.minutes
 
@@ -320,6 +321,7 @@ private fun checkPath(path: String): CheckResult {
     if (!child.isDirectory()) {
       return CheckWarning("Неожиданный файл $child")
     }
+    if (child.name.startsWith(".")) return@forEach
     child.walk().take(10).forEach { eventFile ->
       if (!eventFile.isRegularFile() || !isValidFilename(eventFile.fileName.toString())) {
         return CheckWarning("Неожиданный файл $eventFile")

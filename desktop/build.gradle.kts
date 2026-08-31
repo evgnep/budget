@@ -29,6 +29,7 @@ dependencies {
     implementation(libs.fx.controls)
     implementation(libs.fx.validation)
     implementation(libs.kotlin.coroutines)
+    implementation(libs.kotlin.serialization.json)
     implementation(libs.logging.kotlin)
     implementation(libs.logging.logback)
 

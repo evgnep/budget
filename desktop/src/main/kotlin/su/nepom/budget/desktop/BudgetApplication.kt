@@ -38,6 +38,7 @@ class BudgetApplication : Application() {
         stage.scene = Scene(buildRoot())
         stage.width = 900.0
         stage.height = 640.0
+        budgetComponent.windowStateService().bind(stage, "main")
         // closing the main window quits the app, even if detached windows are still open
         stage.setOnHidden { Platform.exit() }
         stage.show()

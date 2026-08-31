@@ -9,6 +9,7 @@ import javafx.scene.control.MenuBar
 import javafx.scene.control.MenuItem
 import javafx.scene.layout.BorderPane
 import javafx.stage.Stage
+import su.nepom.budget.desktop.service.WindowStateService
 import su.nepom.budget.desktop.ui.history.HistoryController
 import su.nepom.budget.desktop.ui.transaction.TransactionController
 import su.nepom.budget.desktop.util.fx.Controller
@@ -25,13 +26,14 @@ import su.nepom.budget.model.Uuid
 @Singleton
 class WindowManager @Inject constructor(
     private val fxmlService: FxmlService,
+    private val windowStateService: WindowStateService,
 ) {
     private class OpenWindow(val stage: Stage, val titleBase: String)
 
     private val openWindows = mutableListOf<OpenWindow>()
 
     fun openTransactions(initialFilter: TransactionController.InitialFilter? = null) {
-        open("Операции") { stage, collect ->
+        open("Операции", "transactions") { stage, collect ->
             stage.setIcon("operations")
             val content = fxmlService.load<Parent>("transaction/transactions.fxml", stage, null) { controller ->
                 collect(controller)
@@ -53,7 +55,7 @@ class WindowManager @Inject constructor(
     }
 
     fun openBalances() {
-        open("Остатки и обороты") { stage, collect ->
+        open("Остатки и обороты", "balances") { stage, collect ->
             stage.setIcon("accounts")
             val content = fxmlService.load<Parent>("balance/balances.fxml", stage, null, collect)
             BorderPane().apply {
@@ -70,7 +72,7 @@ class WindowManager @Inject constructor(
     }
 
     fun openHistory(uuid: Uuid, kind: ObjectKind, title: String) {
-        open(title) { stage, collect ->
+        open(title, null) { stage, collect ->
             stage.setIcon("history")
             fxmlService.load("history/history.fxml", stage, null) { controller ->
                 collect(controller)
@@ -79,11 +81,16 @@ class WindowManager @Inject constructor(
         }
     }
 
-    private fun open(titleBase: String, buildRoot: (Stage, (Controller) -> Unit) -> Parent) {
+    private fun open(
+        titleBase: String,
+        stateKey: String?,
+        buildRoot: (Stage, (Controller) -> Unit) -> Parent,
+    ) {
         val disposables = mutableListOf<Disposable>()
         val stage = Stage()
         stage.title = nextTitle(titleBase)
         stage.scene = Scene(buildRoot(stage) { if (it is Disposable) disposables += it })
+        if (stateKey != null) windowStateService.bind(stage, stateKey)
         val window = OpenWindow(stage, titleBase)
         openWindows += window
         stage.setOnHidden {
