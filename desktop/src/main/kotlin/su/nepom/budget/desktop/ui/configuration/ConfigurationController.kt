@@ -66,9 +66,6 @@ class ConfigurationController @Inject constructor(
     @FXML
     private lateinit var dataDbOKPane: Pane
 
-    @FXML
-    private lateinit var unsavedEvents: TextField
-
     private lateinit var dialog: ConfigurationDialog
 
     private val validator = Validator()
@@ -129,6 +126,7 @@ class ConfigurationController @Inject constructor(
         }
     }
 
+
     override fun initialize(location: URL?, resources: ResourceBundle?) {
         recalcDbStatus()
         setInitialValues()
@@ -138,7 +136,6 @@ class ConfigurationController @Inject constructor(
     private fun setInitialValues() {
         dataDbPathTextField.text = dbService.dbPath.toString()
         eventsPathTextField.text = eventStoreService.eventStoreFolder.value
-        unsavedEvents.textProperty().bind(eventStoreService.savingGap.asString())
     }
 
     private fun setupValidator() {
@@ -178,10 +175,5 @@ class ConfigurationController @Inject constructor(
         okButton.isDisable = error
 
         dbService.session?.let { "Всего транзакций: " + it.transactionDao.count() }?.also { dataDbStatLabel.text = it }
-    }
-
-    @FXML
-    private fun saveEvents(actionEvent: ActionEvent) {
-        eventStoreService.saveNow()
     }
 }

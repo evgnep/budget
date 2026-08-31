@@ -85,7 +85,7 @@ internal class SqliteSession(
     override val eventDao get() = eventDaoHolder
     override val propertyDao: PropertyDao get() = propertiesDaoHolder
 
-    override fun commit() {
+    override fun commit(closeTransaction: Boolean) {
         beforeAnyOperation()
         if (!db.isSessionOwnsWriteTransaction(this)) {
             logger.info { "Zero commit - transaction wasn't started" }

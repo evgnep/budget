@@ -43,7 +43,7 @@ class BudgetApplication : Application() {
         stage.show()
 
         budgetComponent.configurationDialog().showOnStartIfNeed()
-        showAccounts()
+        showSync()
     }
 
     override fun stop() {
@@ -54,7 +54,15 @@ class BudgetApplication : Application() {
         val nav = ToggleGroup()
         val accountsButton = navButton("Счета", nav) { showAccounts() }
         val currenciesButton = navButton("Валюты", nav) { showCurrencies() }
-        accountsButton.isSelected = true
+        val syncButton = navButton("Синхронизация", nav) { showSync() }
+        syncButton.isSelected = true
+
+        val eventStoreService = budgetComponent.eventStoreService()
+        fun refreshSyncBold() {
+            syncButton.style = if (eventStoreService.hasEventsToSync.get()) "-fx-font-weight: bold;" else ""
+        }
+        eventStoreService.hasEventsToSync.addListener { _, _, _ -> Platform.runLater(::refreshSyncBold) }
+        refreshSyncBold()
 
         val transactionsButton = Button("Операции").apply {
             maxWidth = Double.MAX_VALUE
@@ -69,7 +77,9 @@ class BudgetApplication : Application() {
         rootPane = BorderPane().apply {
             top = buildMenuBar()
             left = ToolBar(
-                transactionsButton, balancesButton, Separator(), accountsButton, currenciesButton, Separator(),
+                transactionsButton, balancesButton, Separator(),
+                syncButton, Separator(),
+                accountsButton, currenciesButton, Separator(),
             ).apply {
                 orientation = Orientation.VERTICAL
             }
@@ -109,6 +119,8 @@ class BudgetApplication : Application() {
     private fun showAccounts() = setContent(budgetComponent.accountView().root)
 
     private fun showCurrencies() = setContent(budgetComponent.currencyView().root)
+
+    private fun showSync() = setContent(budgetComponent.syncView().root)
 
     private fun setContent(node: Node) {
         rootPane.center = node

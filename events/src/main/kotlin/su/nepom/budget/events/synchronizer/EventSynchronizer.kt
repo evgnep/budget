@@ -39,7 +39,7 @@ class EventSynchronizer(
                 } catch (e: Exception) {
                     coroDbOp { rollback() }
                     logger.error(e) { "Error while synchronizing events" }
-                    result.error = e.message
+                    if (result.error == null) result.error = e.message
                 }
             }
         }
@@ -47,7 +47,7 @@ class EventSynchronizer(
     }
 
     private suspend fun Session.doIt(result: EventSynchronizeResult) {
-        val from = coroDbOp { eventDao.getLastEventCoords() }
+        val from = coroDbOp { eventDao.getLastEventCoords() }.mapValues { (_, v) -> v + 1 }
         val storage = createEventStorage(from) ?: return
         result.readingErrors.addAll(storage.loadEvents(reader, from))
         OBJECT_KINDS_IN_PROCESSED_ORDER.forEach { kind ->

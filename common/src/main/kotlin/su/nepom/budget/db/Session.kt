@@ -22,7 +22,7 @@ interface Session: AutoCloseable {
 
     val propertyDao: PropertyDao
 
-    fun commit()
+    fun commit(closeTransaction: Boolean = true)
 
     fun rollback()
 

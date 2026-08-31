@@ -112,18 +112,18 @@ internal class SqliteDatabase(pathToDb: Path): FlywayShouldRunFirst(pathToDb), D
 
     fun isSessionOwnsWriteTransaction(session: SqliteSession): Boolean = sessionWithWriteTransaction === session
 
-    fun finishTransaction(session: SqliteSession, commit: Boolean) {
+    fun finishTransaction(session: SqliteSession, commit: Boolean, closeTransaction: Boolean = true) {
         if (!isSessionOwnsWriteTransaction(session)) {
             throw IllegalStateException("Session does not own active transaction")
         }
         catalogCaches.values.forEach { if (commit) it.onTransactionCommit() else it.onTransactionRollback() }
         database.transactionManager.currentTransaction?.run {
             if (commit) commit() else rollback()
-            close()
+            if (!commit || closeTransaction) close()
         }
         if (commit) eventProcessor.onTransactionFinished()
         if (commit) eventsNotifier.onTransactionCommit() else eventsNotifier.onTransactionRollback()
-        sessionWithWriteTransaction = null
+        if (!commit || closeTransaction) sessionWithWriteTransaction = null
     }
 
     fun onSessionClosed(session: Session) {

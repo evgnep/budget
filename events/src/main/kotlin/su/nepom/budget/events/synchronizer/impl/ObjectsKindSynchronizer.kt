@@ -1,5 +1,6 @@
 package su.nepom.budget.events.synchronizer.impl
 
+import io.github.oshai.kotlinlogging.KotlinLogging.logger
 import su.nepom.budget.Global
 import su.nepom.budget.db.Session
 import su.nepom.budget.event.ActualEvent
