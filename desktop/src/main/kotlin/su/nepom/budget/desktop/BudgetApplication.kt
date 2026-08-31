@@ -46,6 +46,10 @@ class BudgetApplication : Application() {
         showAccounts()
     }
 
+    override fun stop() {
+        budgetComponent.eventStoreService().onStop()
+    }
+
     private fun buildRoot(): BorderPane {
         val nav = ToggleGroup()
         val accountsButton = navButton("Счета", nav) { showAccounts() }
