@@ -59,6 +59,12 @@ fun nextResetDate(today: LocalDate, replenishDay: Int): LocalDate {
     else thisMonth.plus(1, DateTimeUnit.MONTH)
 }
 
+/**
+ * The spending norm ("остаток на день" target) for [day], or null when none is set.
+ */
+fun dailyAllowanceOn(day: LocalDate, budget: AccountBudget): RawMoney? =
+    dailyAllowanceFor(day, budget.dailyAllowances)
+
 private fun dailyAllowanceFor(day: LocalDate, allowances: List<DailyAllowance>): RawMoney? {
     val matching = allowances.filter {
         (it.from == null || day >= it.from) && (it.to == null || day <= it.to)

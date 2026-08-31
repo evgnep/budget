@@ -3,13 +3,15 @@ package su.nepom.budget.desktop.ui.main
 import jakarta.inject.Inject
 import javafx.animation.PauseTransition
 import javafx.application.Platform
-import javafx.beans.property.SimpleStringProperty
-import javafx.collections.FXCollections
+import javafx.collections.ListChangeListener
 import javafx.fxml.FXML
 import javafx.fxml.Initializable
-import javafx.scene.control.TableColumn
-import javafx.scene.control.TableView
+import javafx.scene.Cursor
+import javafx.scene.control.Label
+import javafx.scene.control.ProgressBar
 import javafx.scene.input.MouseButton
+import javafx.scene.layout.FlowPane
+import javafx.scene.layout.VBox
 import javafx.util.Duration
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.plus
@@ -30,6 +32,7 @@ import su.nepom.budget.model.AccountKind
 import su.nepom.budget.model.RawMoney
 import su.nepom.budget.utils.ReservedAmount
 import su.nepom.budget.utils.calculateDailyBalance
+import su.nepom.budget.utils.dailyAllowanceOn
 import su.nepom.budget.utils.format
 import java.net.URL
 import java.time.LocalDate
@@ -43,29 +46,16 @@ class MainAccountsController @Inject constructor(
     private val windowManager: WindowManager,
 ) : Controller, Initializable {
 
-    private class Row(
-        val account: AccountId,
-        val name: String,
-        val kind: String,
-        val currency: String,
-        val rest: String,
-        val dailyBalance: String,
-    )
-
     private val weakListeners = WeakListeners()
-    private val rows = FXCollections.observableArrayList<Row>()
-
     private val refreshPause = PauseTransition(Duration.millis(200.0)).apply { setOnFinished { reload() } }
 
-    @FXML private lateinit var accountsTable: TableView<Row>
-    @FXML private lateinit var nameColumn: TableColumn<Row, String>
-    @FXML private lateinit var kindColumn: TableColumn<Row, String>
-    @FXML private lateinit var currencyColumn: TableColumn<Row, String>
-    @FXML private lateinit var restColumn: TableColumn<Row, String>
-    @FXML private lateinit var dailyBalanceColumn: TableColumn<Row, String>
+    @FXML private lateinit var totalsPane: FlowPane
+    @FXML private lateinit var cardsPane: FlowPane
+    @FXML private lateinit var emptyLabel: Label
 
     override fun initialize(location: URL?, resources: ResourceBundle?) {
-        setupTable()
+        emptyLabel.isManaged = false
+        emptyLabel.isVisible = false
 
         weakListeners.addListenerAndCallNow(dbService.sessionProperty) { _, _, session ->
             if (session != null) {
@@ -75,38 +65,21 @@ class MainAccountsController @Inject constructor(
             }
             reload()
         }
-        accountService.accounts.addListener(javafx.collections.ListChangeListener { refreshPause.playFromStart() })
-    }
-
-    private fun setupTable() {
-        accountsTable.items = rows
-        listOf(nameColumn, kindColumn, currencyColumn, restColumn, dailyBalanceColumn).forEach { it.isSortable = false }
-        nameColumn.setCellValueFactory { SimpleStringProperty(it.value.name) }
-        kindColumn.setCellValueFactory { SimpleStringProperty(it.value.kind) }
-        currencyColumn.setCellValueFactory { SimpleStringProperty(it.value.currency) }
-        restColumn.setCellValueFactory { SimpleStringProperty(it.value.rest) }
-        dailyBalanceColumn.setCellValueFactory { SimpleStringProperty(it.value.dailyBalance) }
-
-        accountsTable.setOnMouseClicked { event ->
-            if (event.button == MouseButton.PRIMARY && event.clickCount == 2) {
-                accountsTable.selectionModel.selectedItem?.let(::openTransactionsFor)
-            }
-        }
-    }
-
-    private fun openTransactionsFor(row: Row) {
-        windowManager.openTransactions(TransactionController.InitialFilter(setOf(row.account), null, null))
+        accountService.accounts.addListener(ListChangeListener { refreshPause.playFromStart() })
     }
 
     private fun reload() {
         val session = dbService.session
-        rows.clear()
-        if (session == null) return
+        cardsPane.children.clear()
+        totalsPane.children.clear()
 
-        val accounts = accountService.accounts
+        val accounts = if (session == null) emptyList()
+        else accountService.accounts
             .filter { it.content.showOnMain && !it.content.hidden }
             .sortedBy { it.content.name.lowercase() }
-        if (accounts.isEmpty()) return
+
+        showEmpty(accounts.isEmpty())
+        if (session == null || accounts.isEmpty()) return
 
         val ids = accounts.mapTo(mutableSetOf()) { it.content.id }
         val restById = runAndShowError {
@@ -121,33 +94,111 @@ class MainAccountsController @Inject constructor(
             session.transactionDao.sumReservedByAccount(budgetIds, today)
         }.getOrDefault(emptyMap())
 
-        rows.setAll(accounts.map { account ->
+        accounts.forEach { account ->
             val id = account.content.id
             val currency = currencyService.currencies[account.content.currency.uuid]
             val rest = restById[id] ?: RawMoney.ZERO
-            Row(
-                account = id,
-                name = account.content.name,
-                kind = kindText(account.content.kind),
-                currency = currency?.content?.name ?: "-",
-                rest = formatMoney(rest, currency),
-                dailyBalance = dailyBalanceText(account, rest, reservedSums[id], today, currency),
-            )
-        })
+            val daily = if (account.content.kind == AccountKind.BUDGET)
+                dailyBalanceOf(account, rest, reservedSums[id], today) else null
+            val norm = if (account.content.kind == AccountKind.BUDGET)
+                dailyAllowanceOn(today, account.content.budget) else null
+            cardsPane.children.add(buildCard(account, rest, currency, daily, norm))
+        }
+
+        buildTotals(accounts, restById)
     }
 
-    private fun dailyBalanceText(
+    private fun buildTotals(accounts: List<AccountObservable>, restById: Map<AccountId, RawMoney>) {
+        accounts.groupBy { it.content.currency.uuid }
+            .map { (uuid, group) ->
+                val currency = currencyService.currencies[uuid]
+                val sum = RawMoney(group.sumOf { (restById[it.content.id] ?: RawMoney.ZERO).value })
+                (currency?.content?.name ?: "-") to formatMoney(sum, currency)
+            }
+            .sortedBy { it.first.lowercase() }
+            .forEach { (name, sum) ->
+                totalsPane.children.add(Label("$name:  $sum").apply {
+                    style = "-fx-font-weight: bold; -fx-font-size: 24px;"
+                })
+            }
+    }
+
+    private fun buildCard(
+        account: AccountObservable,
+        rest: RawMoney,
+        currency: CurrencyObservable?,
+        daily: RawMoney?,
+        norm: RawMoney?,
+    ): VBox {
+        val name = Label(account.content.name).apply { style = "-fx-font-weight: bold; -fx-font-size: 26px;" }
+        val balance = Label(formatMoney(rest, currency)).apply {
+            style = "-fx-font-size: 38px;" + if (rest.value < 0) " -fx-text-fill: #c62828;" else ""
+        }
+        val sub = Label("${kindText(account.content.kind)} · ${currency?.content?.name ?: "-"}").apply {
+            style = "-fx-text-fill: #757575; -fx-font-size: 20px;"
+        }
+
+        val card = VBox(8.0, name, balance, sub)
+        card.minWidth = 380.0
+        card.prefWidth = 380.0
+        card.cursor = Cursor.HAND
+        applyCardStyle(card, false)
+        card.setOnMouseEntered { applyCardStyle(card, true) }
+        card.setOnMouseExited { applyCardStyle(card, false) }
+        card.setOnMouseClicked { event ->
+            if (event.button == MouseButton.PRIMARY && event.clickCount == 1) openTransactionsFor(account.content.id)
+        }
+
+        if (daily != null) {
+            card.children.add(Label("на день:  ${formatMoney(daily, currency)}").apply {
+                style = "-fx-font-size: 22px;" + if (daily.value < 0) " -fx-text-fill: #c62828;" else ""
+            })
+            if (norm != null && norm.value > 0) {
+                val ratio = daily.value.toDouble() / norm.value.toDouble()
+                card.children.add(ProgressBar(ratio.coerceIn(0.0, 1.0)).apply {
+                    maxWidth = Double.MAX_VALUE
+                    minHeight = 16.0
+                    style = "-fx-accent: ${progressColor(ratio)};"
+                })
+            }
+        }
+        return card
+    }
+
+    private fun applyCardStyle(card: VBox, hover: Boolean) {
+        val border = if (hover) "-fx-accent" else "-fx-box-border"
+        card.style = """
+            -fx-background-color: -fx-control-inner-background;
+            -fx-border-color: $border;
+            -fx-border-radius: 8; -fx-background-radius: 8;
+            -fx-padding: 18;
+        """.trimIndent()
+    }
+
+    private fun progressColor(ratio: Double): String = when {
+        ratio >= 1.0 -> "#2e7d32"
+        ratio >= 0.0 -> "#ef6c00"
+        else -> "#c62828"
+    }
+
+    private fun dailyBalanceOf(
         account: AccountObservable,
         rest: RawMoney,
         reserved: RawMoney?,
         today: kotlinx.datetime.LocalDate,
-        currency: CurrencyObservable?,
-    ): String {
-        if (account.content.kind != AccountKind.BUDGET) return ""
+    ): RawMoney? {
         val reservedItems = if (reserved != null && reserved.value != 0L)
             listOf(ReservedAmount(reserved, today.plus(1, DateTimeUnit.DAY))) else emptyList()
         return calculateDailyBalance(rest, today, account.content.budget, reservedItems)
-            ?.let { formatMoney(it, currency) } ?: ""
+    }
+
+    private fun openTransactionsFor(id: AccountId) {
+        windowManager.openTransactions(TransactionController.InitialFilter(setOf(id), null, null))
+    }
+
+    private fun showEmpty(empty: Boolean) {
+        emptyLabel.isManaged = empty
+        emptyLabel.isVisible = empty
     }
 
     private fun formatMoney(raw: RawMoney, currency: CurrencyObservable?): String =
