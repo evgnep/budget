@@ -12,6 +12,7 @@ import su.nepom.budget.desktop.ui.UiModule
 import su.nepom.budget.desktop.ui.account.AccountView
 import su.nepom.budget.desktop.ui.configuration.ConfigurationDialog
 import su.nepom.budget.desktop.ui.currency.CurrencyView
+import su.nepom.budget.desktop.ui.main.MainAccountsView
 import su.nepom.budget.desktop.ui.sync.SyncView
 import su.nepom.budget.desktop.ui.WindowManager
 import su.nepom.budget.desktop.util.UtilModule
@@ -39,6 +40,8 @@ interface BudgetComponent {
     fun currencyView(): CurrencyView
 
     fun accountView(): AccountView
+
+    fun mainAccountsView(): MainAccountsView
 
     fun syncView(): SyncView
 

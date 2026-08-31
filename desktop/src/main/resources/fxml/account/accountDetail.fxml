@@ -43,7 +43,12 @@
       <ComboBox fx:id="currencyComboBox" maxWidth="1.7976931348623157E308" GridPane.columnIndex="1" GridPane.rowIndex="3" />
       <Label text="Тип" GridPane.rowIndex="4" />
       <ComboBox fx:id="kindComboBox" maxWidth="1.7976931348623157E308" GridPane.columnIndex="1" GridPane.rowIndex="4" />
-      <CheckBox fx:id="hiddenCheckbox" mnemonicParsing="false" text="Скрытый" GridPane.columnIndex="1" GridPane.rowIndex="5" />
+      <HBox spacing="15.0" GridPane.columnIndex="1" GridPane.rowIndex="5">
+         <children>
+            <CheckBox fx:id="hiddenCheckbox" mnemonicParsing="false" text="Скрытый" />
+            <CheckBox fx:id="showOnMainCheckbox" mnemonicParsing="false" text="Отображать на главной" />
+         </children>
+      </HBox>
       <Label text="Теги" GridPane.rowIndex="6" GridPane.valignment="TOP" />
       <VBox fx:id="tagsEditorBox" spacing="5.0" GridPane.columnIndex="1" GridPane.rowIndex="6">
          <children>

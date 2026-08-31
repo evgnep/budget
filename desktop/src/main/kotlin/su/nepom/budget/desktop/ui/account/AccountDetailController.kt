@@ -78,6 +78,9 @@ class AccountDetailController @Inject constructor(
     private lateinit var hiddenCheckbox: CheckBox
 
     @FXML
+    private lateinit var showOnMainCheckbox: CheckBox
+
+    @FXML
     private lateinit var tagsEditorBox: VBox
 
     @FXML
@@ -220,6 +223,12 @@ class AccountDetailController @Inject constructor(
                 hiddenCheckbox.selectedProperty(),
                 { it?.content?.hidden ?: false },
                 { hidden = it })
+            .field(
+                "showOnMain",
+                showOnMainCheckbox,
+                showOnMainCheckbox.selectedProperty(),
+                { it?.content?.showOnMain ?: false },
+                { showOnMain = it })
             .field(
                 "tags",
                 tagsEditorBox,

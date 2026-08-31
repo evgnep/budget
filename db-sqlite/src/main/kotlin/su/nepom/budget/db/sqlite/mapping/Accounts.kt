@@ -31,6 +31,7 @@ internal object Accounts : Table<AccountEntity>("account") {
     val orderNo = int("order_no").bindTo { it.orderNo }
     val hidden = boolean("hidden").bindTo { it.hidden }
     val budget = varchar("budget").bindTo { it.budget }
+    val showOnMain = boolean("show_on_main").bindTo { it.showOnMain }
 }
 
 internal interface AccountEntity : Entity<AccountEntity> {
@@ -43,6 +44,7 @@ internal interface AccountEntity : Entity<AccountEntity> {
     var orderNo: Int
     var hidden: Boolean
     var budget: String
+    var showOnMain: Boolean
 
     companion object : Entity.Factory<AccountEntity>()
 
@@ -55,7 +57,8 @@ internal interface AccountEntity : Entity<AccountEntity> {
         tags.tagsFromDb(),
         orderNo,
         hidden,
-        Json.decodeFromString<AccountBudget>(budget)
+        Json.decodeFromString<AccountBudget>(budget),
+        showOnMain
     )
 }
 
@@ -70,6 +73,7 @@ internal fun AccountContent.toEntity() = AccountEntity {
     orderNo = s.orderNo
     hidden = s.hidden
     budget = Json.encodeToString(s.budget)
+    showOnMain = s.showOnMain
 }
 
 internal val Database.accounts get() = this.sequenceOf(Accounts)

@@ -20,6 +20,7 @@ data class AccountContentV1(
     val orderNo: Int,
     val hidden: Boolean = false,
     val budget: AccountBudget = AccountBudget.EMPTY,
+    val showOnMain: Boolean = false,
 ): StorableContent, ActualVersionContent {
     override val objectKind: ObjectKind get() = ObjectKind.ACCOUNT
 }
