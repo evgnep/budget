@@ -29,13 +29,17 @@ class CurrencyObservable(
         arrayOf(uuidObservable, name, digitsAfterPoint, officialCode, hidden)
 
     class Builder(source: CurrencyObservable) : ObservableEntityBuilder<CurrencyObservable> {
+        private val id = source.content.id
         var name: String = source.content.name
         var digitsAfterPoint: Int = source.content.digitsAfterPoint
         var officialCode: String = source.content.officialCode
         var hidden: Boolean = source.content.hidden
 
+        override fun buildContent() =
+            CurrencyContent(id, name, digitsAfterPoint, officialCode, hidden)
+
         override fun saveAndUpdate(session: Session, target: CurrencyObservable) {
-            val content = CurrencyContent(target.content.id, name, digitsAfterPoint, officialCode, hidden)
+            val content = buildContent()
             session.currencyDao.save(content)
             target.contentProperty.set(content)
         }

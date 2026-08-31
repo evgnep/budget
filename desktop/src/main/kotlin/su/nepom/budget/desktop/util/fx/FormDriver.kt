@@ -64,6 +64,18 @@ private constructor(
     var readOnly = false
         private set
 
+    // conflict-resolution mode: OK returns the built content through this sink instead of saving to
+    // the DB; when set, cancelSink is used for the Cancel button and Cancel stays always enabled
+    var contentSink: ((su.nepom.budget.event.ActualVersionContent) -> Unit)? = null
+    var cancelSink: (() -> Unit)? = null
+
+    // show item's values with fields editable and OK active from the start (no DB session needed)
+    fun editItem(item: O) {
+        this.item = item
+        setState(FormState.VIEW)
+        setState(FormState.EDIT)
+    }
+
     // view-only mode for the history form: show the item, no editing possible
     fun showReadOnly(item: O?) {
         readOnly = true
@@ -116,6 +128,8 @@ private constructor(
                 validator.clear()
             }
         }
+        // conflict dialog always allows Cancel, whatever the form state
+        if (cancelSink != null) cancelButton.isDisable = false
         ignoreChanges = false
     }
 
@@ -142,7 +156,8 @@ private constructor(
     private fun okButtonClicked(): Boolean {
         if (state != FormState.EDIT && state != FormState.NEW) return true
         val session = session.value
-        if (session == null) {
+        val sink = contentSink
+        if (session == null && sink == null) {
             Alert(Alert.AlertType.ERROR, "Нет базы данных", ButtonType.OK)
                 .showAndWait()
             return false
@@ -167,12 +182,19 @@ private constructor(
         this.item = item
         val builder = factory.builder(item)
         fields.forEach { it.setValue(builder) }
-        runAndShowError { builder.saveAndUpdate(session, item) }.onFailure { return false }
+        if (sink != null) {
+            val content = runAndShowError { builder.buildContent() }.getOrElse { return false }
+            sink(content)
+            setState(FormState.VIEW)
+            return true
+        }
+        runAndShowError { builder.saveAndUpdate(session!!, item) }.onFailure { return false }
         setState(FormState.VIEW)
         return true
     }
 
     private fun cancelButtonClicked() {
+        cancelSink?.let { it(); return }
         setState(if (state == FormState.EDIT) FormState.VIEW else FormState.EMPTY)
     }
 

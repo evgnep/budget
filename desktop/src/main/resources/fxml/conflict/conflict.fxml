@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.SplitPane?>
+<?import javafx.scene.control.TabPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.VBox?>
+
+<SplitPane dividerPositions="0.5" prefHeight="600.0" prefWidth="1000.0" xmlns="http://javafx.com/javafx/23.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="su.nepom.budget.desktop.ui.conflict.ConflictController">
+   <items>
+      <VBox spacing="5.0">
+         <padding>
+            <Insets bottom="5.0" left="5.0" right="5.0" top="5.0" />
+         </padding>
+         <children>
+            <Label text="Конфликтующие версии" />
+            <TabPane fx:id="tabPane" tabClosingPolicy="UNAVAILABLE" />
+            <HBox spacing="10.0">
+               <children>
+                  <Label text="Автор:" />
+                  <Label fx:id="authorLabel" />
+                  <Label text="Время:" />
+                  <Label fx:id="timeLabel" />
+               </children>
+            </HBox>
+            <Button fx:id="useButton" mnemonicParsing="false" text="Использовать" />
+            <StackPane fx:id="leftDetailPane" VBox.vgrow="ALWAYS" />
+         </children>
+      </VBox>
+      <VBox spacing="5.0">
+         <padding>
+            <Insets bottom="5.0" left="5.0" right="5.0" top="5.0" />
+         </padding>
+         <children>
+            <Label text="Результат" />
+            <StackPane fx:id="rightDetailPane" VBox.vgrow="ALWAYS" />
+         </children>
+      </VBox>
+   </items>
+</SplitPane>

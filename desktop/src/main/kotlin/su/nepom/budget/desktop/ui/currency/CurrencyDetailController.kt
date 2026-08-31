@@ -98,4 +98,15 @@ class CurrencyDetailController @Inject constructor(
     fun showReadOnly(content: CurrencyContent) {
         formDriver.showReadOnly(CurrencyObservable(content))
     }
+
+    // edit a version inside the conflict-resolution dialog: OK returns the content, no DB write
+    fun editForConflict(
+        content: CurrencyContent,
+        onAccept: (CurrencyContent) -> Unit,
+        onCancel: () -> Unit,
+    ) {
+        formDriver.contentSink = { onAccept(it as CurrencyContent) }
+        formDriver.cancelSink = onCancel
+        formDriver.editItem(CurrencyObservable(content))
+    }
 }

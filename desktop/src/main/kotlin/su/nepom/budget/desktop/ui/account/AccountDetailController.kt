@@ -164,6 +164,18 @@ class AccountDetailController @Inject constructor(
         visibleCurrencies.setPredicate { showHidden || !it.content.hidden }
     }
 
+    // edit a version inside the conflict-resolution dialog: OK returns the content, no DB write
+    fun editForConflict(
+        content: AccountContent,
+        onAccept: (AccountContent) -> Unit,
+        onCancel: () -> Unit,
+    ) {
+        setShowHiddenCurrencies(true)
+        formDriver.contentSink = { onAccept(it as AccountContent) }
+        formDriver.cancelSink = onCancel
+        formDriver.editItem(AccountObservable(content, RawMoney.ZERO, currencyService.currencies))
+    }
+
     // show a past version of an account (from the history form), view only
     fun showReadOnly(content: AccountContent) {
         // make sure the account's currency is in the combo list even if it is hidden now

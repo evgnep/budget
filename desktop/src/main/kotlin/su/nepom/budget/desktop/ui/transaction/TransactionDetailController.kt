@@ -109,6 +109,9 @@ class TransactionDetailController @Inject constructor(
     private lateinit var stage: Stage
     private var viewOnly = false
 
+    // conflict-resolution dialog: edit in memory, no DB reads (a sync may hold the DB) and no DB write
+    private var conflictMode = false
+
     private val transactionFactory = TransactionObservable.Factory()
 
     private val itemRows = FXCollections.observableArrayList<ItemRow> { row ->
@@ -250,6 +253,20 @@ class TransactionDetailController @Inject constructor(
 
     // saved transaction may be outside the current page/filter - keep showing its event info
     fun showEventInfoForCurrentItem() = updateEventInfo(formDriver.item)
+
+    // edit a version inside the conflict-resolution dialog: OK returns the content, no DB write
+    fun editForConflict(
+        content: TransactionContent,
+        onAccept: (TransactionContent) -> Unit,
+        onCancel: () -> Unit,
+    ) {
+        conflictMode = true
+        formDriver.contentSink = { onAccept(it as TransactionContent) }
+        formDriver.cancelSink = onCancel
+        formDriver.editItem(TransactionObservable(content))
+        syncTabFieldsFrom(content.items)
+        applyTabChrome(operationTabProperty.value)
+    }
 
     // show a past version of a transaction (from the history form), view only
     fun showReadOnly(content: TransactionContent) {
@@ -629,7 +646,7 @@ class TransactionDetailController @Inject constructor(
     }
 
     private fun recomputeProjectedRests() {
-        if (!::formDriver.isInitialized) return
+        if (!::formDriver.isInitialized || conflictMode) return
         projectedRestByAccount.clear()
         val accounts = itemRows.mapNotNull { it.account.get() }
         val session = dbService.session
@@ -866,6 +883,7 @@ class TransactionDetailController @Inject constructor(
     }
 
     private fun updateEventInfo(tx: TransactionObservable?) {
+        if (conflictMode) return
         val session = dbService.session
         val event = if (tx != null && session != null)
             runAndShowError { session.eventDao.getLastEventForObject(tx.uuid, ObjectKind.TRANSACTION) }.getOrNull()

@@ -46,6 +46,7 @@ class AccountObservable(
     arrayOf(uuidObservable, name, description, currency, currencyName, kind, tags, orderNo, hidden, rest)
 
   class Builder(source: AccountObservable) : ObservableEntityBuilder<AccountObservable> {
+    private val id = source.content.id
     var name: String = source.content.name
     var description: String = source.content.description
     var currency: CurrencyId = source.content.currency
@@ -54,8 +55,11 @@ class AccountObservable(
     var orderNo: Int = source.content.orderNo
     var hidden: Boolean = source.content.hidden
 
+    override fun buildContent() =
+      AccountContent(id, name, description, currency, kind, tags, orderNo, hidden)
+
     override fun saveAndUpdate(session: Session, target: AccountObservable) {
-      val content = AccountContent(target.content.id, name, description, currency, kind, tags, orderNo, hidden)
+      val content = buildContent()
       session.accountDao.save(content)
       target.contentProperty.set(content)
     }

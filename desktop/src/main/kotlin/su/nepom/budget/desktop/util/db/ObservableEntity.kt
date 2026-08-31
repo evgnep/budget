@@ -4,6 +4,7 @@ import javafx.beans.Observable
 import javafx.beans.property.SimpleObjectProperty
 import javafx.beans.value.ObservableValue
 import su.nepom.budget.db.Session
+import su.nepom.budget.event.ActualVersionContent
 import su.nepom.budget.model.ContentHolder
 import su.nepom.budget.model.ObjectWithId
 import su.nepom.budget.model.Uuid
@@ -20,6 +21,9 @@ interface ObservableEntity<C : ObjectWithId> : ContentHolder<C> {
 
 interface ObservableEntityBuilder<T : ObservableEntity<*>> {
   fun saveAndUpdate(session: Session, target: T)
+
+  // build the content from the current field values without touching the DB
+  fun buildContent(): ActualVersionContent
 }
 
 interface ObservableEntityFactory<T : ObservableEntity<*>, B : ObservableEntityBuilder<T>> {

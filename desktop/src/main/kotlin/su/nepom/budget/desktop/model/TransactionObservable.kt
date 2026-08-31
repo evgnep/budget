@@ -33,6 +33,7 @@ class TransactionObservable(
         arrayOf(uuidObservable, date, description, flag, deleted, items)
 
     class Builder(source: TransactionObservable) : ObservableEntityBuilder<TransactionObservable> {
+        private val id = source.content.id
         // keep original instant so pure re-save does not drop time-of-day
         private val originalDate: Instant = source.content.date
         var date: LocalDate = originalDate.toLocalDate()
@@ -41,16 +42,20 @@ class TransactionObservable(
         var deleted: Boolean = source.content.deleted
         var items: List<TransactionContentItem> = source.content.items
 
-        override fun saveAndUpdate(session: Session, target: TransactionObservable) {
+        override fun buildContent(): TransactionContent {
             val dateInstant = if (date == originalDate.toLocalDate()) originalDate else date.toStartOfDayInstant()
-            val content = TransactionContent(
-                id = target.content.id,
+            return TransactionContent(
+                id = id,
                 date = dateInstant,
                 description = description,
                 items = items,
                 flag = flag,
                 deleted = deleted,
             )
+        }
+
+        override fun saveAndUpdate(session: Session, target: TransactionObservable) {
+            val content = buildContent()
             session.transactionDao.save(content)
             target.contentProperty.set(content)
         }

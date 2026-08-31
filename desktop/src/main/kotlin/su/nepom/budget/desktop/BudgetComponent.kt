@@ -10,6 +10,7 @@ import su.nepom.budget.desktop.service.SettingsService
 import su.nepom.budget.desktop.ui.UiModule
 import su.nepom.budget.desktop.ui.account.AccountView
 import su.nepom.budget.desktop.ui.configuration.ConfigurationDialog
+import su.nepom.budget.desktop.ui.conflict.DesktopConflictResolver
 import su.nepom.budget.desktop.ui.currency.CurrencyView
 import su.nepom.budget.desktop.ui.WindowManager
 import su.nepom.budget.desktop.util.UtilModule
@@ -37,6 +38,8 @@ interface BudgetComponent {
     fun accountView(): AccountView
 
     fun windowManager(): WindowManager
+
+    fun conflictResolver(): DesktopConflictResolver
 
     @Component.Builder
     interface Builder {
