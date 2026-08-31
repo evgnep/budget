@@ -33,7 +33,7 @@ class TransactionObservable(
         arrayOf(uuidObservable, date, description, flag, deleted, items)
 
     class Builder(source: TransactionObservable) : ObservableEntityBuilder<TransactionObservable> {
-        // TODO keep original instant so pure re-save does not drop time-of-day
+        // keep original instant so pure re-save does not drop time-of-day
         private val originalDate: Instant = source.content.date
         var date: LocalDate = originalDate.toLocalDate()
         var description: String = source.content.description

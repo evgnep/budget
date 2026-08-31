@@ -64,7 +64,7 @@ private constructor(
     var readOnly = false
         private set
 
-    // TODO view-only mode for the history form: show the item, no editing possible
+    // view-only mode for the history form: show the item, no editing possible
     fun showReadOnly(item: O?) {
         readOnly = true
         okButton.isVisible = false
@@ -295,7 +295,7 @@ enum class FormState {
     NEW,
 }
 
-// TODO make a field non-editable but still usable for text selection / copy (history form)
+// make a field non-editable but still usable for text selection / copy (history form)
 private fun Node.applyReadOnly() {
     when (this) {
         is TextInputControl -> {

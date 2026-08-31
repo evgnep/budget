@@ -23,7 +23,7 @@ class WeakListeners {
 
     private var db: Db? = null
 
-    // TODO detaches everything registered here; safe to call once when the owner window closes
+    // detaches everything registered here; safe to call once when the owner window closes
     fun dispose() {
         detachActions.forEach { it() }
         detachActions.clear()

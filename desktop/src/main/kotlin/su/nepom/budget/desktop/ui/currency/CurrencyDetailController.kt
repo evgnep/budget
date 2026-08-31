@@ -15,7 +15,6 @@ import su.nepom.budget.event.CurrencyContent
 import java.net.URL
 import java.util.*
 
-// TODO detail (edit) part of the currency form, split out so it can be reused in other forms
 @Suppress("unused")
 class CurrencyDetailController @Inject constructor(
     private val dbService: DbService,
@@ -95,7 +94,7 @@ class CurrencyDetailController @Inject constructor(
             .build()
     }
 
-    // TODO show a past version of a currency (from the history form), view only
+    // show a past version of a currency (from the history form), view only
     fun showReadOnly(content: CurrencyContent) {
         formDriver.showReadOnly(CurrencyObservable(content))
     }

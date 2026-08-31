@@ -56,7 +56,6 @@ import java.time.LocalDate
 import java.util.*
 import kotlin.math.abs
 
-// TODO detail (edit) part of the transaction form, split out so it can be reused in other forms
 @Suppress("unused", "UNCHECKED_CAST")
 class TransactionDetailController @Inject constructor(
     private val dbService: DbService,
@@ -227,7 +226,6 @@ class TransactionDetailController @Inject constructor(
         updateCopyButton()
     }
 
-    // TODO host form gives us the stage so we can open the modal account picker
     fun setStage(stage: Stage) {
         this.stage = stage
     }
@@ -253,7 +251,7 @@ class TransactionDetailController @Inject constructor(
     // saved transaction may be outside the current page/filter - keep showing its event info
     fun showEventInfoForCurrentItem() = updateEventInfo(formDriver.item)
 
-    // TODO show a past version of a transaction (from the history form), view only
+    // show a past version of a transaction (from the history form), view only
     fun showReadOnly(content: TransactionContent) {
         viewOnly = true
         viewOnlyTypeTab = tabForType(operationType(content.items))
@@ -794,7 +792,7 @@ class TransactionDetailController @Inject constructor(
         val id = picked.firstOrNull() ?: return
         row.account.set(accountService.accounts[id.uuid])
         syncItemsFromRows()
-        // TODO forced refresh: table does not repaint the row while we are still
+        // forced refresh: table does not repaint the row while we are still
         // inside the double-click handler that opened the modal picker
         Platform.runLater { itemsTable.refresh() }
     }

@@ -25,7 +25,6 @@ import su.nepom.budget.model.Uuid
 import java.net.URL
 import java.util.*
 
-// TODO history form: master list of events for one object, detail shows that version read only
 @Suppress("unused")
 class HistoryController @Inject constructor(
     private val dbService: DbService,

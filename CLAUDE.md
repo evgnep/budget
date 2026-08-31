@@ -90,6 +90,6 @@ folder of JSON files. SQLite is a materialized projection of the events.
 
 ## Conventions
 
-- Comments only when they add understanding, prefixed with `TODO`; English at <= B1 level; use `-` not
+- Comments only when they add understanding, do not prefix with `TODO`; English at <= B1 level; use `-` not
   `–`/`—`. UI strings are in Russian.
 - When you create a new file for a task, `git add` it immediately (stage only) so it shows in diffs.

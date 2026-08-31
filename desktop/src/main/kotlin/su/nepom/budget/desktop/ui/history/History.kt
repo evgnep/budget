@@ -5,7 +5,7 @@ import su.nepom.budget.desktop.ui.WindowManager
 import su.nepom.budget.model.ObjectKind
 import su.nepom.budget.model.Uuid
 
-// TODO opens the history form for a given object; call from any entity form
+// opens the history form for a given object; call from any entity form
 class History @Inject constructor(
     private val windowManager: WindowManager,
 ) {

@@ -32,7 +32,6 @@ import java.net.URL
 import java.util.*
 import kotlin.jvm.optionals.getOrNull
 
-// TODO detail (edit) part of the account form, split out so it can be reused in other forms
 @Suppress("unused", "UNCHECKED_CAST")
 class AccountDetailController @Inject constructor(
     private val dbService: DbService,
@@ -160,12 +159,12 @@ class AccountDetailController @Inject constructor(
             .build()
     }
 
-    // TODO called by the host form to keep the currency list in sync with its "show hidden" filter
+    // called by the host form to keep the currency list in sync with its "show hidden" filter
     fun setShowHiddenCurrencies(showHidden: Boolean) {
         visibleCurrencies.setPredicate { showHidden || !it.content.hidden }
     }
 
-    // TODO show a past version of an account (from the history form), view only
+    // show a past version of an account (from the history form), view only
     fun showReadOnly(content: AccountContent) {
         // make sure the account's currency is in the combo list even if it is hidden now
         setShowHiddenCurrencies(true)
