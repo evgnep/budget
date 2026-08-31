@@ -15,14 +15,17 @@ import su.nepom.budget.db.dao.TransactionDao
 import su.nepom.budget.db.dao.TransactionDao.Filter
 import su.nepom.budget.db.dao.TransactionDao.Query
 import su.nepom.budget.db.model.AccountRest
+import kotlinx.datetime.LocalDate
 import su.nepom.budget.event.AccountContent
 import su.nepom.budget.event.Event
 import su.nepom.budget.event.EventType
 import su.nepom.budget.event.TransactionContent
+import su.nepom.budget.event.TransactionContentItem
 import su.nepom.budget.model.AccountId
 import su.nepom.budget.model.AccountKind
 import su.nepom.budget.model.RawMoney
 import su.nepom.budget.model.RawTurnover
+import su.nepom.budget.model.Uuid
 import su.nepom.budget.model.no
 import su.nepom.budget.model.rawMoney
 import java.util.function.Consumer
@@ -59,6 +62,35 @@ internal class SqliteTransactionDaoTest : AbstractDbTest() {
         session.commit()
         eventNo = session.eventDao.getLastEventCoords()[Global.currentPlace]!!
         receivedEvents.clear()
+    }
+
+    @Test
+    fun `sumReservedByAccount only counts items reserved past today`() {
+        val reservedTx = TransactionContent(
+            Uuid.generate(),
+            TIME_MOMENT,
+            "reserved",
+            listOf(
+                TransactionContentItem(accountC1Money.id, RawMoney(1000)),
+                TransactionContentItem(accountC1Budget.id, RawMoney(1000), reservedUntil = LocalDate(2026, 9, 10)),
+            ),
+        )
+        val plainTx = TransactionContent(
+            Uuid.generate(),
+            TIME_MOMENT,
+            "plain",
+            listOf(
+                TransactionContentItem(accountC1Money.id, RawMoney(500)),
+                TransactionContentItem(accountC1Budget.id, RawMoney(500)),
+            ),
+        )
+        session.save(reservedTx, plainTx)
+        session.commit()
+        // then
+        assertThat(dao.sumReservedByAccount(setOf(accountC1Budget.id), LocalDate(2026, 9, 1)))
+            .containsExactlyInAnyOrderEntriesOf(mapOf(accountC1Budget.id to RawMoney(1000)))
+        // strict comparison: on the reserved date it no longer counts
+        assertThat(dao.sumReservedByAccount(setOf(accountC1Budget.id), LocalDate(2026, 9, 10))).isEmpty()
     }
 
     @MethodSource

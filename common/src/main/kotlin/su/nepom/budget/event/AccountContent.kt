@@ -19,6 +19,7 @@ data class AccountContentV1(
     val tags: Set<String>,
     val orderNo: Int,
     val hidden: Boolean = false,
+    val budget: AccountBudget = AccountBudget.EMPTY,
 ): StorableContent, ActualVersionContent {
     override val objectKind: ObjectKind get() = ObjectKind.ACCOUNT
 }

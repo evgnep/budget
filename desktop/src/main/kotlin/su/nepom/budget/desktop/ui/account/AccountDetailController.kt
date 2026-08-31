@@ -12,10 +12,16 @@ import javafx.scene.control.Button
 import javafx.scene.control.ButtonType
 import javafx.scene.control.CheckBox
 import javafx.scene.control.ComboBox
+import javafx.scene.control.Label
 import javafx.scene.control.ListView
+import javafx.scene.control.TableColumn
+import javafx.scene.control.TableView
 import javafx.scene.control.TextField
+import javafx.scene.control.cell.TextFieldTableCell
 import javafx.scene.layout.VBox
 import javafx.util.StringConverter
+import kotlinx.datetime.toJavaLocalDate
+import kotlinx.datetime.toKotlinLocalDate
 import su.nepom.budget.desktop.model.AccountObservable
 import su.nepom.budget.desktop.model.CurrencyObservable
 import su.nepom.budget.desktop.service.AccountService
@@ -23,12 +29,18 @@ import su.nepom.budget.desktop.service.CurrencyService
 import su.nepom.budget.desktop.service.DbService
 import su.nepom.budget.desktop.util.fx.Controller
 import su.nepom.budget.desktop.util.fx.FormDriver
+import su.nepom.budget.event.AccountBudget
 import su.nepom.budget.event.AccountContent
+import su.nepom.budget.event.DailyAllowance
+import su.nepom.budget.event.Reserve
 import su.nepom.budget.model.AccountKind
 import su.nepom.budget.model.CurrencyId
 import su.nepom.budget.model.RawMoney
 import su.nepom.budget.model.Uuid
+import su.nepom.budget.utils.format
+import su.nepom.budget.utils.toRawMoneyOrNull
 import java.net.URL
+import java.time.LocalDate
 import java.util.*
 import kotlin.jvm.optionals.getOrNull
 
@@ -80,7 +92,64 @@ class AccountDetailController @Inject constructor(
     @FXML
     private lateinit var removeTagButton: Button
 
+    @FXML
+    private lateinit var budgetSectionLabel: Label
+
+    @FXML
+    private lateinit var budgetEditorBox: VBox
+
+    @FXML
+    private lateinit var replenishDayField: TextField
+
+    @FXML
+    private lateinit var allowancesTable: TableView<PeriodRow>
+
+    @FXML
+    private lateinit var allowanceAmountColumn: TableColumn<PeriodRow, String>
+
+    @FXML
+    private lateinit var allowanceFromColumn: TableColumn<PeriodRow, String>
+
+    @FXML
+    private lateinit var allowanceToColumn: TableColumn<PeriodRow, String>
+
+    @FXML
+    private lateinit var addAllowanceButton: Button
+
+    @FXML
+    private lateinit var removeAllowanceButton: Button
+
+    @FXML
+    private lateinit var reservesTable: TableView<PeriodRow>
+
+    @FXML
+    private lateinit var reserveAmountColumn: TableColumn<PeriodRow, String>
+
+    @FXML
+    private lateinit var reserveFromColumn: TableColumn<PeriodRow, String>
+
+    @FXML
+    private lateinit var reserveToColumn: TableColumn<PeriodRow, String>
+
+    @FXML
+    private lateinit var addReserveButton: Button
+
+    @FXML
+    private lateinit var removeReserveButton: Button
+
+    private class PeriodRow(amount: String, from: LocalDate?, to: LocalDate?) {
+        val amount = SimpleObjectProperty(this, "amount", amount)
+        val from = SimpleObjectProperty(this, "from", from)
+        val to = SimpleObjectProperty(this, "to", to)
+    }
+
     private val tagsProperty = SimpleObjectProperty<Set<String>>(this, "tags", emptySet())
+
+    private val budgetProperty = SimpleObjectProperty(this, "budget", AccountBudget.EMPTY)
+    private val allowanceRows = FXCollections.observableArrayList<PeriodRow>()
+    private val reserveRows = FXCollections.observableArrayList<PeriodRow>()
+    private var populatingBudget = false
+    private var rebuildingBudget = false
 
     lateinit var formDriver: FormDriver<*, AccountObservable>
         private set
@@ -103,6 +172,7 @@ class AccountDetailController @Inject constructor(
         tagInputComboBox.items = accountService.tags
 
         setupTagsEditor()
+        setupBudgetEditor()
 
         formDriver = FormDriver.builder(
             okButton,
@@ -156,6 +226,14 @@ class AccountDetailController @Inject constructor(
                 tagsProperty,
                 { it?.content?.tags ?: emptySet() },
                 { tags = it })
+            .field(
+                "budget",
+                budgetEditorBox,
+                budgetProperty,
+                { it?.content?.budget ?: AccountBudget.EMPTY },
+                { budget = it }) {
+                withMethod { ctx -> validateBudget().forEach { ctx.error(it) } }.immediate()
+            }
             .build()
     }
 
@@ -183,10 +261,151 @@ class AccountDetailController @Inject constructor(
         formDriver.showReadOnly(AccountObservable(content, RawMoney.ZERO, currencyService.currencies))
         // keep the tag list usable for selection/copy, just hide the editing controls
         tagsEditorBox.isDisable = false
-        listOf(tagInputComboBox, addTagButton, removeTagButton).forEach {
+        listOf(
+            tagInputComboBox, addTagButton, removeTagButton,
+            addAllowanceButton, removeAllowanceButton, addReserveButton, removeReserveButton,
+        ).forEach {
             it.isVisible = false
             it.isManaged = false
         }
+        replenishDayField.isEditable = false
+        allowancesTable.isEditable = false
+        reservesTable.isEditable = false
+    }
+
+    // --- budget editor (only for BUDGET accounts, see docs/budget.md) ---
+
+    private fun setupBudgetEditor() {
+        allowancesTable.items = allowanceRows
+        reservesTable.items = reserveRows
+        allowancesTable.isEditable = true
+        reservesTable.isEditable = true
+        setupPeriodColumns(allowanceAmountColumn, allowanceFromColumn, allowanceToColumn)
+        setupPeriodColumns(reserveAmountColumn, reserveFromColumn, reserveToColumn)
+
+        addAllowanceButton.setOnAction { allowanceRows.add(PeriodRow("", null, null)); rebuildBudget() }
+        removeAllowanceButton.setOnAction {
+            allowancesTable.selectionModel.selectedItem?.let { allowanceRows.remove(it) }
+            rebuildBudget()
+        }
+        addReserveButton.setOnAction { reserveRows.add(PeriodRow("", null, null)); rebuildBudget() }
+        removeReserveButton.setOnAction {
+            reservesTable.selectionModel.selectedItem?.let { reserveRows.remove(it) }
+            rebuildBudget()
+        }
+        replenishDayField.textProperty().addListener { _, _, _ -> rebuildBudget() }
+
+        // repopulate widgets only on external sets (form load), not on our own rebuildBudget
+        budgetProperty.addListener { _, _, value ->
+            if (!populatingBudget && !rebuildingBudget) populateBudgetWidgets(value ?: AccountBudget.EMPTY)
+        }
+        kindComboBox.valueProperty().addListener { _, _, kind -> updateBudgetSectionVisibility(kind) }
+        updateBudgetSectionVisibility(kindComboBox.value)
+    }
+
+    private fun setupPeriodColumns(
+        amountCol: TableColumn<PeriodRow, String>,
+        fromCol: TableColumn<PeriodRow, String>,
+        toCol: TableColumn<PeriodRow, String>,
+    ) {
+        amountCol.setCellValueFactory { it.value.amount }
+        amountCol.cellFactory = TextFieldTableCell.forTableColumn()
+        amountCol.setOnEditCommit { e ->
+            e.rowValue?.let { it.amount.set(e.newValue.orEmpty().trim()); rebuildBudget() }
+        }
+        fromCol.setCellValueFactory { SimpleObjectProperty(it.value.from.get()?.toString() ?: "") }
+        fromCol.cellFactory = TextFieldTableCell.forTableColumn()
+        fromCol.setOnEditCommit { e ->
+            e.rowValue?.let { it.from.set(parseDateOrNull(e.newValue)); rebuildBudget() }
+        }
+        toCol.setCellValueFactory { SimpleObjectProperty(it.value.to.get()?.toString() ?: "") }
+        toCol.cellFactory = TextFieldTableCell.forTableColumn()
+        toCol.setOnEditCommit { e ->
+            e.rowValue?.let { it.to.set(parseDateOrNull(e.newValue)); rebuildBudget() }
+        }
+    }
+
+    private fun parseDateOrNull(text: String?): LocalDate? {
+        val t = text?.trim().orEmpty()
+        return if (t.isEmpty()) null else runCatching { LocalDate.parse(t) }.getOrNull()
+    }
+
+    private fun currencyDigits(): Int = currencyComboBox.value?.content?.digitsAfterPoint ?: 2
+
+    private fun rebuildBudget() {
+        if (populatingBudget) return
+        val digits = currencyDigits()
+        rebuildingBudget = true
+        try {
+            budgetProperty.set(budgetFromWidgets(digits))
+        } finally {
+            rebuildingBudget = false
+        }
+    }
+
+    private fun budgetFromWidgets(digits: Int): AccountBudget =
+        AccountBudget(
+            replenishDay = replenishDayField.text?.trim()?.toIntOrNull(),
+            dailyAllowances = allowanceRows.map {
+                DailyAllowance(
+                    it.amount.get().toRawMoneyOrNull(digits) ?: RawMoney.ZERO,
+                    it.from.get()?.toKotlinLocalDate(),
+                    it.to.get()?.toKotlinLocalDate(),
+                )
+            },
+            reserves = reserveRows.map {
+                Reserve(
+                    it.amount.get().toRawMoneyOrNull(digits) ?: RawMoney.ZERO,
+                    it.from.get()?.toKotlinLocalDate(),
+                    it.to.get()?.toKotlinLocalDate(),
+                )
+            },
+        )
+
+    private fun populateBudgetWidgets(budget: AccountBudget) {
+        populatingBudget = true
+        try {
+            val digits = currencyDigits()
+            replenishDayField.text = budget.replenishDay?.toString() ?: ""
+            allowanceRows.setAll(budget.dailyAllowances.map {
+                PeriodRow(it.amount.format(digits), it.from?.toJavaLocalDate(), it.to?.toJavaLocalDate())
+            })
+            reserveRows.setAll(budget.reserves.map {
+                PeriodRow(it.amount.format(digits), it.from?.toJavaLocalDate(), it.to?.toJavaLocalDate())
+            })
+        } finally {
+            populatingBudget = false
+        }
+    }
+
+    private fun updateBudgetSectionVisibility(kind: AccountKind?) {
+        val show = kind == AccountKind.BUDGET
+        listOf(budgetSectionLabel, budgetEditorBox).forEach {
+            it.isVisible = show
+            it.isManaged = show
+        }
+    }
+
+    private fun validateBudget(): List<String> {
+        if (kindComboBox.value != AccountKind.BUDGET) return emptyList()
+        val problems = mutableListOf<String>()
+        val dayText = replenishDayField.text?.trim().orEmpty()
+        if (dayText.isNotEmpty() && dayText.toIntOrNull()?.let { it in 1..28 } != true) {
+            problems.add("День пополнения должен быть числом 1-28")
+        }
+        val digits = currencyDigits()
+        (allowanceRows + reserveRows).forEach { row ->
+            val text = row.amount.get().trim()
+            if (text.isNotEmpty() && text.toRawMoneyOrNull(digits) == null) {
+                problems.add("Некорректная сумма в бюджете")
+            }
+            val from = row.from.get()
+            val to = row.to.get()
+            if (from != null && to != null && from > to) {
+                problems.add("Начало периода позже конца")
+            }
+        }
+        return problems.distinct()
     }
 
     private fun setupTagsEditor() {

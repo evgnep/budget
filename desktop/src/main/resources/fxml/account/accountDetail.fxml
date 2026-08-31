@@ -7,6 +7,8 @@
 <?import javafx.scene.control.ComboBox?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.ListView?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
 <?import javafx.scene.control.TextField?>
 <?import javafx.scene.layout.ColumnConstraints?>
 <?import javafx.scene.layout.GridPane?>
@@ -21,6 +23,7 @@
    </columnConstraints>
    <rowConstraints>
       <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="NEVER" />
+      <RowConstraints vgrow="NEVER" />
       <RowConstraints vgrow="NEVER" />
       <RowConstraints vgrow="NEVER" />
       <RowConstraints vgrow="NEVER" />
@@ -54,7 +57,52 @@
             </HBox>
          </children>
       </VBox>
-      <ButtonBar GridPane.columnSpan="2" GridPane.rowIndex="7">
+      <Label fx:id="budgetSectionLabel" text="Бюджет" GridPane.rowIndex="7" GridPane.valignment="TOP" />
+      <VBox fx:id="budgetEditorBox" spacing="5.0" GridPane.columnIndex="1" GridPane.rowIndex="7">
+         <children>
+            <HBox alignment="CENTER_LEFT" spacing="5.0">
+               <children>
+                  <Label text="День пополнения (1-28)" />
+                  <TextField fx:id="replenishDayField" prefWidth="60.0" />
+               </children>
+            </HBox>
+            <Label text="Остаток на день" />
+            <TableView fx:id="allowancesTable" editable="true" prefHeight="110.0">
+               <columns>
+                  <TableColumn fx:id="allowanceAmountColumn" prefWidth="100.0" text="Сумма" />
+                  <TableColumn fx:id="allowanceFromColumn" prefWidth="110.0" text="С даты" />
+                  <TableColumn fx:id="allowanceToColumn" prefWidth="110.0" text="По дату" />
+               </columns>
+               <columnResizePolicy>
+                  <TableView fx:constant="CONSTRAINED_RESIZE_POLICY" />
+               </columnResizePolicy>
+            </TableView>
+            <HBox spacing="5.0">
+               <children>
+                  <Button fx:id="addAllowanceButton" mnemonicParsing="false" text="Добавить" />
+                  <Button fx:id="removeAllowanceButton" mnemonicParsing="false" text="Удалить" />
+               </children>
+            </HBox>
+            <Label text="Резервы" />
+            <TableView fx:id="reservesTable" editable="true" prefHeight="110.0">
+               <columns>
+                  <TableColumn fx:id="reserveAmountColumn" prefWidth="100.0" text="Сумма" />
+                  <TableColumn fx:id="reserveFromColumn" prefWidth="110.0" text="С даты" />
+                  <TableColumn fx:id="reserveToColumn" prefWidth="110.0" text="По дату" />
+               </columns>
+               <columnResizePolicy>
+                  <TableView fx:constant="CONSTRAINED_RESIZE_POLICY" />
+               </columnResizePolicy>
+            </TableView>
+            <HBox spacing="5.0">
+               <children>
+                  <Button fx:id="addReserveButton" mnemonicParsing="false" text="Добавить" />
+                  <Button fx:id="removeReserveButton" mnemonicParsing="false" text="Удалить" />
+               </children>
+            </HBox>
+         </children>
+      </VBox>
+      <ButtonBar GridPane.columnSpan="2" GridPane.rowIndex="8">
         <buttons>
           <Button fx:id="okButton" mnemonicParsing="false" text="Сохранить" />
             <Button fx:id="cancelButton" mnemonicParsing="false" text="Отмена" />

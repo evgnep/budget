@@ -143,6 +143,8 @@ folder of JSON files. SQLite is a materialized projection of the events.
   `ObjectKind`); with `createEvents = true` (the default) the DB writes a corresponding `Event`.
 - Entity identity is a `Uuid`; codes like `AccountCode`/`CurrencyCode` are deterministic UUID sources
   used for imported/seed data.
+- Account budgeting ("остаток на день" for `AccountKind.BUDGET` accounts) is specified in
+  `docs/budget.md` - read it before touching that feature.
 
 ## Conventions
 

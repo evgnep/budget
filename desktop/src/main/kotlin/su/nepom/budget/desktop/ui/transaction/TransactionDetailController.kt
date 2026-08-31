@@ -25,6 +25,8 @@ import javafx.scene.layout.HBox
 import javafx.scene.layout.VBox
 import javafx.scene.paint.Color
 import javafx.stage.Stage
+import kotlinx.datetime.toJavaLocalDate
+import kotlinx.datetime.toKotlinLocalDate
 import su.nepom.budget.desktop.model.AccountObservable
 import su.nepom.budget.desktop.model.TransactionObservable
 import su.nepom.budget.desktop.service.AccountService
@@ -71,11 +73,13 @@ class TransactionDetailController @Inject constructor(
         amount: String,
         description: String,
         flag: Boolean,
+        reservedUntil: LocalDate? = null,
     ) {
         val account = SimpleObjectProperty<AccountObservable?>(this, "account", account)
         val amount = SimpleStringProperty(this, "amount", amount)
         val description = SimpleStringProperty(this, "description", description)
         val flag = SimpleBooleanProperty(this, "flag", flag)
+        val reservedUntil = SimpleObjectProperty<LocalDate?>(this, "reservedUntil", reservedUntil)
     }
 
     // which operation tab is active; DETAILS is the raw item list, always available
@@ -117,7 +121,7 @@ class TransactionDetailController @Inject constructor(
     private val transactionFactory = TransactionObservable.Factory()
 
     private val itemRows = FXCollections.observableArrayList<ItemRow> { row ->
-        arrayOf(row.account, row.amount, row.description, row.flag)
+        arrayOf(row.account, row.amount, row.description, row.flag, row.reservedUntil)
     }
     private val itemsProperty = SimpleObjectProperty<List<TransactionContentItem>>(this, "items", emptyList())
     private var rebuildingRows = false
@@ -211,6 +215,7 @@ class TransactionDetailController @Inject constructor(
     @FXML private lateinit var itemBalanceColumn: TableColumn<ItemRow, String>
     @FXML private lateinit var itemDescriptionColumn: TableColumn<ItemRow, String>
     @FXML private lateinit var itemFlagColumn: TableColumn<ItemRow, Boolean>
+    @FXML private lateinit var itemReservedUntilColumn: TableColumn<ItemRow, String>
     @FXML private lateinit var eventInfoLabel: Label
     @FXML private lateinit var eventInfoBox: HBox
     @FXML private lateinit var changedAtField: TextField
@@ -350,6 +355,18 @@ class TransactionDetailController @Inject constructor(
         itemDescriptionColumn.cellFactory = TextFieldTableCell.forTableColumn()
         itemFlagColumn.setCellValueFactory { it.value.flag as javafx.beans.value.ObservableValue<Boolean> }
         itemFlagColumn.cellFactory = CheckBoxTableCell.forTableColumn(itemFlagColumn)
+
+        // reserved-until date as ISO text, empty = not reserved (see docs/budget.md)
+        itemReservedUntilColumn.setCellValueFactory {
+            SimpleStringProperty(it.value.reservedUntil.get()?.toString() ?: "")
+        }
+        itemReservedUntilColumn.cellFactory = TextFieldTableCell.forTableColumn()
+        itemReservedUntilColumn.setOnEditCommit { e ->
+            val row = e.rowValue ?: return@setOnEditCommit
+            val text = e.newValue.orEmpty().trim()
+            row.reservedUntil.set(if (text.isEmpty()) null else runCatching { LocalDate.parse(text) }.getOrNull())
+            syncItemsFromRows()
+        }
 
         addItemButton.setOnAction { addItemRow() }
         removeItemButton.setOnAction {
@@ -798,7 +815,7 @@ class TransactionDetailController @Inject constructor(
 
     private fun TransactionContentItem.toRow(): ItemRow {
         val acc = accountService.accounts[account.uuid]
-        return ItemRow(acc, money.format(digitsOf(acc)), description, flag)
+        return ItemRow(acc, money.format(digitsOf(acc)), description, flag, reservedUntil?.toJavaLocalDate())
     }
 
     private fun rowsToItems(): List<TransactionContentItem> =
@@ -810,6 +827,7 @@ class TransactionDetailController @Inject constructor(
                 money = money,
                 description = row.description.get(),
                 flag = row.flag.get(),
+                reservedUntil = row.reservedUntil.get()?.toKotlinLocalDate(),
             )
         }
 

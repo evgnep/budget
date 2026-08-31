@@ -1,6 +1,7 @@
 package su.nepom.budget.db.sqlite
 
 import kotlinx.datetime.Instant
+import kotlinx.datetime.LocalDate
 import org.ktorm.database.Database
 import org.ktorm.dsl.Query
 import org.ktorm.dsl.QueryRowSet
@@ -128,6 +129,21 @@ internal class SqliteTransactionDao(private val session: SqliteSession) : Transa
             .groupBy(TransactionItems.accountUuid)
             .associate { AccountId(Uuid(it[TransactionItems.accountUuid]!!)) to RawMoney(it.getLong(2)) }
     }
+
+    override fun sumReservedByAccount(accounts: Set<AccountId>, today: LocalDate): Map<AccountId, RawMoney> =
+        session.doReadOp {
+            from(TransactionItems)
+                .select(TransactionItems.accountUuid, sum(TransactionItems.money))
+                .whereWithConditions {
+                    it.add(TransactionItems.transactionDeleted eq false)
+                    it.add(TransactionItems.reservedUntil gt today.toString())
+                    if (accounts.isNotEmpty()) {
+                        it.add(TransactionItems.accountUuid inList accounts.map { a -> a.uuidCode() })
+                    }
+                }
+                .groupBy(TransactionItems.accountUuid)
+                .associate { AccountId(Uuid(it[TransactionItems.accountUuid]!!)) to RawMoney(it.getLong(2)) }
+        }
 
     override fun accountTurnover(
         accounts: Set<AccountId>,

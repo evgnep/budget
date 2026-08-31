@@ -1,6 +1,7 @@
 package su.nepom.budget.db.dao
 
 import kotlinx.datetime.Instant
+import kotlinx.datetime.LocalDate
 import su.nepom.budget.event.TransactionContent
 import su.nepom.budget.model.AccountId
 import su.nepom.budget.model.CurrencyId
@@ -17,6 +18,12 @@ interface TransactionDao : CrudDao<TransactionContent> {
     fun countByFilter(filter: Filter): Int
 
     fun accountRest(accounts: Set<AccountId>, forDate: Instant? = null): Map<AccountId, RawMoney>
+
+    /**
+     * Sum of transaction item amounts reserved past [today] (item.reservedUntil > today), per account.
+     * See docs/budget.md.
+     */
+    fun sumReservedByAccount(accounts: Set<AccountId>, today: LocalDate): Map<AccountId, RawMoney>
 
     fun accountTurnover(accounts: Set<AccountId>, dateRange: ClosedRange<Instant>? = null): Map<AccountId, RawTurnover>
 

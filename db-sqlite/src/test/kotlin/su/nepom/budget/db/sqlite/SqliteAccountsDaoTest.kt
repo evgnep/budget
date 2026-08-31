@@ -3,10 +3,16 @@ package su.nepom.budget.db.sqlite
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import kotlinx.datetime.LocalDate
 import su.nepom.budget.Global
+import su.nepom.budget.event.AccountBudget
 import su.nepom.budget.event.CurrencyContent
+import su.nepom.budget.event.DailyAllowance
 import su.nepom.budget.event.EventType
+import su.nepom.budget.event.Reserve
+import su.nepom.budget.model.AccountKind
 import su.nepom.budget.model.ObjectKind
+import su.nepom.budget.model.RawMoney
 import su.nepom.budget.model.no
 import java.util.function.Consumer
 
@@ -78,5 +84,24 @@ internal class SqliteAccountsDaoTest : AbstractDbTest() {
             .ignoringFields("id.readable", "currency.readable")
             .isEqualTo(account2)
         assertThat(eventDao.getLastEventCoords()).containsExactlyInAnyOrderEntriesOf(mapOf(Global.currentPlace to eventNo + 2))
+    }
+
+    @Test
+    fun `budget is stored and read back`() {
+        val account = createAccount("budget account", currency1, AccountKind.BUDGET).copy(
+            budget = AccountBudget(
+                replenishDay = 10,
+                dailyAllowances = listOf(DailyAllowance(RawMoney(700), to = LocalDate(2026, 9, 5))),
+                reserves = listOf(Reserve(RawMoney(5000), from = LocalDate(2026, 8, 1), to = LocalDate(2026, 8, 31))),
+            )
+        )
+        session.accountDao.save(account)
+        session.commit()
+        // then
+        assertThat(session.accountDao.getAll())
+            .singleElement()
+            .usingRecursiveComparison()
+            .ignoringFields("id.readable", "currency.readable")
+            .isEqualTo(account)
     }
 }

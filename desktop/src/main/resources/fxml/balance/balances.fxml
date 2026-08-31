@@ -44,6 +44,7 @@
           <TableColumn fx:id="incomeColumn" editable="false" prefWidth="120.0" text="Доход" />
           <TableColumn fx:id="expenseColumn" editable="false" prefWidth="120.0" text="Расход" />
           <TableColumn fx:id="endColumn" editable="false" prefWidth="130.0" text="Остаток на конец" />
+          <TableColumn fx:id="dailyBalanceColumn" editable="false" prefWidth="130.0" text="Остаток на день" />
         </columns>
          <columnResizePolicy>
             <TableView fx:constant="CONSTRAINED_RESIZE_POLICY" />

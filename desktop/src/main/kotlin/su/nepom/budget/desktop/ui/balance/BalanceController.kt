@@ -18,13 +18,18 @@ import javafx.scene.control.TextField
 import javafx.scene.input.MouseButton
 import javafx.util.Duration
 import javafx.util.StringConverter
+import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.Instant
+import kotlinx.datetime.plus
+import kotlinx.datetime.toKotlinLocalDate
 import su.nepom.budget.db.Db
 import su.nepom.budget.desktop.model.AccountObservable
 import su.nepom.budget.desktop.model.CurrencyObservable
 import su.nepom.budget.desktop.service.AccountService
 import su.nepom.budget.desktop.service.CurrencyService
 import su.nepom.budget.desktop.service.DbService
+import su.nepom.budget.utils.ReservedAmount
+import su.nepom.budget.utils.calculateDailyBalance
 import su.nepom.budget.utils.format
 import su.nepom.budget.desktop.util.fx.Controller
 import su.nepom.budget.desktop.util.fx.Disposable
@@ -72,6 +77,7 @@ class BalanceController @Inject constructor(
         val income: String,
         val expense: String,
         val end: String,
+        val dailyBalance: String,
     )
 
     private val weakListeners = WeakListeners()
@@ -102,6 +108,7 @@ class BalanceController @Inject constructor(
     @FXML private lateinit var incomeColumn: TableColumn<BalanceRow, String>
     @FXML private lateinit var expenseColumn: TableColumn<BalanceRow, String>
     @FXML private lateinit var endColumn: TableColumn<BalanceRow, String>
+    @FXML private lateinit var dailyBalanceColumn: TableColumn<BalanceRow, String>
 
     private val currencyConverter = object : StringConverter<CurrencyObservable>() {
         override fun toString(currency: CurrencyObservable?) = currency?.content?.name ?: ""
@@ -161,7 +168,8 @@ class BalanceController @Inject constructor(
 
     private fun setupTable() {
         balancesTable.items = rows
-        listOf(nameColumn, kindColumn, currencyColumn, startColumn, incomeColumn, expenseColumn, endColumn)
+        listOf(nameColumn, kindColumn, currencyColumn, startColumn, incomeColumn, expenseColumn, endColumn,
+            dailyBalanceColumn)
             .forEach { it.isSortable = false }
         nameColumn.setCellValueFactory { SimpleStringProperty(it.value.name) }
         kindColumn.setCellValueFactory { SimpleStringProperty(it.value.kind) }
@@ -170,6 +178,7 @@ class BalanceController @Inject constructor(
         incomeColumn.setCellValueFactory { SimpleStringProperty(it.value.income) }
         expenseColumn.setCellValueFactory { SimpleStringProperty(it.value.expense) }
         endColumn.setCellValueFactory { SimpleStringProperty(it.value.end) }
+        dailyBalanceColumn.setCellValueFactory { SimpleStringProperty(it.value.dailyBalance) }
 
         balancesTable.setOnMouseClicked { event ->
             if (event.button == MouseButton.PRIMARY && event.clickCount == 2) {
@@ -242,17 +251,27 @@ class BalanceController @Inject constructor(
             session.transactionDao.accountTurnover(ids, range)
         }.getOrDefault(emptyMap())
 
+        val today = LocalDate.now().toKotlinLocalDate()
+        val budgetIds = accounts.filter { it.content.kind == AccountKind.BUDGET }
+            .mapTo(mutableSetOf()) { it.content.id }
+        val reservedSums = if (budgetIds.isEmpty()) emptyMap()
+        else runAndShowError {
+            session.transactionDao.sumReservedByAccount(budgetIds, today)
+        }.getOrDefault(emptyMap())
+
         val accountRows = accounts.map { account ->
             val id = account.content.id
             val currency = currencyService.currencies[account.content.currency.uuid]
+            val end = endRest[id] ?: RawMoney.ZERO
             makeRow(
                 accounts = setOf(id),
                 name = account.content.name,
                 kind = kindText(account.content.kind),
                 currencyName = currency?.content?.name ?: "-",
                 currency = currency,
-                end = endRest[id] ?: RawMoney.ZERO,
+                end = end,
                 turnover = turnover[id] ?: RawTurnover(RawMoney.ZERO, RawMoney.ZERO),
+                dailyBalance = dailyBalanceText(account, end, reservedSums[id], today, currency),
             )
         }
 
@@ -292,6 +311,7 @@ class BalanceController @Inject constructor(
         currency: CurrencyObservable?,
         end: RawMoney,
         turnover: RawTurnover,
+        dailyBalance: String = "",
     ): BalanceRow {
         // turnover.income is positive, turnover.expenditure is negative
         val start = RawMoney(end.value - turnover.income.value - turnover.expenditure.value)
@@ -304,7 +324,23 @@ class BalanceController @Inject constructor(
             income = formatMoney(turnover.income, currency),
             expense = formatMoney(RawMoney(-turnover.expenditure.value), currency),
             end = formatMoney(end, currency),
+            dailyBalance = dailyBalance,
         )
+    }
+
+    // "Остаток на день" - only for BUDGET accounts that have a replenish day set
+    private fun dailyBalanceText(
+        account: AccountObservable,
+        end: RawMoney,
+        reserved: RawMoney?,
+        today: kotlinx.datetime.LocalDate,
+        currency: CurrencyObservable?,
+    ): String {
+        if (account.content.kind != AccountKind.BUDGET) return ""
+        val reservedItems = if (reserved != null && reserved.value != 0L)
+            listOf(ReservedAmount(reserved, today.plus(1, DateTimeUnit.DAY))) else emptyList()
+        return calculateDailyBalance(end, today, account.content.budget, reservedItems)
+            ?.let { formatMoney(it, currency) } ?: ""
     }
 
     private fun turnoverRange(from: LocalDate?, to: LocalDate?): ClosedRange<Instant>? {

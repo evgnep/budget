@@ -1,6 +1,7 @@
 package su.nepom.budget.desktop.ui.transaction
 
 import jakarta.inject.Inject
+import javafx.application.Platform
 import javafx.beans.property.SimpleBooleanProperty
 import javafx.beans.property.SimpleStringProperty
 import javafx.collections.FXCollections
@@ -16,6 +17,7 @@ import javafx.scene.control.TableColumn
 import javafx.scene.control.TableView
 import javafx.scene.control.TextField
 import javafx.scene.control.cell.CheckBoxTableCell
+import javafx.scene.input.KeyCode
 import javafx.util.StringConverter
 import su.nepom.budget.desktop.model.AccountObservable
 import su.nepom.budget.desktop.model.CurrencyObservable
@@ -186,6 +188,23 @@ class AccountPickerController @Inject constructor(
         okButton.setOnAction { onOk() }
         cancelButton.setOnAction { finish(null) }
         updateCountLabel()
+
+        // Tab from the filter field jumps straight to the table, so the user can type
+        // a filter, press Tab and pick an account with the arrow keys + Enter.
+        nameFilterTextField.setOnKeyPressed { e ->
+            if (e.code == KeyCode.TAB && !e.isShiftDown) {
+                focusTable()
+                e.consume()
+            }
+        }
+        Platform.runLater { nameFilterTextField.requestFocus() }
+    }
+
+    private fun focusTable() {
+        if (accountsTableView.selectionModel.selectedItem == null && filtered.isNotEmpty()) {
+            accountsTableView.selectionModel.select(0)
+        }
+        accountsTableView.requestFocus()
     }
 
     private fun buildRows() {

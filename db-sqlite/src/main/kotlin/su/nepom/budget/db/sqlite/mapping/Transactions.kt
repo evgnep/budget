@@ -1,6 +1,7 @@
 package su.nepom.budget.db.sqlite.mapping
 
 import kotlinx.datetime.Instant
+import kotlinx.datetime.LocalDate
 import org.ktorm.database.Database
 import org.ktorm.dsl.AssignmentsBuilder
 import org.ktorm.dsl.BatchInsertStatementBuilder
@@ -46,6 +47,7 @@ internal object TransactionItems : Table<Nothing>("transaction_item") {
     val money = long("money")
     val description = varchar("description")
     val flag = boolean("flag")
+    val reservedUntil = varchar("reserved_until")
 }
 
 internal fun AssignmentsBuilder.setFromTransaction(transaction: TransactionContent) {
@@ -68,6 +70,7 @@ internal fun BatchInsertStatementBuilder<TransactionItems>.setFromTransactionIte
             set(TransactionItems.money, item.money.value)
             set(TransactionItems.description, item.description)
             set(TransactionItems.flag, item.flag)
+            set(TransactionItems.reservedUntil, item.reservedUntil?.toString())
         }
     }
 }
@@ -82,7 +85,8 @@ internal fun Query.toTransactions(): List<TransactionContent> {
             AccountId(Uuid(this[TransactionItems.accountUuid]!!)),
             RawMoney(this[TransactionItems.money]!!),
             this[TransactionItems.description]!!,
-            this[TransactionItems.flag]!!
+            this[TransactionItems.flag]!!,
+            this[TransactionItems.reservedUntil]?.let { LocalDate.parse(it) }
         ) to this[TransactionItems.no]!!
 
     forEach { rs ->

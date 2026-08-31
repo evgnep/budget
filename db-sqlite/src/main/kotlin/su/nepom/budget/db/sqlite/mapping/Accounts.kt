@@ -1,5 +1,6 @@
 package su.nepom.budget.db.sqlite.mapping
 
+import kotlinx.serialization.json.Json
 import org.ktorm.database.Database
 import org.ktorm.entity.Entity
 import org.ktorm.entity.sequenceOf
@@ -10,6 +11,7 @@ import org.ktorm.schema.long
 import org.ktorm.schema.varchar
 import su.nepom.budget.db.sqlite.utils.DatabaseHolder
 import su.nepom.budget.db.sqlite.utils.uuidCode
+import su.nepom.budget.event.AccountBudget
 import su.nepom.budget.event.AccountContent
 import su.nepom.budget.event.makeAccountCode
 import su.nepom.budget.model.AccountId
@@ -28,6 +30,7 @@ internal object Accounts : Table<AccountEntity>("account") {
     val tags = varchar("tags").bindTo { it.tags }
     val orderNo = int("order_no").bindTo { it.orderNo }
     val hidden = boolean("hidden").bindTo { it.hidden }
+    val budget = varchar("budget").bindTo { it.budget }
 }
 
 internal interface AccountEntity : Entity<AccountEntity> {
@@ -39,6 +42,7 @@ internal interface AccountEntity : Entity<AccountEntity> {
     var tags: String
     var orderNo: Int
     var hidden: Boolean
+    var budget: String
 
     companion object : Entity.Factory<AccountEntity>()
 
@@ -50,7 +54,8 @@ internal interface AccountEntity : Entity<AccountEntity> {
         AccountKind.byCode(kind),
         tags.tagsFromDb(),
         orderNo,
-        hidden
+        hidden,
+        Json.decodeFromString<AccountBudget>(budget)
     )
 }
 
@@ -64,6 +69,7 @@ internal fun AccountContent.toEntity() = AccountEntity {
     tags = s.tags.tagsToDb()
     orderNo = s.orderNo
     hidden = s.hidden
+    budget = Json.encodeToString(s.budget)
 }
 
 internal val Database.accounts get() = this.sequenceOf(Accounts)

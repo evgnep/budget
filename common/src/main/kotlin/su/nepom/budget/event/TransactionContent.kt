@@ -1,6 +1,7 @@
 package su.nepom.budget.event
 
 import kotlinx.datetime.Instant
+import kotlinx.datetime.LocalDate
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import su.nepom.budget.model.AccountId
@@ -26,6 +27,8 @@ data class TransactionContentV1(
         val money: RawMoney,
         val description: String = "",
         val flag: Boolean = false,
+        // See docs/budget.md
+        val reservedUntil: LocalDate? = null,
     )
 }
 

@@ -10,6 +10,7 @@ import su.nepom.budget.desktop.util.db.ObservableEntityBuilder
 import su.nepom.budget.desktop.util.db.ObservableEntityFactory
 import su.nepom.budget.desktop.util.db.SimpleObjectWithIdProperty
 import su.nepom.budget.desktop.util.toBigDecimal
+import su.nepom.budget.event.AccountBudget
 import su.nepom.budget.event.AccountContent
 import su.nepom.budget.model.AccountId
 import su.nepom.budget.model.AccountKind
@@ -37,13 +38,14 @@ class AccountObservable(
   val tags = contentProperty.map { it.tags }
   val orderNo = contentProperty.map { it.orderNo }
   val hidden = contentProperty.map { it.hidden }
+  val budget = contentProperty.map { it.budget }
   val rest = Bindings.createObjectBinding(
     { restProperty.get().toBigDecimal(currency.get()) },
     restProperty, currency
   )
 
   override fun properties(): Array<Observable> =
-    arrayOf(uuidObservable, name, description, currency, currencyName, kind, tags, orderNo, hidden, rest)
+    arrayOf(uuidObservable, name, description, currency, currencyName, kind, tags, orderNo, hidden, budget, rest)
 
   class Builder(source: AccountObservable) : ObservableEntityBuilder<AccountObservable> {
     private val id = source.content.id
@@ -54,9 +56,10 @@ class AccountObservable(
     var tags: Set<String> = source.content.tags
     var orderNo: Int = source.content.orderNo
     var hidden: Boolean = source.content.hidden
+    var budget: AccountBudget = source.content.budget
 
     override fun buildContent() =
-      AccountContent(id, name, description, currency, kind, tags, orderNo, hidden)
+      AccountContent(id, name, description, currency, kind, tags, orderNo, hidden, budget)
 
     override fun saveAndUpdate(session: Session, target: AccountObservable) {
       val content = buildContent()
@@ -78,7 +81,8 @@ class AccountObservable(
           AccountKind.MONEY,
           setOf(),
           0,
-          false
+          false,
+          AccountBudget.EMPTY
         ),
         RawMoney.ZERO,
         currencies

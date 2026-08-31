@@ -260,6 +260,7 @@
                                   <TableColumn fx:id="itemBalanceColumn" editable="false" prefWidth="110.0" text="Остаток счёта" />
                                   <TableColumn fx:id="itemDescriptionColumn" prefWidth="200.0" text="Описание" />
                                   <TableColumn fx:id="itemFlagColumn" prefWidth="60.0" text="Флаг" />
+                                  <TableColumn fx:id="itemReservedUntilColumn" prefWidth="110.0" text="Резерв до" />
                                 </columns>
                                  <columnResizePolicy>
                                     <TableView fx:constant="CONSTRAINED_RESIZE_POLICY" />
