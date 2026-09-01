@@ -6,11 +6,13 @@ import kotlinx.coroutines.withContext
 import su.nepom.budget.Global
 import su.nepom.budget.db.Session
 import su.nepom.budget.db.dao.PropertyDao
+import su.nepom.budget.db.dao.SimpleObjectDao
 import su.nepom.budget.db.sqlite.impl.setInTransactionUnsafe
 import su.nepom.budget.db.sqlite.utils.DatabaseHolder
 import su.nepom.budget.event.ActualVersionContent
 import su.nepom.budget.event.Event
 import su.nepom.budget.event.EventType
+import su.nepom.budget.model.ObjectKind
 import su.nepom.budget.model.no
 import su.nepom.budget.utils.SecondsClock
 import java.util.concurrent.Executors
@@ -37,6 +39,7 @@ internal class SqliteSession(
     private val accountDaoHolder by lazy { SqliteAccountDao(this) }
     private val transactionDaoHolder by lazy { SqliteTransactionDao(this) }
     private val propertiesDaoHolder by lazy { SqlitePropertyDao(this) }
+    private val simpleObjectDaoHolders = mutableMapOf<ObjectKind, SqliteSimpleObjectDao<*>>()
 
     fun <T> doReadOp(block: () -> T): T {
         beforeAnyOperation()
@@ -84,6 +87,13 @@ internal class SqliteSession(
     override val transactionDao get() = transactionDaoHolder
     override val eventDao get() = eventDaoHolder
     override val propertyDao: PropertyDao get() = propertiesDaoHolder
+
+    @Suppress("UNCHECKED_CAST")
+    override fun <T : ActualVersionContent> simpleObjectDao(kind: ObjectKind): SimpleObjectDao<T> {
+        require(kind.simpleObject) { "$kind is not a simple object" }
+        return simpleObjectDaoHolders.getOrPut(kind) { SqliteSimpleObjectDao<ActualVersionContent>(this, kind) }
+                as SimpleObjectDao<T>
+    }
 
     override fun commit(closeTransaction: Boolean) {
         beforeAnyOperation()

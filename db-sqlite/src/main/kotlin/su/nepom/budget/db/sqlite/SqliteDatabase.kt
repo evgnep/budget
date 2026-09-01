@@ -12,6 +12,7 @@ import su.nepom.budget.db.sqlite.impl.AccountRestCache
 import su.nepom.budget.db.sqlite.impl.EventProcessor
 import su.nepom.budget.db.sqlite.impl.EventsNotifier
 import su.nepom.budget.db.sqlite.impl.ListenersStorage
+import su.nepom.budget.db.sqlite.impl.SimpleObjectCache
 import su.nepom.budget.db.sqlite.impl.TableCopy
 import su.nepom.budget.db.sqlite.mapping.AccountRestEntity
 import su.nepom.budget.db.sqlite.mapping.accounts
@@ -73,6 +74,7 @@ internal class SqliteDatabase(pathToDb: Path): FlywayShouldRunFirst(pathToDb), D
         accounts.associate { AccountId(Uuid(it.uuid)) to it.toAccountContent() }
     }
     val accountRestCache = AccountRestCache(this)
+    val simpleObjectCache = SimpleObjectCache(this)
     val catalogCaches = mapOf(
         CurrencyContent::class to currencyCache,
         AccountContent::class to accountCache,
@@ -107,6 +109,7 @@ internal class SqliteDatabase(pathToDb: Path): FlywayShouldRunFirst(pathToDb), D
             sessionWithWriteTransaction = session
         }
         catalogCaches.values.forEach { it.onTransactionStart() }
+        simpleObjectCache.onTransactionStart()
         eventsNotifier.onTransactionStart()
     }
 
@@ -117,6 +120,7 @@ internal class SqliteDatabase(pathToDb: Path): FlywayShouldRunFirst(pathToDb), D
             throw IllegalStateException("Session does not own active transaction")
         }
         catalogCaches.values.forEach { if (commit) it.onTransactionCommit() else it.onTransactionRollback() }
+        if (commit) simpleObjectCache.onTransactionCommit() else simpleObjectCache.onTransactionRollback()
         database.transactionManager.currentTransaction?.run {
             if (commit) commit() else rollback()
             if (!commit || closeTransaction) close()

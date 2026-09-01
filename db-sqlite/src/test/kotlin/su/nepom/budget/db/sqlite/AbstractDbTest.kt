@@ -15,9 +15,11 @@ import su.nepom.budget.db.sqlite.mapping.accounts
 import su.nepom.budget.db.sqlite.mapping.currencies
 import su.nepom.budget.db.sqlite.mapping.events
 import su.nepom.budget.db.sqlite.mapping.properties
+import su.nepom.budget.db.sqlite.mapping.simpleObjects
 import su.nepom.budget.event.AccountContent
 import su.nepom.budget.event.CurrencyContent
 import su.nepom.budget.event.Event
+import su.nepom.budget.event.SubaccountContent
 import su.nepom.budget.event.TransactionContent
 import su.nepom.budget.event.TransactionContentItem
 import su.nepom.budget.model.AccountCode
@@ -60,6 +62,7 @@ internal abstract class AbstractDbTest {
             database.accounts.clear()
             database.currencies.clear()
             database.properties.clear()
+            database.simpleObjects.clear()
         }
         db = SqliteDatabase(dbPath)
 
@@ -96,6 +99,13 @@ fun createAccount(name: String, currency: CurrencyContent, kind: AccountKind = A
     kind,
     setOf("tag1", "tag2"),
     4242
+)
+
+fun createSubaccount(account: AccountContent, rest: Int = 0, hidden: Boolean = false) = SubaccountContent(
+    Uuid.generate(),
+    account.id,
+    RawMoney(rest),
+    hidden
 )
 
 val TIME_MOMENT = Instant.fromEpochSeconds(365*24*60*60*50)

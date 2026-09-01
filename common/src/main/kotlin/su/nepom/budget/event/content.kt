@@ -10,6 +10,8 @@ import su.nepom.budget.model.ObjectWithId
 @Serializable
 sealed interface StorableContent: ObjectWithId {
     val objectKind: ObjectKind
+
+    val isHidden: Boolean
 }
 
 /**

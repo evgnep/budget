@@ -21,6 +21,8 @@ data class TransactionContentV1(
 ): StorableContent, ActualVersionContent {
     override val objectKind: ObjectKind get() = ObjectKind.TRANSACTION
 
+    override val isHidden get() = deleted
+
     @Serializable
     data class Item(
         val account: AccountId,

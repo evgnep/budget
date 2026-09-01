@@ -16,7 +16,10 @@ import su.nepom.budget.model.Place
 
 private val logger = KotlinLogging.logger { }
 
-private val OBJECT_KINDS_IN_PROCESSED_ORDER = listOf(ObjectKind.CURRENCY, ObjectKind.ACCOUNT, ObjectKind.TRANSACTION)
+// Simple objects go last, after the "real" kinds they may reference (e.g. subaccount -> account)
+private val OBJECT_KINDS_IN_PROCESSED_ORDER =
+    listOf(ObjectKind.CURRENCY, ObjectKind.ACCOUNT, ObjectKind.TRANSACTION) +
+        ObjectKind.entries.filter { it.simpleObject }
 
 class EventSynchronizer(
     private val reader: EventStoreReader,

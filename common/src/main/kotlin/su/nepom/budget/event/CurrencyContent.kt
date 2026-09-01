@@ -15,6 +15,8 @@ data class CurrencyContentV1(
     val hidden: Boolean = false,
 ): StorableContent, ActualVersionContent {
     override val objectKind: ObjectKind get() = ObjectKind.CURRENCY
+
+    override val isHidden get() = hidden
 }
 
 /**

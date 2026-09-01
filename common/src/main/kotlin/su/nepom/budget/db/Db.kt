@@ -23,14 +23,17 @@ interface Db: AutoCloseable {
         ACCOUNT,
         ACCOUNT_REST,
         TRANSACTION,
+        SIMPLE_OBJECT,
         ;
         companion object {
             val ALL = EnumSet.allOf(SubscribeKind::class.java)
 
-            fun from(kind: ObjectKind): SubscribeKind = when(kind) {
-                ObjectKind.CURRENCY -> CURRENCY
-                ObjectKind.ACCOUNT -> ACCOUNT
-                ObjectKind.TRANSACTION -> TRANSACTION
+            fun from(kind: ObjectKind): SubscribeKind = when {
+                kind == ObjectKind.CURRENCY -> CURRENCY
+                kind == ObjectKind.ACCOUNT -> ACCOUNT
+                kind == ObjectKind.TRANSACTION -> TRANSACTION
+                kind.simpleObject -> SIMPLE_OBJECT
+                else -> throw IllegalArgumentException("Unknown kind $kind")
             }
         }
     }

@@ -15,5 +15,10 @@ interface ConflictModule {
     fun conflictController(v: ConflictController): Controller
 
     @Binds
+    @IntoMap
+    @ClassKey(JsonDetailController::class)
+    fun jsonDetailController(v: JsonDetailController): Controller
+
+    @Binds
     fun conflictResolver(v: DesktopConflictResolver): ConflictResolver
 }

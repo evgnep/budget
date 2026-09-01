@@ -1,7 +1,6 @@
 package su.nepom.budget.events.impl
 
 import io.github.oshai.kotlinlogging.KotlinLogging
-import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromStream
 import su.nepom.budget.event.ActualEvent
@@ -152,7 +151,6 @@ internal class EventsSequenceImpl(storeReader: EventStoreReader, from: Map<Place
         }
     }
 
-    @OptIn(ExperimentalSerializationApi::class)
     private fun tryReadFileFromPlace(from: Place): ReadFile? {
         var readFile = readFiles[from]
         if (readFile != null) return readFile

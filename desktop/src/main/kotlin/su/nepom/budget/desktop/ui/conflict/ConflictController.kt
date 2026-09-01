@@ -23,7 +23,7 @@ import su.nepom.budget.event.TransactionContent
 import su.nepom.budget.events.synchronizer.ConflictResolver
 import su.nepom.budget.model.ObjectKind
 import java.net.URL
-import java.util.ResourceBundle
+import java.util.*
 
 @Suppress("unused")
 class ConflictController @Inject constructor(
@@ -64,6 +64,8 @@ class ConflictController @Inject constructor(
             ObjectKind.CURRENCY -> "currency/currencyDetail.fxml"
             ObjectKind.ACCOUNT -> "account/accountDetail.fxml"
             ObjectKind.TRANSACTION -> "transaction/transactionDetail.fxml"
+            // every simple-object kind gets the generic JSON form for free
+            else -> "conflict/jsonDetail.fxml"
         }
         leftDetailPane.children.setAll(loadDetail(path) { leftController = it })
         rightDetailPane.children.setAll(loadDetail(path) { rightController = it })
@@ -94,6 +96,7 @@ class ConflictController @Inject constructor(
             is CurrencyDetailController -> c.showReadOnly(event.content as CurrencyContent)
             is AccountDetailController -> c.showReadOnly(event.content as AccountContent)
             is TransactionDetailController -> c.showReadOnly(event.content as TransactionContent)
+            is JsonDetailController -> c.showReadOnly(event.content)
         }
     }
 
@@ -114,6 +117,12 @@ class ConflictController @Inject constructor(
 
             is TransactionDetailController -> c.editForConflict(
                 source.content as TransactionContent,
+                { finish(ConflictResolver.Result(ConflictResolver.Action.RESOLVE, it)) },
+                onCancel,
+            )
+
+            is JsonDetailController -> c.editForConflict(
+                source.content,
                 { finish(ConflictResolver.Result(ConflictResolver.Action.RESOLVE, it)) },
                 onCancel,
             )

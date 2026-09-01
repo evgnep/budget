@@ -27,6 +27,8 @@ data class AccountContentV1(
     val restMark: RestMark = RestMark.IF_NEGATIVE,
 ): StorableContent, ActualVersionContent {
     override val objectKind: ObjectKind get() = ObjectKind.ACCOUNT
+
+    override val isHidden get() = hidden
 }
 
 /**

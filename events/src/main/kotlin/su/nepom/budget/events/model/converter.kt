@@ -1,17 +1,13 @@
 package su.nepom.budget.events.model
 
-import su.nepom.budget.event.AccountContentV1
 import su.nepom.budget.event.ActualEvent
 import su.nepom.budget.event.ActualVersionContent
-import su.nepom.budget.event.CurrencyContentV1
 import su.nepom.budget.event.Event
 import su.nepom.budget.event.StorableContent
-import su.nepom.budget.event.TransactionContentV1
 
-fun StorableContent.toActualVersion(): ActualVersionContent = when(this) {
-    is AccountContentV1 -> this
-    is CurrencyContentV1 -> this
-    is TransactionContentV1 -> this
+fun StorableContent.toActualVersion(): ActualVersionContent {
+    if (this is ActualVersionContent) return this
+    return objectKind.toActualVersionConverter(this)
 }
 
 fun Event<StorableContent>.toActualVersion(): ActualEvent {
