@@ -1,8 +1,8 @@
-accessPath: path
+accessPath: c:\Users\enji8\YandexDisk\Деньги\бюджет.mdb
 
-eventStore: path
+eventStore: z:\personal\budget\_data\events
 
-processedDb: path
+processedDb: z:\personal\budget\_data\processed.sqlite
 
 currencies:
   "р":
