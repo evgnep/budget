@@ -43,6 +43,10 @@ private constructor(
 
     private var ignoreChanges = false
 
+    // saveAndUpdate mutates the entity, which can re-enter okButtonClicked through table
+    // selection listeners (e.g. the edited row gets filtered out). Guard against that.
+    private var saving = false
+
     init {
         okButton.setOnAction { okButtonClicked() }
         okButton.isDisable = true
@@ -171,6 +175,16 @@ private constructor(
 
     private fun okButtonClicked(): Boolean {
         if (state != FormState.EDIT && state != FormState.NEW) return true
+        if (saving) return true
+        return try {
+            saving = true
+            doOkButtonClicked()
+        } finally {
+            saving = false
+        }
+    }
+
+    private fun doOkButtonClicked(): Boolean {
         val session = session.value
         val sink = contentSink
         if (session == null && sink == null) {
