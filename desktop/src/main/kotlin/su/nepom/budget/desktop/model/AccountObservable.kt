@@ -16,6 +16,7 @@ import su.nepom.budget.model.AccountId
 import su.nepom.budget.model.AccountKind
 import su.nepom.budget.model.CurrencyId
 import su.nepom.budget.model.RawMoney
+import su.nepom.budget.model.RestMark
 import su.nepom.budget.model.Uuid
 
 class AccountObservable(
@@ -41,6 +42,7 @@ class AccountObservable(
   val budget = contentProperty.map { it.budget }
   val showOnMain = contentProperty.map { it.showOnMain }
   val groupPath = contentProperty.map { it.groupPath }
+  val restMark = contentProperty.map { it.restMark }
   val rest = Bindings.createObjectBinding(
     { restProperty.get().toBigDecimal(currency.get()) },
     restProperty, currency
@@ -48,7 +50,7 @@ class AccountObservable(
 
   override fun properties(): Array<Observable> =
     arrayOf(uuidObservable, name, description, currency, currencyName, kind, tags, orderNo, hidden, budget, showOnMain,
-      groupPath, rest)
+      groupPath, restMark, rest)
 
   class Builder(source: AccountObservable) : ObservableEntityBuilder<AccountObservable> {
     private val id = source.content.id
@@ -62,9 +64,11 @@ class AccountObservable(
     var budget: AccountBudget = source.content.budget
     var showOnMain: Boolean = source.content.showOnMain
     var groupPath: List<String> = source.content.groupPath
+    var restMark: RestMark = source.content.restMark
 
     override fun buildContent() =
-      AccountContent(id, name, description, currency, kind, tags, orderNo, hidden, budget, showOnMain, groupPath)
+      AccountContent(id, name, description, currency, kind, tags, orderNo, hidden, budget, showOnMain, groupPath,
+        restMark)
 
     override fun saveAndUpdate(session: Session, target: AccountObservable) {
       val content = buildContent()
@@ -89,7 +93,8 @@ class AccountObservable(
           false,
           AccountBudget.EMPTY,
           false,
-          emptyList()
+          emptyList(),
+          RestMark.OFF
         ),
         RawMoney.ZERO,
         currencies

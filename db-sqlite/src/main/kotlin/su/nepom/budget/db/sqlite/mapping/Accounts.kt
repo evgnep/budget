@@ -18,6 +18,7 @@ import su.nepom.budget.model.AccountId
 import su.nepom.budget.model.AccountKind
 import su.nepom.budget.model.CurrencyCode
 import su.nepom.budget.model.CurrencyId
+import su.nepom.budget.model.RestMark
 import su.nepom.budget.model.Uuid
 import su.nepom.budget.model.uuidCode
 
@@ -33,6 +34,7 @@ internal object Accounts : Table<AccountEntity>("account") {
     val budget = varchar("budget").bindTo { it.budget }
     val showOnMain = boolean("show_on_main").bindTo { it.showOnMain }
     val groupPath = varchar("group_path").bindTo { it.groupPath }
+    val restMark = varchar("rest_mark").bindTo { it.restMark }
 }
 
 internal interface AccountEntity : Entity<AccountEntity> {
@@ -47,6 +49,7 @@ internal interface AccountEntity : Entity<AccountEntity> {
     var budget: String
     var showOnMain: Boolean
     var groupPath: String
+    var restMark: String
 
     companion object : Entity.Factory<AccountEntity>()
 
@@ -61,7 +64,8 @@ internal interface AccountEntity : Entity<AccountEntity> {
         hidden,
         Json.decodeFromString<AccountBudget>(budget),
         showOnMain,
-        Json.decodeFromString<List<String>>(groupPath)
+        Json.decodeFromString<List<String>>(groupPath),
+        RestMark.valueOf(restMark)
     )
 }
 
@@ -78,6 +82,7 @@ internal fun AccountContent.toEntity() = AccountEntity {
     budget = Json.encodeToString(s.budget)
     showOnMain = s.showOnMain
     groupPath = Json.encodeToString(s.groupPath)
+    restMark = s.restMark.name
 }
 
 internal val Database.accounts get() = this.sequenceOf(Accounts)

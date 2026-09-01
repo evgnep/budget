@@ -22,3 +22,8 @@
     -fx-text-fill: black;
     -fx-fill: black;
 }
+
+/* "Пометка остатка": pale-red background on the end-balance cell when the condition holds */
+.tree-table-cell:mark-rest {
+    -fx-background-color: #ffd6d6;
+}

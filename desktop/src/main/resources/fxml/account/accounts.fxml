@@ -55,6 +55,7 @@
                 <TableColumn fx:id="nameColumn" editable="false" prefWidth="150.0" text="Название" />
                 <TableColumn fx:id="currencyColumn" editable="false" prefWidth="90.0" text="Валюта" />
                   <TableColumn fx:id="kindColumn" editable="false" prefWidth="90.0" text="Тип" />
+                  <TableColumn fx:id="groupColumn" editable="false" prefWidth="120.0" text="Группа" />
                   <TableColumn fx:id="hiddenColumn" editable="false" prefWidth="75.0" text="Скрыт" />
                   <TableColumn fx:id="orderNoColumn" editable="false" prefWidth="75.0" text="Порядок" />
                   <TableColumn fx:id="tagsColumn" editable="false" prefWidth="120.0" text="Теги" />

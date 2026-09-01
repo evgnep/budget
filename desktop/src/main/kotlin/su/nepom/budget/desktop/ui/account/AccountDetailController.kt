@@ -36,6 +36,7 @@ import su.nepom.budget.event.Reserve
 import su.nepom.budget.model.AccountKind
 import su.nepom.budget.model.CurrencyId
 import su.nepom.budget.model.RawMoney
+import su.nepom.budget.model.RestMark
 import su.nepom.budget.model.Uuid
 import su.nepom.budget.utils.format
 import su.nepom.budget.utils.toRawMoneyOrNull
@@ -79,6 +80,9 @@ class AccountDetailController @Inject constructor(
 
     @FXML
     private lateinit var showOnMainCheckbox: CheckBox
+
+    @FXML
+    private lateinit var restMarkComboBox: ComboBox<RestMark>
 
     @FXML
     private lateinit var tagsEditorBox: VBox
@@ -170,11 +174,18 @@ class AccountDetailController @Inject constructor(
         override fun fromString(string: String?): AccountKind? = null
     }
 
+    private val restMarkConverter = object : StringConverter<RestMark>() {
+        override fun toString(mark: RestMark?) = restMarkText(mark)
+        override fun fromString(string: String?): RestMark? = null
+    }
+
     override fun initialize(location: URL?, resources: ResourceBundle?) {
         currencyComboBox.items = visibleCurrencies
         currencyComboBox.converter = currencyConverter
         kindComboBox.items = FXCollections.observableArrayList(*AccountKind.entries.toTypedArray())
         kindComboBox.converter = kindConverter
+        restMarkComboBox.items = FXCollections.observableArrayList(*RestMark.entries.toTypedArray())
+        restMarkComboBox.converter = restMarkConverter
         tagInputComboBox.items = accountService.tags
 
         setupTagsEditor()
@@ -232,6 +243,12 @@ class AccountDetailController @Inject constructor(
                 showOnMainCheckbox.selectedProperty(),
                 { it?.content?.showOnMain ?: false },
                 { showOnMain = it })
+            .field(
+                "restMark",
+                restMarkComboBox,
+                restMarkComboBox.valueProperty(),
+                { it?.content?.restMark ?: RestMark.OFF },
+                { restMark = it ?: RestMark.OFF })
             .field(
                 "groupPath",
                 groupPathField,
@@ -463,5 +480,13 @@ class AccountDetailController @Inject constructor(
         AccountKind.MONEY -> "Деньги"
         AccountKind.BUDGET -> "Бюджет"
         null -> ""
+    }
+
+    private fun restMarkText(mark: RestMark?): String = when (mark) {
+        RestMark.OFF, null -> "Выкл"
+        RestMark.IF_ZERO -> "Если 0"
+        RestMark.IF_NOT_ZERO -> "Если не 0"
+        RestMark.IF_NEGATIVE -> "Если < 0"
+        RestMark.IF_POSITIVE -> "Если > 0"
     }
 }

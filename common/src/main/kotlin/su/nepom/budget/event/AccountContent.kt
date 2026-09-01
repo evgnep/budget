@@ -7,6 +7,7 @@ import su.nepom.budget.model.AccountId
 import su.nepom.budget.model.AccountKind
 import su.nepom.budget.model.CurrencyId
 import su.nepom.budget.model.ObjectKind
+import su.nepom.budget.model.RestMark
 
 @Serializable
 @SerialName("AccountContentV1")
@@ -23,6 +24,7 @@ data class AccountContentV1(
     val showOnMain: Boolean = false,
     // group chain from root, e.g. ["A", "B", "C"]; empty means "no group"
     val groupPath: List<String> = emptyList(),
+    val restMark: RestMark = RestMark.IF_NEGATIVE,
 ): StorableContent, ActualVersionContent {
     override val objectKind: ObjectKind get() = ObjectKind.ACCOUNT
 }

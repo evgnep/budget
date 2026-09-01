@@ -59,6 +59,9 @@ class AccountController @Inject constructor(
     private lateinit var kindColumn: TableColumn<AccountObservable, String>
 
     @FXML
+    private lateinit var groupColumn: TableColumn<AccountObservable, String>
+
+    @FXML
     private lateinit var hiddenColumn: TableColumn<AccountObservable, Boolean>
 
     @FXML
@@ -95,6 +98,9 @@ class AccountController @Inject constructor(
         currencyColumn.setCellValueFactory { it.value.currencyName }
         kindColumn.setCellValueFactory {
             Bindings.createStringBinding({ kindText(it.value.content.kind) }, it.value.contentProperty)
+        }
+        groupColumn.setCellValueFactory {
+            Bindings.createStringBinding({ groupText(it.value.content.groupPath) }, it.value.contentProperty)
         }
         hiddenColumn.setCellValueFactory { it.value.hidden }
         hiddenColumn.cellFactory = CheckBoxTableCell.forTableColumn(hiddenColumn)
@@ -149,11 +155,15 @@ class AccountController @Inject constructor(
         val showHidden = showHiddenCheckbox.isSelected
         accounts.setPredicate { account ->
             (showHidden || !account.content.hidden) &&
-                (nameFilter.isEmpty() || account.content.name.lowercase().contains(nameFilter)) &&
+                (nameFilter.isEmpty() ||
+                    account.content.name.lowercase().contains(nameFilter) ||
+                    groupText(account.content.groupPath).lowercase().contains(nameFilter)) &&
                 (currencyFilter == null || account.content.currency.uuid == currencyFilter) &&
                 (tagFilter == null || tagFilter in account.content.tags)
         }
     }
+
+    private fun groupText(groupPath: List<String>): String = groupPath.joinToString("/")
 
     private fun updateCurrenciesFilter() {
         val showHidden = showHiddenCheckbox.isSelected

@@ -14,6 +14,7 @@ import javafx.scene.control.ComboBox
 import javafx.scene.control.DatePicker
 import javafx.scene.control.TextField
 import javafx.scene.control.TreeItem
+import javafx.scene.control.TreeTableCell
 import javafx.scene.control.TreeTableColumn
 import javafx.scene.control.TreeTableRow
 import javafx.scene.control.TreeTableView
@@ -81,6 +82,7 @@ class BalanceController @Inject constructor(
         val end: String,
         val dailyBalance: String,
         val isGroup: Boolean = false,
+        val markEnd: Boolean = false,
     )
 
     private val weakListeners = WeakListeners()
@@ -183,6 +185,32 @@ class BalanceController @Inject constructor(
         endColumn.setCellValueFactory { SimpleStringProperty(it.value.value.end) }
         dailyBalanceColumn.setCellValueFactory { SimpleStringProperty(it.value.value.dailyBalance) }
 
+        // pale-red background when the account's "Пометка остатка" condition is met
+        endColumn.setCellFactory {
+            object : TreeTableCell<BalanceRow, String>() {
+                private val rowItemListener = javafx.beans.value.ChangeListener<Any?> { _, _, _ -> updateMark() }
+
+                init {
+                    tableRowProperty().addListener { _, old, new ->
+                        old?.itemProperty()?.removeListener(rowItemListener)
+                        new?.itemProperty()?.addListener(rowItemListener)
+                        updateMark()
+                    }
+                }
+
+                override fun updateItem(item: String?, empty: Boolean) {
+                    super.updateItem(item, empty)
+                    text = if (empty) null else item
+                    updateMark()
+                }
+
+                private fun updateMark() {
+                    val mark = !isEmpty && (tableRow?.item as? BalanceRow)?.markEnd == true
+                    pseudoClassStateChanged(MARK_REST, mark)
+                }
+            }
+        }
+
         balancesTable.setRowFactory {
             object : TreeTableRow<BalanceRow>() {
                 override fun updateItem(item: BalanceRow?, empty: Boolean) {
@@ -284,6 +312,7 @@ class BalanceController @Inject constructor(
                 end = end,
                 turnover = turnover[id] ?: RawTurnover(RawMoney.ZERO, RawMoney.ZERO),
                 dailyBalance = dailyBalanceText(account, end, reservedSums[id], today, currency),
+                markEnd = account.content.restMark.matches(end.value),
             )
         }
 
@@ -363,6 +392,7 @@ class BalanceController @Inject constructor(
         end: RawMoney,
         turnover: RawTurnover,
         dailyBalance: String = "",
+        markEnd: Boolean = false,
     ): BalanceRow {
         // turnover.income is positive, turnover.expenditure is negative
         val start = RawMoney(end.value - turnover.income.value - turnover.expenditure.value)
@@ -376,6 +406,7 @@ class BalanceController @Inject constructor(
             expense = formatMoney(RawMoney(-turnover.expenditure.value), currency),
             end = formatMoney(end, currency),
             dailyBalance = dailyBalance,
+            markEnd = markEnd,
         )
     }
 
@@ -412,6 +443,7 @@ class BalanceController @Inject constructor(
     companion object {
         private const val OTHER_GROUP = "Прочие"
         private val GROUP_ROW: PseudoClass = PseudoClass.getPseudoClass("group-row")
+        private val MARK_REST: PseudoClass = PseudoClass.getPseudoClass("mark-rest")
 
         private fun groupRow(name: String, accounts: Set<AccountId>) = BalanceRow(
             accounts = accounts,
