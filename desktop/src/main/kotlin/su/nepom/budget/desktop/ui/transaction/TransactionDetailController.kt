@@ -291,6 +291,10 @@ class TransactionDetailController @Inject constructor(
         updateEventInfo(null)
         updateCopyButton()
         resetTabFieldValues()
+        // this runs before FormDriver.newItem() resets the form, so the tab may still be on
+        // DETAILS / EXCHANGE from a previous operation - force the default so applyPendingFirstAccount
+        // has a simple tab to put the account into
+        operationTabProperty.value = OperationTab.EXPENSE
         pendingFirstAccount = firstAccount
         applyPendingFirstAccount()
         updateCurrencyLabels()
