@@ -105,7 +105,7 @@ class TransactionController @Inject constructor(
         setOnFinished { reload(resetPage = false) }
     }
     private val descriptionPause = PauseTransition(Duration.millis(300.0)).apply {
-        setOnFinished { reload(resetPage = true) }
+        setOnFinished { userReload(resetPage = true) }
     }
 
     private lateinit var masterDetailFormDriver: MasterDetailFormDriver<TransactionObservable>
@@ -170,6 +170,8 @@ class TransactionController @Inject constructor(
 
     private fun wireDetail() {
         transactionDetailController.setStage(stage)
+        transactionDetailController.onSaved = { savedUuid -> reload(resetPage = false, preferUuid = savedUuid) }
+        transactionDetailController.masterSelection = { transactionsTable.selectionModel.selectedItem }
         masterDetailFormDriver = MasterDetailFormDriver(
             transactionsTable.selectionModel,
             transactionDetailController.formDriver,
@@ -220,18 +222,18 @@ class TransactionController @Inject constructor(
 
         dateRangeComboBox.valueProperty().addListener { _, _, _ ->
             updateCustomDateVisibility()
-            reload(resetPage = true)
+            userReload(resetPage = true)
         }
-        fromDatePicker.valueProperty().addListener { _, _, _ -> reload(resetPage = true) }
-        toDatePicker.valueProperty().addListener { _, _, _ -> reload(resetPage = true) }
-        deletedComboBox.valueProperty().addListener { _, _, _ -> reload(resetPage = true) }
-        flagComboBox.valueProperty().addListener { _, _, _ -> reload(resetPage = true) }
-        sortComboBox.valueProperty().addListener { _, _, _ -> reload(resetPage = true) }
+        fromDatePicker.valueProperty().addListener { _, _, _ -> userReload(resetPage = true) }
+        toDatePicker.valueProperty().addListener { _, _, _ -> userReload(resetPage = true) }
+        deletedComboBox.valueProperty().addListener { _, _, _ -> userReload(resetPage = true) }
+        flagComboBox.valueProperty().addListener { _, _, _ -> userReload(resetPage = true) }
+        sortComboBox.valueProperty().addListener { _, _, _ -> userReload(resetPage = true) }
         descriptionFilterField.textProperty().addListener { _, _, _ -> descriptionPause.playFromStart() }
 
         pickAccountsButton.setOnAction { pickFilterAccounts() }
         resetFilterButton.setOnAction { resetFilter() }
-        applyFilterButton.setOnAction { reload(resetPage = true) }
+        applyFilterButton.setOnAction { userReload(resetPage = true) }
         updateAccountsSummary()
 
         prevPageButton.setOnAction { goToPage(pageIndex - 1) }
@@ -306,7 +308,16 @@ class TransactionController @Inject constructor(
         customDateBox.isManaged = custom
     }
 
-    private fun reload(resetPage: Boolean) {
+    // a filter / paging change started by the user: first let the detail form resolve any pending
+    // edit through a Save / Discard prompt. If a requested save fails validation, keep the user on
+    // the form and skip the reload.
+    private fun userReload(resetPage: Boolean) {
+        if (transactionDetailController.formDriver.requestLeaveEdit()) reload(resetPage)
+    }
+
+    // preferUuid: after "save and copy" the master selection is still on the original row, but we
+    // want the reload to land on the just-saved transaction instead (if it matches the filter/page)
+    private fun reload(resetPage: Boolean, preferUuid: Uuid? = null) {
         val session = dbService.session
         if (session == null) {
             rows.clear()
@@ -321,18 +332,19 @@ class TransactionController @Inject constructor(
         pageCount = maxOf(1, ceil(totalCount / PAGE_SIZE.toDouble()).toInt())
         if (resetPage) pageIndex = 0
         if (pageIndex >= pageCount) pageIndex = pageCount - 1
-        loadPage(filter)
+        loadPage(filter, preferUuid)
     }
 
     private fun goToPage(index: Int) {
         if (index < 0 || index >= pageCount || index == pageIndex) return
+        if (!transactionDetailController.formDriver.requestLeaveEdit()) return
         pageIndex = index
         loadPage(currentFilter())
     }
 
-    private fun loadPage(filter: TransactionDao.Filter) {
+    private fun loadPage(filter: TransactionDao.Filter, preferUuid: Uuid? = null) {
         val session = dbService.session ?: return
-        val prevUuid = transactionsTable.selectionModel.selectedItem?.uuid
+        val prevUuid = preferUuid ?: transactionsTable.selectionModel.selectedItem?.uuid
         val query = TransactionDao.Query(
             filter = filter,
             offset = pageIndex * PAGE_SIZE,
@@ -376,6 +388,7 @@ class TransactionController @Inject constructor(
     }
 
     private fun resetFilter() {
+        if (!transactionDetailController.formDriver.requestLeaveEdit()) return
         dateRangeComboBox.selectionModel.select(DateRangePreset.CUSTOM)
         fromDatePicker.value = null
         toDatePicker.value = null
@@ -389,6 +402,7 @@ class TransactionController @Inject constructor(
     }
 
     private fun pickFilterAccounts() {
+        if (!transactionDetailController.formDriver.requestLeaveEdit()) return
         val picked = accountPicker.pick(stage, selectedAccounts.toSet(), multi = true) ?: return
         selectedAccounts.clear()
         selectedAccounts.addAll(picked)

@@ -58,8 +58,27 @@ private constructor(
         setState(FormState.EMPTY)
     }
 
+    // when set, replaces the silent auto-save that setItem/clear/newItem do for a pending EDIT/NEW:
+    // the form asks the user instead. DISCARD drops the changes; SAVE tries to save and may fail
+    // validation, in which case the navigation that triggered this is aborted.
+    enum class LeaveEditChoice { SAVE, DISCARD }
+    var confirmLeaveEdit: (() -> LeaveEditChoice)? = null
+
+    private fun leaveCurrentEdit(): Boolean {
+        if (state != FormState.EDIT && state != FormState.NEW) return true
+        val ask = confirmLeaveEdit ?: return okButtonClicked()
+        return when (ask()) {
+            LeaveEditChoice.SAVE -> okButtonClicked()
+            LeaveEditChoice.DISCARD -> { validator.clear(); true }
+        }
+    }
+
+    // resolve a pending edit before the surrounding screen navigates away (e.g. a filter change).
+    // returns false only when SAVE was chosen and validation failed.
+    fun requestLeaveEdit(): Boolean = leaveCurrentEdit()
+
     fun setItem(item: O?): Boolean {
-        if (!okButtonClicked()) return false
+        if (!leaveCurrentEdit()) return false
         this.item = item
         setState(if (item == null) FormState.EMPTY else FormState.VIEW)
         return true
@@ -88,6 +107,14 @@ private constructor(
         this.item = item
         setState(FormState.VIEW)
         setState(FormState.EDIT)
+    }
+
+    // drop the current edit without saving and show the given item (VIEW) or nothing (EMPTY),
+    // re-applying every field from that item
+    fun revertTo(item: O?) {
+        validator.clear()
+        this.item = item
+        setState(if (item == null) FormState.EMPTY else FormState.VIEW)
     }
 
     // view-only mode for the history form: show the item, no editing possible
@@ -154,13 +181,13 @@ private constructor(
     }
 
     fun newItem(): Boolean {
-        if (!okButtonClicked()) return false
+        if (!leaveCurrentEdit()) return false
         setState(FormState.NEW)
         return true
     }
 
     fun clear(): Boolean {
-        if (!okButtonClicked()) return false
+        if (!leaveCurrentEdit()) return false
         validator.clear()
         this.item = null
         setState(FormState.EMPTY)

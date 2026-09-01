@@ -4,7 +4,7 @@
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
 
-<VBox spacing="5.0" xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1" fx:controller="su.nepom.budget.desktop.ui.transaction.TransactionDetailController">
+<VBox fx:id="root" spacing="5.0" xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1" fx:controller="su.nepom.budget.desktop.ui.transaction.TransactionDetailController">
    <padding>
       <Insets bottom="5.0" left="5.0" right="5.0" top="5.0" />
    </padding>
@@ -283,9 +283,15 @@
       </VBox>
       <ButtonBar>
         <buttons>
-          <Button fx:id="okButton" mnemonicParsing="false" text="Сохранить" />
-          <Button fx:id="copyButton" mnemonicParsing="false" prefHeight="26.0" prefWidth="210.0" text="Скопировать" />
-          <Button fx:id="cancelButton" mnemonicParsing="false" text="Отмена" />
+          <Button fx:id="okButton" mnemonicParsing="false" text="Сохранить">
+            <tooltip><Tooltip text="Сохранить (Shift+Enter)" /></tooltip>
+          </Button>
+          <Button fx:id="copyButton" mnemonicParsing="false" prefHeight="26.0" prefWidth="210.0" text="Скопировать">
+            <tooltip><Tooltip text="Скопировать / Сохранить и скопировать (Ctrl+Shift+Enter)" /></tooltip>
+          </Button>
+          <Button fx:id="cancelButton" mnemonicParsing="false" text="Отмена">
+            <tooltip><Tooltip text="Отмена (Esc)" /></tooltip>
+          </Button>
         </buttons>
       </ButtonBar>
    </children>

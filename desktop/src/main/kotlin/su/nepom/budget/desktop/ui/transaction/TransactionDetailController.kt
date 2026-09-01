@@ -7,9 +7,13 @@ import javafx.beans.property.SimpleObjectProperty
 import javafx.beans.property.SimpleStringProperty
 import javafx.collections.FXCollections
 import javafx.collections.ListChangeListener
+import javafx.event.ActionEvent
 import javafx.fxml.FXML
 import javafx.fxml.Initializable
+import javafx.scene.control.Alert
 import javafx.scene.control.Button
+import javafx.scene.control.ButtonBar
+import javafx.scene.control.ButtonType
 import javafx.scene.control.CheckBox
 import javafx.scene.control.DatePicker
 import javafx.scene.control.Label
@@ -21,6 +25,8 @@ import javafx.scene.control.TabPane
 import javafx.scene.control.TextField
 import javafx.scene.control.cell.CheckBoxTableCell
 import javafx.scene.control.cell.TextFieldTableCell
+import javafx.scene.input.KeyCode
+import javafx.scene.input.KeyEvent
 import javafx.scene.layout.HBox
 import javafx.scene.layout.VBox
 import javafx.scene.paint.Color
@@ -162,6 +168,7 @@ class TransactionDetailController @Inject constructor(
     val formState: FormState get() = formDriver.state
 
     // detail form
+    @FXML private lateinit var root: VBox
     @FXML private lateinit var idTextField: TextField
     @FXML private lateinit var dateEditPicker: DatePicker
     @FXML private lateinit var descriptionEditField: TextField
@@ -235,8 +242,23 @@ class TransactionDetailController @Inject constructor(
         setupItemsEditor()
         setupOperationTabs()
         setupForm()
+        setupShortcuts()
         updateEventInfo(null)
         updateCopyButton()
+    }
+
+    // Esc - cancel, Shift+Enter - save, Ctrl+Shift+Enter - save and copy.
+    // fire() on a disabled button is a no-op, so no extra state checks are needed.
+    private fun setupShortcuts() {
+        root.addEventFilter(KeyEvent.KEY_PRESSED) { e ->
+            when {
+                e.code == KeyCode.ESCAPE -> cancelButton.fire()
+                e.code == KeyCode.ENTER && e.isShiftDown && e.isShortcutDown -> copyButton.fire()
+                e.code == KeyCode.ENTER && e.isShiftDown -> okButton.fire()
+                else -> return@addEventFilter
+            }
+            e.consume()
+        }
     }
 
     fun setStage(stage: Stage) {
@@ -254,9 +276,12 @@ class TransactionDetailController @Inject constructor(
         // form state is set by MasterDetailFormDriver on the same selection event - defer so we read it settled
         Platform.runLater {
             updateCopyButton()
-            // a freshly started new operation keeps its default tab and pre-filled fields
-            if (formDriver.state == FormState.NEW && selected == null) return@runLater
-            syncTabFieldsFrom(formDriver.item?.content?.items ?: emptyList())
+            // a NEW operation (freshly started or the copy from "save and copy") keeps its own
+            // pre-filled fields - a master reselection must not overwrite them
+            if (formDriver.state == FormState.NEW) return@runLater
+            // sync from the selected row, not formDriver.item: while a "save changes?" dialog is open
+            // formDriver.item is still the previous row (setItem is blocked on the modal)
+            syncTabFieldsFrom(selected?.content?.items ?: emptyList())
         }
     }
 
@@ -800,6 +825,59 @@ class TransactionDetailController @Inject constructor(
 
         okButton.disableProperty().addListener { _, _, _ -> updateCopyButton() }
         copyButton.setOnAction { saveAndCopy() }
+
+        // plain "Сохранить" on a freshly created operation: once it is saved, ask the master list to
+        // select it. The filter runs before FormDriver's own handler, so we can see the NEW state.
+        okButton.addEventFilter(ActionEvent.ACTION) {
+            if (formDriver.state != FormState.NEW) return@addEventFilter
+            Platform.runLater {
+                if (formDriver.state == FormState.VIEW) formDriver.item?.uuid?.let { onSaved?.invoke(it) }
+            }
+        }
+
+        // leaving a pending edit (row switch, filter / page change) asks the user instead of the
+        // silent auto-save
+        formDriver.confirmLeaveEdit = { askLeaveEdit() }
+
+        // Cancel rebuilds the whole form from the master selection (or clears it), including the
+        // structured operation tabs that FormDriver does not know about. Consume the event so
+        // FormDriver's built-in "revert to VIEW/EMPTY" does not also run. Conflict mode keeps its
+        // own cancelSink.
+        cancelButton.addEventFilter(ActionEvent.ACTION) { e ->
+            if (formDriver.cancelSink != null) return@addEventFilter
+            if (formDriver.state != FormState.EDIT && formDriver.state != FormState.NEW) return@addEventFilter
+            e.consume()
+            revertFormToSelection()
+        }
+    }
+
+    // callback to read the currently selected master row (null when nothing is selected)
+    var masterSelection: (() -> TransactionObservable?)? = null
+
+    private val leaveSaveButton = ButtonType("Сохранить", ButtonBar.ButtonData.YES)
+    private val leaveDiscardButton = ButtonType("Отменить изменения", ButtonBar.ButtonData.NO)
+
+    // asked when navigating away from an unsaved operation; dismissing the dialog counts as "save"
+    // (safe: if it does not validate, the navigation is aborted and nothing is lost)
+    private fun askLeaveEdit(): FormDriver.LeaveEditChoice {
+        val alert = Alert(
+            Alert.AlertType.CONFIRMATION,
+            "В операции есть несохранённые изменения.",
+            leaveSaveButton, leaveDiscardButton,
+        )
+        alert.title = "Несохранённые изменения"
+        alert.headerText = null
+        if (::stage.isInitialized) alert.initOwner(stage)
+        return if (alert.showAndWait().orElse(null) == leaveDiscardButton) FormDriver.LeaveEditChoice.DISCARD
+        else FormDriver.LeaveEditChoice.SAVE
+    }
+
+    private fun revertFormToSelection() {
+        val selected = masterSelection?.invoke()
+        formDriver.revertTo(selected)
+        syncTabFieldsFrom(selected?.content?.items ?: emptyList())
+        updateEventInfo(selected)
+        updateCopyButton()
     }
 
     private fun updateCopyButton() {
@@ -809,6 +887,11 @@ class TransactionDetailController @Inject constructor(
         copyButton.text = if (modified) "Сохранить и скопировать" else "Скопировать"
     }
 
+    // asks the master list to refresh and move its selection onto the saved transaction. Called
+    // synchronously by "save and copy" (before the form switches to the NEW copy, when the async
+    // DB-change refresh would be skipped) and, deferred, after a plain save of a new operation.
+    var onSaved: ((savedUuid: Uuid) -> Unit)? = null
+
     /**
      * Optionally saves the current transaction (if it was modified), then, if there were no errors,
      * starts a new unsaved transaction pre-filled as a copy of the current one.
@@ -816,11 +899,15 @@ class TransactionDetailController @Inject constructor(
     private fun saveAndCopy() {
         val state = formDriver.state
         if (state == FormState.EMPTY) return
-        if (state == FormState.EDIT || state == FormState.NEW) {
+        val saved = state == FormState.EDIT || state == FormState.NEW
+        if (saved) {
             okButton.fire()
             if (formDriver.state != FormState.VIEW) return // save failed (validation) - do not copy
         }
+        // capture the source before refreshing the master list: the refresh reselects a row there,
+        // which would pull formDriver.item off the just-saved transaction
         val source = formDriver.item?.content ?: return
+        if (saved) formDriver.item?.uuid?.let { onSaved?.invoke(it) }
         if (!formDriver.newItem()) return
         dateEditPicker.value = source.date.toLocalDate()
         descriptionEditField.text = source.description
