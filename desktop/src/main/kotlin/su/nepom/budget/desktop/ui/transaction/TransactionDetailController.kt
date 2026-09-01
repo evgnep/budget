@@ -131,10 +131,13 @@ class TransactionDetailController @Inject constructor(
     private var populating = false
     private var syncingTab = false
 
+    // account from a single-account list filter, pre-selected as the first account of a new operation
+    private var pendingFirstAccount: AccountObservable? = null
+
     // read-only mode: which operation-type tab to keep next to DETAILS (null = not read-only)
     private var viewOnlyTypeTab: OperationTab? = null
 
-    private val operationTabProperty = SimpleObjectProperty(this, "operationTab", OperationTab.INCOME)
+    private val operationTabProperty = SimpleObjectProperty(this, "operationTab", OperationTab.EXPENSE)
 
     // structured tab account pickers
     private lateinit var incomeMoney: AccountField
@@ -247,18 +250,24 @@ class TransactionDetailController @Inject constructor(
 
     fun onMasterSelectionChanged(selected: TransactionObservable?) {
         updateEventInfo(selected)
+        if (selected != null) pendingFirstAccount = null
         // form state is set by MasterDetailFormDriver on the same selection event - defer so we read it settled
         Platform.runLater {
             updateCopyButton()
+            // a freshly started new operation keeps its default tab and pre-filled fields
+            if (formDriver.state == FormState.NEW && selected == null) return@runLater
             syncTabFieldsFrom(formDriver.item?.content?.items ?: emptyList())
         }
     }
 
-    // new transaction has no events yet - clear the info fields
-    fun onNewStarted() {
+    // new transaction has no events yet - clear the info fields; firstAccount comes from a
+    // single-account list filter and is pre-selected as the first account
+    fun onNewStarted(firstAccount: AccountObservable? = null) {
         updateEventInfo(null)
         updateCopyButton()
         resetTabFieldValues()
+        pendingFirstAccount = firstAccount
+        applyPendingFirstAccount()
         updateCurrencyLabels()
         updateRateLabel()
     }
@@ -434,6 +443,10 @@ class TransactionDetailController @Inject constructor(
             if (!populating) onUserTabSwitch(from, to)
         }
 
+        // the property starts on EXPENSE while the TabPane still shows its first tab - align them
+        syncingTab = true
+        operationTabPane.selectionModel.select(tabNode(operationTabProperty.value))
+        syncingTab = false
         applyTabChrome(operationTabProperty.value)
     }
 
@@ -501,24 +514,45 @@ class TransactionDetailController @Inject constructor(
     }
 
     private fun onUserTabSwitch(from: OperationTab?, to: OperationTab) {
+        val src = from?.let(::simpleTabFields)
         when {
-            from == OperationTab.INCOME && to == OperationTab.EXPENSE ->
-                mirrorMoneyBudget(incomeMoney, incomeBudget, incomeAmountField, expenseMoney, expenseBudget, expenseAmountField)
-            from == OperationTab.EXPENSE && to == OperationTab.INCOME ->
-                mirrorMoneyBudget(expenseMoney, expenseBudget, expenseAmountField, incomeMoney, incomeBudget, incomeAmountField)
+            src != null && to in listOf(OperationTab.INCOME, OperationTab.EXPENSE, OperationTab.TRANSFER) -> {
+                val (srcAccount1, srcAccount2, srcAmount) = src
+                val (dstAccount1, dstAccount2, dstAmount) = simpleTabFields(to)!!
+                dstAccount1.set(srcAccount1.value)
+                dstAccount2.set(srcAccount2.value)
+                dstAmount.text = srcAmount.text
+            }
+            // keep only the first account when moving to the currency exchange form
+            src != null && to == OperationTab.EXCHANGE -> exchangeMoney1.set(src.first.value)
+            // and carry it back when leaving the currency exchange form
+            from == OperationTab.EXCHANGE ->
+                simpleTabFields(to)?.first?.set(exchangeMoney1.value)
         }
         updateCurrencyLabels()
         updateRateLabel()
         if (to != OperationTab.DETAILS) writeItemsFromTab(to)
     }
 
-    private fun mirrorMoneyBudget(
-        srcMoney: AccountField, srcBudget: AccountField, srcAmount: TextField,
-        dstMoney: AccountField, dstBudget: AccountField, dstAmount: TextField,
-    ) {
-        dstMoney.set(srcMoney.value)
-        dstBudget.set(srcBudget.value)
-        dstAmount.text = srcAmount.text
+    // "account 1 / account 2 / amount" fields shared by the income, expense and transfer tabs
+    private fun simpleTabFields(tab: OperationTab): Triple<AccountField, AccountField, TextField>? = when (tab) {
+        OperationTab.INCOME -> Triple(incomeMoney, incomeBudget, incomeAmountField)
+        OperationTab.EXPENSE -> Triple(expenseMoney, expenseBudget, expenseAmountField)
+        OperationTab.TRANSFER -> Triple(transferFrom, transferTo, transferAmountField)
+        else -> null
+    }
+
+    private fun applyPendingFirstAccount() {
+        val account = pendingFirstAccount ?: return
+        pendingFirstAccount = null
+        val fields = simpleTabFields(operationTabProperty.value) ?: return
+        val wasPopulating = populating
+        populating = true
+        try {
+            fields.first.set(account)
+        } finally {
+            populating = wasPopulating
+        }
     }
 
     private fun onTabFieldChanged() {
@@ -759,7 +793,7 @@ class TransactionDetailController @Inject constructor(
                 "operationTab",
                 operationTabPane,
                 operationTabProperty,
-                { if (it == null) OperationTab.INCOME else tabForType(operationType(it.content.items)) },
+                { if (it == null) OperationTab.EXPENSE else tabForType(operationType(it.content.items)) },
                 { /* no-op: the "items" field carries the actual rows */ },
             )
             .build()

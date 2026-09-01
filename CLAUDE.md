@@ -26,7 +26,7 @@ every PR (Temurin JDK 21), and uploads `**/build/reports/tests/` as an artifact.
 
 ### Packaging the desktop app
 
-`gradle :desktop:jpackageImage` -> `desktop/build/jpackage/budget/` - a self-contained app-image
+`./gradlew :desktop:jpackageImage` -> `desktop/build/jpackage/budget/` - a self-contained app-image
 (trimmed JRE via the `org.beryx.runtime` plugin, no installer, windowless `budget.exe` launcher).
 Main class is `su.nepom.budget.desktop.BudgetApplicationKt`. The explicit JVM `modules` / `runtime`
 option list lives in `desktop/build.gradle.kts`; re-check it with `gradle :desktop:suggestModules`.

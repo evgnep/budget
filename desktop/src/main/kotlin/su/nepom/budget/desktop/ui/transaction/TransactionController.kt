@@ -12,6 +12,7 @@ import javafx.scene.control.CheckBox
 import javafx.scene.control.ComboBox
 import javafx.scene.control.DatePicker
 import javafx.scene.control.Label
+import javafx.scene.control.TableCell
 import javafx.scene.control.TableColumn
 import javafx.scene.control.TableView
 import javafx.scene.control.TextField
@@ -177,7 +178,10 @@ class TransactionController @Inject constructor(
         transactionsTable.selectionModel.selectedItemProperty().addListener { _, _, selected ->
             transactionDetailController.onMasterSelectionChanged(selected)
         }
-        newButton.addEventHandler(ActionEvent.ACTION) { transactionDetailController.onNewStarted() }
+        newButton.addEventHandler(ActionEvent.ACTION) {
+            val single = selectedAccounts.singleOrNull()?.let { accountService.accounts[it.uuid] }
+            transactionDetailController.onNewStarted(single)
+        }
 
         allowEditCheckbox.selectedProperty().addListener { _, _, on ->
             transactionDetailController.setEditingAllowed(on)
@@ -248,6 +252,17 @@ class TransactionController @Inject constructor(
             .forEach { it.isSortable = false }
         dateColumn.setCellValueFactory { SimpleStringProperty(it.value.content.date.formatDateTime()) }
         typeColumn.setCellValueFactory { SimpleStringProperty(operationTypeLabel(operationType(it.value.content))) }
+        typeColumn.setCellFactory {
+            object : TableCell<TransactionObservable, String>() {
+                override fun updateItem(item: String?, empty: Boolean) {
+                    super.updateItem(item, empty)
+                    text = if (empty) null else item
+                    val tx = tableRow?.item
+                    val color = if (empty || tx == null) null else operationTypeColor(operationType(tx.content))
+                    style = if (color == null) "" else "-fx-background-color: $color;"
+                }
+            }
+        }
         descriptionColumn.setCellValueFactory { SimpleStringProperty(it.value.content.description) }
         operationColumn.setCellValueFactory { SimpleStringProperty(operationText(it.value.content)) }
         flagColumn.setCellValueFactory { it.value.flag as javafx.beans.value.ObservableValue<Boolean> }
@@ -403,6 +418,14 @@ class TransactionController @Inject constructor(
         OperationType.TRANSFER -> "Перевод"
         OperationType.CURRENCY_EXCHANGE -> "Обмен"
         OperationType.MIXED -> "Сложная"
+    }
+
+    private fun operationTypeColor(type: OperationType): String? = when (type) {
+        OperationType.INCOME -> "#d9f2d9"
+        OperationType.EXPENSE -> "#f8d9d9"
+        OperationType.TRANSFER -> "#f8f2cc"
+        OperationType.CURRENCY_EXCHANGE -> "#d4ebf7"
+        OperationType.MIXED -> null
     }
 
     private fun currencyOf(item: TransactionContentItem): CurrencyId? =

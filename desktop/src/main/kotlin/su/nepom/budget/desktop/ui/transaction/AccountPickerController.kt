@@ -197,6 +197,20 @@ class AccountPickerController @Inject constructor(
                 e.consume()
             }
         }
+
+        // Space toggles the checkbox of the selected rows when multi-select is on.
+        if (multi) {
+            accountsTableView.setOnKeyPressed { e ->
+                if (e.code == KeyCode.SPACE) {
+                    val rows = accountsTableView.selectionModel.selectedItems.filterNotNull()
+                    if (rows.isNotEmpty()) {
+                        val newValue = !rows.all { it.selected.get() }
+                        rows.forEach { it.selected.set(newValue) }
+                        e.consume()
+                    }
+                }
+            }
+        }
         Platform.runLater { nameFilterTextField.requestFocus() }
     }
 
