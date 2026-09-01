@@ -116,7 +116,12 @@ class BudgetApplication : Application() {
         }
         val windowsMenu = Menu("Окна", null, openTransactionsItem, openBalancesItem)
 
-        return MenuBar(fileMenu, windowsMenu)
+        val aboutItem = MenuItem("О программе").apply {
+            setOnAction { budgetComponent.aboutDialog().show() }
+        }
+        val helpMenu = Menu("Справка", null, aboutItem)
+
+        return MenuBar(fileMenu, windowsMenu, helpMenu)
     }
 
     private fun showMainAccounts() = setContent(budgetComponent.mainAccountsView().root)

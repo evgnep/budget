@@ -1,3 +1,7 @@
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+
 plugins {
     id("kotlin-kapt")
     id("java")
@@ -19,6 +23,49 @@ application {
 javafx {
     version = libs.versions.javafx.get()
     modules = listOf("javafx.controls", "javafx.fxml")
+}
+
+// Writes build-info.properties (version, git revision, dirty flag, build time) into resources.
+// Read at runtime by su.nepom.budget.desktop.BuildInfo and shown in the "About" window.
+val generateBuildInfo by tasks.registering {
+    val outputDir = layout.buildDirectory.dir("generated/buildInfo")
+    val projectVersion = project.version.toString()
+    val repoDir = rootDir
+    outputs.dir(outputDir)
+    outputs.upToDateWhen { false }
+
+    doLast {
+        fun git(vararg args: String): String = runCatching {
+            val process = ProcessBuilder(listOf("git") + args)
+                .directory(repoDir)
+                .redirectErrorStream(true)
+                .start()
+            process.inputStream.bufferedReader().readText().trim().also { process.waitFor() }
+        }.getOrDefault("")
+
+        val revision = git("rev-parse", "--short=10", "HEAD").ifEmpty { "unknown" }
+        // untracked files (local sqlite, logs, ...) are ignored on purpose
+        val dirty = git("status", "--porcelain", "--untracked-files=no").isNotEmpty()
+        val buildTime = DateTimeFormatter
+            .ofPattern("yyyy-MM-dd HH:mm:ss")
+            .withZone(ZoneId.systemDefault())
+            .format(Instant.now())
+
+        val file = outputDir.get().file("build-info.properties").asFile
+        file.parentFile.mkdirs()
+        file.writeText(
+            """
+            version=$projectVersion
+            revision=$revision
+            dirty=$dirty
+            buildTime=$buildTime
+            """.trimIndent() + "\n"
+        )
+    }
+}
+
+tasks.processResources {
+    from(generateBuildInfo)
 }
 
 dependencies {

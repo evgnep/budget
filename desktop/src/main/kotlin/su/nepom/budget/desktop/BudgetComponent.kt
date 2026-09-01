@@ -9,6 +9,7 @@ import su.nepom.budget.desktop.service.EventStoreService
 import su.nepom.budget.desktop.service.SettingsService
 import su.nepom.budget.desktop.service.WindowStateService
 import su.nepom.budget.desktop.ui.UiModule
+import su.nepom.budget.desktop.ui.about.AboutDialog
 import su.nepom.budget.desktop.ui.account.AccountView
 import su.nepom.budget.desktop.ui.configuration.ConfigurationDialog
 import su.nepom.budget.desktop.ui.currency.CurrencyView
@@ -26,6 +27,8 @@ import su.nepom.budget.desktop.util.UtilModule
 @Singleton
 interface BudgetComponent {
     fun configurationDialog(): ConfigurationDialog
+
+    fun aboutDialog(): AboutDialog
 
     fun mainStage(): Stage
 
