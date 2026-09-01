@@ -96,6 +96,9 @@ class AccountDetailController @Inject constructor(
     private lateinit var removeTagButton: Button
 
     @FXML
+    private lateinit var groupPathField: TextField
+
+    @FXML
     private lateinit var budgetSectionLabel: Label
 
     @FXML
@@ -229,6 +232,12 @@ class AccountDetailController @Inject constructor(
                 showOnMainCheckbox.selectedProperty(),
                 { it?.content?.showOnMain ?: false },
                 { showOnMain = it })
+            .field(
+                "groupPath",
+                groupPathField,
+                groupPathField.textProperty(),
+                { it?.content?.groupPath?.joinToString("/") ?: "" },
+                { groupPath = parseGroupPath(it) })
             .field(
                 "tags",
                 tagsEditorBox,
@@ -446,6 +455,9 @@ class AccountDetailController @Inject constructor(
         tagsListView.items.remove(selected)
         tagsProperty.set(tagsListView.items.toSortedSet())
     }
+
+    private fun parseGroupPath(text: String?): List<String> =
+        text?.split("/")?.map { it.trim() }?.filter { it.isNotEmpty() } ?: emptyList()
 
     private fun kindText(kind: AccountKind?): String = when (kind) {
         AccountKind.MONEY -> "Деньги"

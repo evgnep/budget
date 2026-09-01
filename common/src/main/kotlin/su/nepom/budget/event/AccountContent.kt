@@ -21,6 +21,8 @@ data class AccountContentV1(
     val hidden: Boolean = false,
     val budget: AccountBudget = AccountBudget.EMPTY,
     val showOnMain: Boolean = false,
+    // group chain from root, e.g. ["A", "B", "C"]; empty means "no group"
+    val groupPath: List<String> = emptyList(),
 ): StorableContent, ActualVersionContent {
     override val objectKind: ObjectKind get() = ObjectKind.ACCOUNT
 }

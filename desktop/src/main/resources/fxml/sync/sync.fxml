@@ -38,7 +38,7 @@
       </TableView>
       <HBox alignment="CENTER_LEFT" spacing="10.0">
          <children>
-            <Button fx:id="syncButton" mnemonicParsing="false" text="Синхронизировать" />
+            <Button fx:id="syncButton" mnemonicParsing="false" text="Загрузить в БД" />
             <Label fx:id="progressLabel" managed="false" style="-fx-font-weight: bold;" text="ИДЁТ СИНХРОНИЗАЦИЯ..." visible="false" />
          </children>
       </HBox>

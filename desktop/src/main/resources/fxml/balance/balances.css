@@ -1,0 +1,24 @@
+/* balances tree: zebra striping + bold group rows */
+.tree-table-row-cell:even {
+    -fx-background-color: -fx-control-inner-background;
+}
+
+.tree-table-row-cell:odd {
+    -fx-background-color: derive(-fx-control-inner-background, -5%);
+}
+
+.tree-table-row-cell:group-row {
+    -fx-font-weight: bold;
+}
+
+/* selected row: light blue background, black text (keep readable, focused or not) */
+.tree-table-row-cell:filled:selected,
+.tree-table-view:focused > .virtual-flow > .clipped-container > .sheet > .tree-table-row-cell:filled:selected {
+    -fx-background-color: #cce6ff;
+}
+
+.tree-table-row-cell:filled:selected .tree-table-cell,
+.tree-table-row-cell:filled:selected .text {
+    -fx-text-fill: black;
+    -fx-fill: black;
+}

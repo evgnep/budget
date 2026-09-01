@@ -4,17 +4,19 @@ import jakarta.inject.Inject
 import javafx.animation.PauseTransition
 import javafx.application.Platform
 import javafx.beans.property.SimpleStringProperty
-import javafx.collections.FXCollections
 import javafx.collections.transformation.FilteredList
+import javafx.css.PseudoClass
 import javafx.fxml.FXML
 import javafx.fxml.Initializable
 import javafx.scene.control.Button
 import javafx.scene.control.CheckBox
 import javafx.scene.control.ComboBox
 import javafx.scene.control.DatePicker
-import javafx.scene.control.TableColumn
-import javafx.scene.control.TableView
 import javafx.scene.control.TextField
+import javafx.scene.control.TreeItem
+import javafx.scene.control.TreeTableColumn
+import javafx.scene.control.TreeTableRow
+import javafx.scene.control.TreeTableView
 import javafx.scene.input.MouseButton
 import javafx.util.Duration
 import javafx.util.StringConverter
@@ -78,10 +80,10 @@ class BalanceController @Inject constructor(
         val expense: String,
         val end: String,
         val dailyBalance: String,
+        val isGroup: Boolean = false,
     )
 
     private val weakListeners = WeakListeners()
-    private val rows = FXCollections.observableArrayList<BalanceRow>()
     private val visibleCurrencies = FilteredList(currencyService.currencies) { !it.content.hidden }
 
     private val refreshPause = PauseTransition(Duration.millis(200.0)).apply { setOnFinished { reload() } }
@@ -100,15 +102,15 @@ class BalanceController @Inject constructor(
     @FXML private lateinit var resetFilterButton: Button
 
     // list
-    @FXML private lateinit var balancesTable: TableView<BalanceRow>
-    @FXML private lateinit var nameColumn: TableColumn<BalanceRow, String>
-    @FXML private lateinit var kindColumn: TableColumn<BalanceRow, String>
-    @FXML private lateinit var currencyColumn: TableColumn<BalanceRow, String>
-    @FXML private lateinit var startColumn: TableColumn<BalanceRow, String>
-    @FXML private lateinit var incomeColumn: TableColumn<BalanceRow, String>
-    @FXML private lateinit var expenseColumn: TableColumn<BalanceRow, String>
-    @FXML private lateinit var endColumn: TableColumn<BalanceRow, String>
-    @FXML private lateinit var dailyBalanceColumn: TableColumn<BalanceRow, String>
+    @FXML private lateinit var balancesTable: TreeTableView<BalanceRow>
+    @FXML private lateinit var nameColumn: TreeTableColumn<BalanceRow, String>
+    @FXML private lateinit var kindColumn: TreeTableColumn<BalanceRow, String>
+    @FXML private lateinit var currencyColumn: TreeTableColumn<BalanceRow, String>
+    @FXML private lateinit var startColumn: TreeTableColumn<BalanceRow, String>
+    @FXML private lateinit var incomeColumn: TreeTableColumn<BalanceRow, String>
+    @FXML private lateinit var expenseColumn: TreeTableColumn<BalanceRow, String>
+    @FXML private lateinit var endColumn: TreeTableColumn<BalanceRow, String>
+    @FXML private lateinit var dailyBalanceColumn: TreeTableColumn<BalanceRow, String>
 
     private val currencyConverter = object : StringConverter<CurrencyObservable>() {
         override fun toString(currency: CurrencyObservable?) = currency?.content?.name ?: ""
@@ -167,22 +169,32 @@ class BalanceController @Inject constructor(
     }
 
     private fun setupTable() {
-        balancesTable.items = rows
+        balancesTable.isShowRoot = false
+        balancesTable.root = TreeItem(groupRow("", emptySet()))
         listOf(nameColumn, kindColumn, currencyColumn, startColumn, incomeColumn, expenseColumn, endColumn,
             dailyBalanceColumn)
             .forEach { it.isSortable = false }
-        nameColumn.setCellValueFactory { SimpleStringProperty(it.value.name) }
-        kindColumn.setCellValueFactory { SimpleStringProperty(it.value.kind) }
-        currencyColumn.setCellValueFactory { SimpleStringProperty(it.value.currency) }
-        startColumn.setCellValueFactory { SimpleStringProperty(it.value.start) }
-        incomeColumn.setCellValueFactory { SimpleStringProperty(it.value.income) }
-        expenseColumn.setCellValueFactory { SimpleStringProperty(it.value.expense) }
-        endColumn.setCellValueFactory { SimpleStringProperty(it.value.end) }
-        dailyBalanceColumn.setCellValueFactory { SimpleStringProperty(it.value.dailyBalance) }
+        nameColumn.setCellValueFactory { SimpleStringProperty(it.value.value.name) }
+        kindColumn.setCellValueFactory { SimpleStringProperty(it.value.value.kind) }
+        currencyColumn.setCellValueFactory { SimpleStringProperty(it.value.value.currency) }
+        startColumn.setCellValueFactory { SimpleStringProperty(it.value.value.start) }
+        incomeColumn.setCellValueFactory { SimpleStringProperty(it.value.value.income) }
+        expenseColumn.setCellValueFactory { SimpleStringProperty(it.value.value.expense) }
+        endColumn.setCellValueFactory { SimpleStringProperty(it.value.value.end) }
+        dailyBalanceColumn.setCellValueFactory { SimpleStringProperty(it.value.value.dailyBalance) }
+
+        balancesTable.setRowFactory {
+            object : TreeTableRow<BalanceRow>() {
+                override fun updateItem(item: BalanceRow?, empty: Boolean) {
+                    super.updateItem(item, empty)
+                    pseudoClassStateChanged(GROUP_ROW, !empty && item?.isGroup == true)
+                }
+            }
+        }
 
         balancesTable.setOnMouseClicked { event ->
             if (event.button == MouseButton.PRIMARY && event.clickCount == 2) {
-                balancesTable.selectionModel.selectedItem?.let(::openTransactionsFor)
+                balancesTable.selectionModel.selectedItem?.value?.let(::openTransactionsFor)
             }
         }
     }
@@ -233,7 +245,7 @@ class BalanceController @Inject constructor(
 
     private fun reload() {
         val session = dbService.session
-        rows.clear()
+        balancesTable.root.children.clear()
         if (session == null) return
 
         val accounts = visibleAccounts()
@@ -263,7 +275,7 @@ class BalanceController @Inject constructor(
             val id = account.content.id
             val currency = currencyService.currencies[account.content.currency.uuid]
             val end = endRest[id] ?: RawMoney.ZERO
-            makeRow(
+            account to makeRow(
                 accounts = setOf(id),
                 name = account.content.name,
                 kind = kindText(account.content.kind),
@@ -300,7 +312,46 @@ class BalanceController @Inject constructor(
                 )
             }
 
-        rows.setAll(currencyRows + accountRows)
+        val root = balancesTable.root
+        currencyRows.forEach { root.children.add(TreeItem(it)) }
+        buildGroupTree(accountRows).forEach { root.children.add(it) }
+    }
+
+    // build the account rows into a tree of groups (see the "Остатки" grouping rules)
+    private fun buildGroupTree(accountRows: List<Pair<AccountObservable, BalanceRow>>): List<TreeItem<BalanceRow>> {
+        val root = GroupNode("")
+        for ((account, row) in accountRows) {
+            val path = account.content.groupPath.ifEmpty { listOf(OTHER_GROUP) }
+            var node = root
+            for (name in path) node = node.children.getOrPut(name) { GroupNode(name) }
+            node.accounts += account.content.orderNo to row
+        }
+        return root.sortedChildren().map { it.toTreeItem() }
+    }
+
+    private class GroupNode(val name: String) {
+        val children = linkedMapOf<String, GroupNode>()
+        val accounts = mutableListOf<Pair<Int, BalanceRow>>() // account orderNo to its row
+
+        // "Прочие" always last; then groups by lowest account orderNo, then by name
+        fun sortedChildren(): List<GroupNode> = children.values.sortedWith(
+            compareBy({ it.name == OTHER_GROUP }, { it.minOrderNo() }, { it.name.lowercase() })
+        )
+
+        private fun minOrderNo(): Int =
+            (accounts.map { it.first } + children.values.map { it.minOrderNo() }).minOrNull() ?: Int.MAX_VALUE
+
+        private fun allAccounts(): Set<AccountId> =
+            accounts.flatMapTo(mutableSetOf()) { it.second.accounts } +
+                children.values.flatMap { it.allAccounts() }
+
+        fun toTreeItem(): TreeItem<BalanceRow> {
+            val item = TreeItem(groupRow(name, allAccounts()))
+            sortedChildren().forEach { item.children.add(it.toTreeItem()) }
+            accounts.forEach { item.children.add(TreeItem(it.second)) }
+            item.isExpanded = true
+            return item
+        }
     }
 
     private fun makeRow(
@@ -356,5 +407,23 @@ class BalanceController @Inject constructor(
     private fun kindText(kind: AccountKind): String = when (kind) {
         AccountKind.MONEY -> "Деньги"
         AccountKind.BUDGET -> "Бюджет"
+    }
+
+    companion object {
+        private const val OTHER_GROUP = "Прочие"
+        private val GROUP_ROW: PseudoClass = PseudoClass.getPseudoClass("group-row")
+
+        private fun groupRow(name: String, accounts: Set<AccountId>) = BalanceRow(
+            accounts = accounts,
+            name = name,
+            kind = "",
+            currency = "",
+            start = "",
+            income = "",
+            expense = "",
+            end = "",
+            dailyBalance = "",
+            isGroup = true,
+        )
     }
 }

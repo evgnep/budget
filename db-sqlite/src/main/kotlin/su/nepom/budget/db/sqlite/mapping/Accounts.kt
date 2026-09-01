@@ -32,6 +32,7 @@ internal object Accounts : Table<AccountEntity>("account") {
     val hidden = boolean("hidden").bindTo { it.hidden }
     val budget = varchar("budget").bindTo { it.budget }
     val showOnMain = boolean("show_on_main").bindTo { it.showOnMain }
+    val groupPath = varchar("group_path").bindTo { it.groupPath }
 }
 
 internal interface AccountEntity : Entity<AccountEntity> {
@@ -45,6 +46,7 @@ internal interface AccountEntity : Entity<AccountEntity> {
     var hidden: Boolean
     var budget: String
     var showOnMain: Boolean
+    var groupPath: String
 
     companion object : Entity.Factory<AccountEntity>()
 
@@ -58,7 +60,8 @@ internal interface AccountEntity : Entity<AccountEntity> {
         orderNo,
         hidden,
         Json.decodeFromString<AccountBudget>(budget),
-        showOnMain
+        showOnMain,
+        Json.decodeFromString<List<String>>(groupPath)
     )
 }
 
@@ -74,6 +77,7 @@ internal fun AccountContent.toEntity() = AccountEntity {
     hidden = s.hidden
     budget = Json.encodeToString(s.budget)
     showOnMain = s.showOnMain
+    groupPath = Json.encodeToString(s.groupPath)
 }
 
 internal val Database.accounts get() = this.sequenceOf(Accounts)
