@@ -11,11 +11,13 @@ import javafx.scene.layout.BorderPane
 import javafx.stage.Stage
 import su.nepom.budget.desktop.service.WindowStateService
 import su.nepom.budget.desktop.ui.history.HistoryController
+import su.nepom.budget.desktop.ui.subaccount.SubaccountsController
 import su.nepom.budget.desktop.ui.transaction.TransactionController
 import su.nepom.budget.desktop.util.fx.Controller
 import su.nepom.budget.desktop.util.fx.Disposable
 import su.nepom.budget.desktop.util.fx.FxmlService
 import su.nepom.budget.desktop.util.fx.setIcon
+import su.nepom.budget.model.AccountId
 import su.nepom.budget.model.ObjectKind
 import su.nepom.budget.model.Uuid
 
@@ -67,6 +69,16 @@ class WindowManager @Inject constructor(
                     )
                 )
                 center = content
+            }
+        }
+    }
+
+    fun openSubaccounts(accountId: AccountId, accountName: String) {
+        open("Субсчета: $accountName", null) { stage, collect ->
+            stage.setIcon("accounts")
+            fxmlService.load("subaccount/subaccounts.fxml", stage, null) { controller ->
+                collect(controller)
+                if (controller is SubaccountsController) controller.configure(accountId)
             }
         }
     }

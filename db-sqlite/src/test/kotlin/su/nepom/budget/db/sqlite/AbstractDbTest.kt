@@ -101,12 +101,14 @@ fun createAccount(name: String, currency: CurrencyContent, kind: AccountKind = A
     4242
 )
 
-fun createSubaccount(account: AccountContent, rest: Int = 0, hidden: Boolean = false) = SubaccountContent(
-    Uuid.generate(),
-    account.id,
-    RawMoney(rest),
-    hidden
-)
+fun createSubaccount(account: AccountContent, name: String = "sub", rest: Int = 0, hidden: Boolean = false) =
+    SubaccountContent(
+        Uuid.generate(),
+        account.id,
+        name,
+        RawMoney(rest),
+        hidden
+    )
 
 val TIME_MOMENT = Instant.fromEpochSeconds(365*24*60*60*50)
 

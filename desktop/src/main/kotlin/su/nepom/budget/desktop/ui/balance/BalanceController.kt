@@ -11,7 +11,9 @@ import javafx.fxml.Initializable
 import javafx.scene.control.Button
 import javafx.scene.control.CheckBox
 import javafx.scene.control.ComboBox
+import javafx.scene.control.ContextMenu
 import javafx.scene.control.DatePicker
+import javafx.scene.control.MenuItem
 import javafx.scene.control.TextField
 import javafx.scene.control.TreeItem
 import javafx.scene.control.TreeTableCell
@@ -28,9 +30,11 @@ import kotlinx.datetime.toKotlinLocalDate
 import su.nepom.budget.db.Db
 import su.nepom.budget.desktop.model.AccountObservable
 import su.nepom.budget.desktop.model.CurrencyObservable
+import su.nepom.budget.desktop.model.SubaccountObservable
 import su.nepom.budget.desktop.service.AccountService
 import su.nepom.budget.desktop.service.CurrencyService
 import su.nepom.budget.desktop.service.DbService
+import su.nepom.budget.desktop.service.SubaccountService
 import su.nepom.budget.utils.ReservedAmount
 import su.nepom.budget.utils.calculateDailyBalance
 import su.nepom.budget.utils.format
@@ -57,6 +61,7 @@ class BalanceController @Inject constructor(
     private val dbService: DbService,
     private val accountService: AccountService,
     private val currencyService: CurrencyService,
+    private val subaccountService: SubaccountService,
     private val windowManager: WindowManager,
 ) : Controller, Initializable, Disposable {
 
@@ -83,6 +88,10 @@ class BalanceController @Inject constructor(
         val dailyBalance: String,
         val isGroup: Boolean = false,
         val markEnd: Boolean = false,
+        // MONEY account leaf row only - lets the row factory offer the "Субсчета" context menu item
+        val moneyAccount: AccountId? = null,
+        // set when the account's rest doesn't match the sum of its non-hidden subaccounts
+        val subaccountsMismatch: String = "",
     )
 
     private val weakListeners = WeakListeners()
@@ -101,6 +110,7 @@ class BalanceController @Inject constructor(
     @FXML private lateinit var currencyFilterComboBox: ComboBox<CurrencyObservable>
     @FXML private lateinit var tagFilterComboBox: ComboBox<String>
     @FXML private lateinit var showHiddenCheckbox: CheckBox
+    @FXML private lateinit var showSubaccountsCheckbox: CheckBox
     @FXML private lateinit var resetFilterButton: Button
 
     // list
@@ -113,6 +123,7 @@ class BalanceController @Inject constructor(
     @FXML private lateinit var expenseColumn: TreeTableColumn<BalanceRow, String>
     @FXML private lateinit var endColumn: TreeTableColumn<BalanceRow, String>
     @FXML private lateinit var dailyBalanceColumn: TreeTableColumn<BalanceRow, String>
+    @FXML private lateinit var subaccountsMismatchColumn: TreeTableColumn<BalanceRow, String>
 
     private val currencyConverter = object : StringConverter<CurrencyObservable>() {
         override fun toString(currency: CurrencyObservable?) = currency?.content?.name ?: ""
@@ -126,7 +137,10 @@ class BalanceController @Inject constructor(
 
         weakListeners.addListenerAndCallNow(dbService.sessionProperty) { _, _, session ->
             if (session != null) {
-                weakListeners.subscribe(session.db, Db.SubscribeKind.TRANSACTION, Db.SubscribeKind.ACCOUNT) {
+                weakListeners.subscribe(
+                    session.db,
+                    Db.SubscribeKind.TRANSACTION, Db.SubscribeKind.ACCOUNT, Db.SubscribeKind.SIMPLE_OBJECT
+                ) {
                     Platform.runLater { refreshPause.playFromStart() }
                 }
             }
@@ -163,6 +177,7 @@ class BalanceController @Inject constructor(
             visibleCurrencies.setPredicate { showHiddenCheckbox.isSelected || !it.content.hidden }
             reload()
         }
+        showSubaccountsCheckbox.selectedProperty().addListener { _, _, _ -> reload() }
         resetFilterButton.setOnAction {
             nameFilterTextField.clear()
             currencyFilterComboBox.value = null
@@ -174,7 +189,7 @@ class BalanceController @Inject constructor(
         balancesTable.isShowRoot = false
         balancesTable.root = TreeItem(groupRow("", emptySet()))
         listOf(nameColumn, kindColumn, currencyColumn, startColumn, incomeColumn, expenseColumn, endColumn,
-            dailyBalanceColumn)
+            dailyBalanceColumn, subaccountsMismatchColumn)
             .forEach { it.isSortable = false }
         nameColumn.setCellValueFactory { SimpleStringProperty(it.value.value.name) }
         kindColumn.setCellValueFactory { SimpleStringProperty(it.value.value.kind) }
@@ -184,6 +199,7 @@ class BalanceController @Inject constructor(
         expenseColumn.setCellValueFactory { SimpleStringProperty(it.value.value.expense) }
         endColumn.setCellValueFactory { SimpleStringProperty(it.value.value.end) }
         dailyBalanceColumn.setCellValueFactory { SimpleStringProperty(it.value.value.dailyBalance) }
+        subaccountsMismatchColumn.setCellValueFactory { SimpleStringProperty(it.value.value.subaccountsMismatch) }
 
         // pale-red background when the account's "Пометка остатка" condition is met
         endColumn.setCellFactory {
@@ -211,11 +227,23 @@ class BalanceController @Inject constructor(
             }
         }
 
+        // pale-red background on the "Расхождение с субсчетами" cell whenever it has text
+        subaccountsMismatchColumn.setCellFactory {
+            object : TreeTableCell<BalanceRow, String>() {
+                override fun updateItem(item: String?, empty: Boolean) {
+                    super.updateItem(item, empty)
+                    text = if (empty) null else item
+                    pseudoClassStateChanged(MARK_REST, !empty && !item.isNullOrEmpty())
+                }
+            }
+        }
+
         balancesTable.setRowFactory {
             object : TreeTableRow<BalanceRow>() {
                 override fun updateItem(item: BalanceRow?, empty: Boolean) {
                     super.updateItem(item, empty)
                     pseudoClassStateChanged(GROUP_ROW, !empty && item?.isGroup == true)
+                    contextMenu = if (!empty && item?.moneyAccount != null) subaccountsContextMenu(item) else null
                 }
             }
         }
@@ -225,6 +253,13 @@ class BalanceController @Inject constructor(
                 balancesTable.selectionModel.selectedItem?.value?.let(::openTransactionsFor)
             }
         }
+    }
+
+    private fun subaccountsContextMenu(row: BalanceRow): ContextMenu {
+        val accountId = requireNotNull(row.moneyAccount)
+        return ContextMenu(MenuItem("Субсчета").apply {
+            setOnAction { windowManager.openSubaccounts(accountId, row.name) }
+        })
     }
 
     private fun openTransactionsFor(row: BalanceRow) {
@@ -299,11 +334,24 @@ class BalanceController @Inject constructor(
             session.transactionDao.sumReservedByAccount(budgetIds, today)
         }.getOrDefault(emptyMap())
 
-        val accountRows = accounts.map { account ->
+        // non-hidden subaccounts per MONEY account - used both for the mismatch column and the nested rows
+        val subaccountsByAccount: Map<AccountId, List<SubaccountObservable>> = accounts
+            .filter { it.content.kind == AccountKind.MONEY }
+            .associate { account ->
+                account.content.id to subaccountService.subaccounts.filter {
+                    it.content.accountId == account.content.id && !it.content.isHidden
+                }
+            }
+
+        val accountData = accounts.map { account ->
             val id = account.content.id
             val currency = currencyService.currencies[account.content.currency.uuid]
             val end = endRest[id] ?: RawMoney.ZERO
-            account to makeRow(
+            val subs = subaccountsByAccount[id].orEmpty()
+            val subaccountsSum = RawMoney(subs.sumOf { it.content.rest.value })
+            // the check only makes sense for a running (undated) rest - see the "Субсчета" feature
+            val mismatch = forDate == null && subs.isNotEmpty() && subaccountsSum.value != end.value
+            val row = makeRow(
                 accounts = setOf(id),
                 name = account.content.name,
                 kind = kindText(account.content.kind),
@@ -313,8 +361,17 @@ class BalanceController @Inject constructor(
                 turnover = turnover[id] ?: RawTurnover(RawMoney.ZERO, RawMoney.ZERO),
                 dailyBalance = dailyBalanceText(account, end, reservedSums[id], today, currency),
                 markEnd = account.content.restMark.matches(end.value),
+                moneyAccount = if (account.content.kind == AccountKind.MONEY) id else null,
+                subaccountsMismatch = if (mismatch) formatMoney(RawMoney(subaccountsSum.value - end.value), currency) else "",
             )
+            val children = if (showSubaccountsCheckbox.isSelected && forDate == null)
+                subs.sortedBy { it.content.name.lowercase() }.map { subaccountRow(it, currency) }
+            else emptyList()
+            Triple(account, row, children)
         }
+        val accountRows = accountData.map { (account, row, _) -> account to row }
+        val subaccountChildRows = accountData.associate { (account, _, children) -> account.content.id to children }
+            .filterValues { it.isNotEmpty() }
 
         // one row per currency used by the filtered accounts, added before the account rows
         val currencyIds = accounts.mapTo(mutableSetOf()) { it.content.currency }
@@ -343,11 +400,14 @@ class BalanceController @Inject constructor(
 
         val root = balancesTable.root
         currencyRows.forEach { root.children.add(TreeItem(it)) }
-        buildGroupTree(accountRows).forEach { root.children.add(it) }
+        buildGroupTree(accountRows, subaccountChildRows).forEach { root.children.add(it) }
     }
 
     // build the account rows into a tree of groups (see the "Остатки" grouping rules)
-    private fun buildGroupTree(accountRows: List<Pair<AccountObservable, BalanceRow>>): List<TreeItem<BalanceRow>> {
+    private fun buildGroupTree(
+        accountRows: List<Pair<AccountObservable, BalanceRow>>,
+        subaccountChildRows: Map<AccountId, List<BalanceRow>>,
+    ): List<TreeItem<BalanceRow>> {
         val root = GroupNode("")
         for ((account, row) in accountRows) {
             val path = account.content.groupPath.ifEmpty { listOf(OTHER_GROUP) }
@@ -355,7 +415,7 @@ class BalanceController @Inject constructor(
             for (name in path) node = node.children.getOrPut(name) { GroupNode(name) }
             node.accounts += account.content.orderNo to row
         }
-        return root.sortedChildren().map { it.toTreeItem() }
+        return root.sortedChildren().map { it.toTreeItem(subaccountChildRows) }
     }
 
     private class GroupNode(val name: String) {
@@ -374,10 +434,15 @@ class BalanceController @Inject constructor(
             accounts.flatMapTo(mutableSetOf()) { it.second.accounts } +
                 children.values.flatMap { it.allAccounts() }
 
-        fun toTreeItem(): TreeItem<BalanceRow> {
+        fun toTreeItem(subaccountChildRows: Map<AccountId, List<BalanceRow>>): TreeItem<BalanceRow> {
             val item = TreeItem(groupRow(name, allAccounts()))
-            sortedChildren().forEach { item.children.add(it.toTreeItem()) }
-            accounts.forEach { item.children.add(TreeItem(it.second)) }
+            sortedChildren().forEach { item.children.add(it.toTreeItem(subaccountChildRows)) }
+            accounts.forEach { (_, row) ->
+                val accountItem = TreeItem(row)
+                subaccountChildRows[row.accounts.singleOrNull()]?.forEach { accountItem.children.add(TreeItem(it)) }
+                accountItem.isExpanded = true
+                item.children.add(accountItem)
+            }
             item.isExpanded = true
             return item
         }
@@ -393,6 +458,8 @@ class BalanceController @Inject constructor(
         turnover: RawTurnover,
         dailyBalance: String = "",
         markEnd: Boolean = false,
+        moneyAccount: AccountId? = null,
+        subaccountsMismatch: String = "",
     ): BalanceRow {
         // turnover.income is positive, turnover.expenditure is negative
         val start = RawMoney(end.value - turnover.income.value - turnover.expenditure.value)
@@ -407,8 +474,23 @@ class BalanceController @Inject constructor(
             end = formatMoney(end, currency),
             dailyBalance = dailyBalance,
             markEnd = markEnd,
+            moneyAccount = moneyAccount,
+            subaccountsMismatch = subaccountsMismatch,
         )
     }
+
+    // a subaccount shown as a nested row under its account (see "Показывать субсчета")
+    private fun subaccountRow(subaccount: SubaccountObservable, currency: CurrencyObservable?): BalanceRow = BalanceRow(
+        accounts = emptySet(),
+        name = subaccount.content.name,
+        kind = "",
+        currency = "",
+        start = "",
+        income = "",
+        expense = "",
+        end = formatMoney(subaccount.content.rest, currency),
+        dailyBalance = "",
+    )
 
     // "Остаток на день" - only for BUDGET accounts that have a replenish day set
     private fun dailyBalanceText(

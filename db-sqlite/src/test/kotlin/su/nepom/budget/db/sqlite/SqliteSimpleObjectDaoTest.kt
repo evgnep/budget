@@ -93,7 +93,19 @@ internal class SqliteSimpleObjectDaoTest : AbstractDbTest() {
     @Test
     fun rejectsUnknownAccount() {
         assertThatThrownBy {
-            dao.save(SubaccountContent(Uuid.generate(), AccountId(Uuid.generate()), RawMoney(0)))
+            dao.save(SubaccountContent(Uuid.generate(), AccountId(Uuid.generate()), "sub", RawMoney(0)))
+        }.isInstanceOf(IllegalArgumentException::class.java)
+    }
+
+    @Test
+    fun rejectsNonMoneyAccount() {
+        val currency = createCurrency("rub", "rubles")
+        session.currencyDao.save(currency)
+        val account = createAccount("budget", currency, kind = su.nepom.budget.model.AccountKind.BUDGET)
+        session.accountDao.save(account)
+        session.commit()
+        assertThatThrownBy {
+            dao.save(createSubaccount(account, rest = 100))
         }.isInstanceOf(IllegalArgumentException::class.java)
     }
 }

@@ -1,0 +1,4 @@
+/* "Расхождение": pale-red background when the subaccounts sum doesn't match the account rest */
+.label:mismatch {
+    -fx-background-color: #ffd6d6;
+}
