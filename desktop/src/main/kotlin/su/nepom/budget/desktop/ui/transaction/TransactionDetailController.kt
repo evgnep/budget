@@ -95,14 +95,17 @@ class TransactionDetailController @Inject constructor(
     private inner class AccountField(
         private val button: Button,
         private val label: Label,
+        private val clearButton: Button,
         private val kindProvider: () -> AccountKind?,
         private val currencyProvider: () -> CurrencyId?,
     ) {
         val account = SimpleObjectProperty<AccountObservable?>(this, "account", null)
         val pickButton: Button get() = button
+        val removeButton: Button get() = clearButton
 
         init {
             account.addListener { _, _, v -> label.text = v?.content?.name ?: "(не выбран)" }
+            clearButton.disableProperty().bind(account.isNull)
             button.setOnAction {
                 val pre = account.get()?.let { setOf(AccountId(it.uuid)) } ?: emptySet()
                 val picked = accountPicker.pick(
@@ -112,6 +115,7 @@ class TransactionDetailController @Inject constructor(
                 val id = picked.firstOrNull() ?: return@setOnAction
                 account.set(accountService.accounts[id.uuid])
             }
+            clearButton.setOnAction { account.set(null) }
         }
 
         val value: AccountObservable? get() = account.get()
@@ -183,35 +187,45 @@ class TransactionDetailController @Inject constructor(
     @FXML private lateinit var detailsTab: Tab
 
     @FXML private lateinit var incomeMoneyButton: Button
+    @FXML private lateinit var incomeMoneyClearButton: Button
     @FXML private lateinit var incomeMoneyLabel: Label
     @FXML private lateinit var incomeBudgetButton: Button
+    @FXML private lateinit var incomeBudgetClearButton: Button
     @FXML private lateinit var incomeBudgetLabel: Label
     @FXML private lateinit var incomeAmountField: TextField
     @FXML private lateinit var incomeCurrencyLabel: Label
 
     @FXML private lateinit var expenseMoneyButton: Button
+    @FXML private lateinit var expenseMoneyClearButton: Button
     @FXML private lateinit var expenseMoneyLabel: Label
     @FXML private lateinit var expenseBudgetButton: Button
+    @FXML private lateinit var expenseBudgetClearButton: Button
     @FXML private lateinit var expenseBudgetLabel: Label
     @FXML private lateinit var expenseAmountField: TextField
     @FXML private lateinit var expenseCurrencyLabel: Label
 
     @FXML private lateinit var transferFromButton: Button
+    @FXML private lateinit var transferFromClearButton: Button
     @FXML private lateinit var transferFromLabel: Label
     @FXML private lateinit var transferToButton: Button
+    @FXML private lateinit var transferToClearButton: Button
     @FXML private lateinit var transferToLabel: Label
     @FXML private lateinit var transferAmountField: TextField
     @FXML private lateinit var transferCurrencyLabel: Label
 
     @FXML private lateinit var exchangeMoney1Button: Button
+    @FXML private lateinit var exchangeMoney1ClearButton: Button
     @FXML private lateinit var exchangeMoney1Label: Label
     @FXML private lateinit var exchangeBudget1Button: Button
+    @FXML private lateinit var exchangeBudget1ClearButton: Button
     @FXML private lateinit var exchangeBudget1Label: Label
     @FXML private lateinit var exchangeAmount1Field: TextField
     @FXML private lateinit var exchangeCurrency1Label: Label
     @FXML private lateinit var exchangeMoney2Button: Button
+    @FXML private lateinit var exchangeMoney2ClearButton: Button
     @FXML private lateinit var exchangeMoney2Label: Label
     @FXML private lateinit var exchangeBudget2Button: Button
+    @FXML private lateinit var exchangeBudget2ClearButton: Button
     @FXML private lateinit var exchangeBudget2Label: Label
     @FXML private lateinit var exchangeAmount2Field: TextField
     @FXML private lateinit var exchangeCurrency2Label: Label
@@ -335,6 +349,8 @@ class TransactionDetailController @Inject constructor(
         accountFields.forEach {
             it.pickButton.isVisible = false
             it.pickButton.isManaged = false
+            it.removeButton.isVisible = false
+            it.removeButton.isManaged = false
         }
         listOf(
             incomeAmountField, expenseAmountField, transferAmountField,
@@ -424,16 +440,16 @@ class TransactionDetailController @Inject constructor(
     // --- operation tabs ---
 
     private fun setupOperationTabs() {
-        incomeMoney = AccountField(incomeMoneyButton, incomeMoneyLabel, { AccountKind.MONEY }, { incomeBudget.value?.content?.currency })
-        incomeBudget = AccountField(incomeBudgetButton, incomeBudgetLabel, { AccountKind.BUDGET }, { incomeMoney.value?.content?.currency })
-        expenseMoney = AccountField(expenseMoneyButton, expenseMoneyLabel, { AccountKind.MONEY }, { expenseBudget.value?.content?.currency })
-        expenseBudget = AccountField(expenseBudgetButton, expenseBudgetLabel, { AccountKind.BUDGET }, { expenseMoney.value?.content?.currency })
-        transferFrom = AccountField(transferFromButton, transferFromLabel, { transferTo.value?.content?.kind }, { transferTo.value?.content?.currency })
-        transferTo = AccountField(transferToButton, transferToLabel, { transferFrom.value?.content?.kind }, { transferFrom.value?.content?.currency })
-        exchangeMoney1 = AccountField(exchangeMoney1Button, exchangeMoney1Label, { AccountKind.MONEY }, { exchangeBudget1.value?.content?.currency })
-        exchangeBudget1 = AccountField(exchangeBudget1Button, exchangeBudget1Label, { AccountKind.BUDGET }, { exchangeMoney1.value?.content?.currency })
-        exchangeMoney2 = AccountField(exchangeMoney2Button, exchangeMoney2Label, { AccountKind.MONEY }, { exchangeBudget2.value?.content?.currency })
-        exchangeBudget2 = AccountField(exchangeBudget2Button, exchangeBudget2Label, { AccountKind.BUDGET }, { exchangeMoney2.value?.content?.currency })
+        incomeMoney = AccountField(incomeMoneyButton, incomeMoneyLabel, incomeMoneyClearButton, { AccountKind.MONEY }, { incomeBudget.value?.content?.currency })
+        incomeBudget = AccountField(incomeBudgetButton, incomeBudgetLabel, incomeBudgetClearButton, { AccountKind.BUDGET }, { incomeMoney.value?.content?.currency })
+        expenseMoney = AccountField(expenseMoneyButton, expenseMoneyLabel, expenseMoneyClearButton, { AccountKind.MONEY }, { expenseBudget.value?.content?.currency })
+        expenseBudget = AccountField(expenseBudgetButton, expenseBudgetLabel, expenseBudgetClearButton, { AccountKind.BUDGET }, { expenseMoney.value?.content?.currency })
+        transferFrom = AccountField(transferFromButton, transferFromLabel, transferFromClearButton, { transferTo.value?.content?.kind }, { transferTo.value?.content?.currency })
+        transferTo = AccountField(transferToButton, transferToLabel, transferToClearButton, { transferFrom.value?.content?.kind }, { transferFrom.value?.content?.currency })
+        exchangeMoney1 = AccountField(exchangeMoney1Button, exchangeMoney1Label, exchangeMoney1ClearButton, { AccountKind.MONEY }, { exchangeBudget1.value?.content?.currency })
+        exchangeBudget1 = AccountField(exchangeBudget1Button, exchangeBudget1Label, exchangeBudget1ClearButton, { AccountKind.BUDGET }, { exchangeMoney1.value?.content?.currency })
+        exchangeMoney2 = AccountField(exchangeMoney2Button, exchangeMoney2Label, exchangeMoney2ClearButton, { AccountKind.MONEY }, { exchangeBudget2.value?.content?.currency })
+        exchangeBudget2 = AccountField(exchangeBudget2Button, exchangeBudget2Label, exchangeBudget2ClearButton, { AccountKind.BUDGET }, { exchangeMoney2.value?.content?.currency })
         accountFields = listOf(
             incomeMoney, incomeBudget, expenseMoney, expenseBudget, transferFrom, transferTo,
             exchangeMoney1, exchangeBudget1, exchangeMoney2, exchangeBudget2,
@@ -594,7 +610,8 @@ class TransactionDetailController @Inject constructor(
 
     private fun writeItemsFromTab(tab: OperationTab) {
         val items = buildItemsForTab(tab) ?: return
-        itemsProperty.set(items)
+        if (itemsProperty.value != items)
+            itemsProperty.set(items)
     }
 
     private fun buildItemsForTab(tab: OperationTab): List<TransactionContentItem>? {
@@ -818,13 +835,6 @@ class TransactionDetailController @Inject constructor(
             ) {
                 withMethod { ctx -> validateItems().forEach { ctx.error(it) } }.immediate()
             }
-            .field(
-                "operationTab",
-                operationTabPane,
-                operationTabProperty,
-                { if (it == null) OperationTab.EXPENSE else tabForType(operationType(it.content.items)) },
-                { /* no-op: the "items" field carries the actual rows */ },
-            )
             .build()
 
         okButton.disableProperty().addListener { _, _, _ -> updateCopyButton() }
