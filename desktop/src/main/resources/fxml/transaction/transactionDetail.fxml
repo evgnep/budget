@@ -72,6 +72,7 @@
                                     <Button fx:id="incomeMoneyButton" mnemonicParsing="false" text="Выбрать..." />
                                     <Button fx:id="incomeMoneyClearButton" mnemonicParsing="false" text="✕" />
                                     <Label fx:id="incomeMoneyLabel" text="(не выбран)" />
+                                    <Label fx:id="incomeMoneyBalanceLabel" />
                                  </children>
                               </HBox>
                               <Label text="Бюджет" GridPane.rowIndex="1" />
@@ -80,6 +81,7 @@
                                     <Button fx:id="incomeBudgetButton" mnemonicParsing="false" text="Выбрать..." />
                                     <Button fx:id="incomeBudgetClearButton" mnemonicParsing="false" text="✕" />
                                     <Label fx:id="incomeBudgetLabel" text="(не выбран)" />
+                                    <Label fx:id="incomeBudgetBalanceLabel" />
                                  </children>
                               </HBox>
                               <Label text="Сумма" GridPane.rowIndex="2" />
@@ -115,6 +117,7 @@
                                     <Button fx:id="expenseMoneyButton" mnemonicParsing="false" text="Выбрать..." />
                                     <Button fx:id="expenseMoneyClearButton" mnemonicParsing="false" text="✕" />
                                     <Label fx:id="expenseMoneyLabel" text="(не выбран)" />
+                                    <Label fx:id="expenseMoneyBalanceLabel" />
                                  </children>
                               </HBox>
                               <Label text="Бюджет" GridPane.rowIndex="1" />
@@ -123,6 +126,7 @@
                                     <Button fx:id="expenseBudgetButton" mnemonicParsing="false" text="Выбрать..." />
                                     <Button fx:id="expenseBudgetClearButton" mnemonicParsing="false" text="✕" />
                                     <Label fx:id="expenseBudgetLabel" text="(не выбран)" />
+                                    <Label fx:id="expenseBudgetBalanceLabel" />
                                  </children>
                               </HBox>
                               <Label text="Сумма" GridPane.rowIndex="2" />
@@ -158,6 +162,7 @@
                                     <Button fx:id="transferFromButton" mnemonicParsing="false" text="Выбрать..." />
                                     <Button fx:id="transferFromClearButton" mnemonicParsing="false" text="✕" />
                                     <Label fx:id="transferFromLabel" text="(не выбран)" />
+                                    <Label fx:id="transferFromBalanceLabel" />
                                  </children>
                               </HBox>
                               <Label text="На счёт" GridPane.rowIndex="1" />
@@ -166,6 +171,7 @@
                                     <Button fx:id="transferToButton" mnemonicParsing="false" text="Выбрать..." />
                                     <Button fx:id="transferToClearButton" mnemonicParsing="false" text="✕" />
                                     <Label fx:id="transferToLabel" text="(не выбран)" />
+                                    <Label fx:id="transferToBalanceLabel" />
                                  </children>
                               </HBox>
                               <Label text="Сумма" GridPane.rowIndex="2" />
@@ -207,6 +213,7 @@
                                     <Button fx:id="exchangeMoney1Button" mnemonicParsing="false" text="Выбрать..." />
                                     <Button fx:id="exchangeMoney1ClearButton" mnemonicParsing="false" text="✕" />
                                     <Label fx:id="exchangeMoney1Label" text="(не выбран)" />
+                                    <Label fx:id="exchangeMoney1BalanceLabel" />
                                  </children>
                               </HBox>
                               <Label text="Бюджет" GridPane.rowIndex="2" />
@@ -215,6 +222,7 @@
                                     <Button fx:id="exchangeBudget1Button" mnemonicParsing="false" text="Выбрать..." />
                                     <Button fx:id="exchangeBudget1ClearButton" mnemonicParsing="false" text="✕" />
                                     <Label fx:id="exchangeBudget1Label" text="(не выбран)" />
+                                    <Label fx:id="exchangeBudget1BalanceLabel" />
                                  </children>
                               </HBox>
                               <Label text="Сумма" GridPane.rowIndex="3" />
@@ -231,6 +239,7 @@
                                     <Button fx:id="exchangeMoney2Button" mnemonicParsing="false" text="Выбрать..." />
                                     <Button fx:id="exchangeMoney2ClearButton" mnemonicParsing="false" text="✕" />
                                     <Label fx:id="exchangeMoney2Label" text="(не выбран)" />
+                                    <Label fx:id="exchangeMoney2BalanceLabel" />
                                  </children>
                               </HBox>
                               <Label text="Бюджет" GridPane.rowIndex="6" />
@@ -239,6 +248,7 @@
                                     <Button fx:id="exchangeBudget2Button" mnemonicParsing="false" text="Выбрать..." />
                                     <Button fx:id="exchangeBudget2ClearButton" mnemonicParsing="false" text="✕" />
                                     <Label fx:id="exchangeBudget2Label" text="(не выбран)" />
+                                    <Label fx:id="exchangeBudget2BalanceLabel" />
                                  </children>
                               </HBox>
                               <Label text="Сумма" GridPane.rowIndex="7" />

@@ -98,13 +98,17 @@ class TransactionDetailController @Inject constructor(
         private val clearButton: Button,
         private val kindProvider: () -> AccountKind?,
         private val currencyProvider: () -> CurrencyId?,
+        private val balanceLabel: Label,
     ) {
         val account = SimpleObjectProperty<AccountObservable?>(this, "account", null)
         val pickButton: Button get() = button
         val removeButton: Button get() = clearButton
 
         init {
-            account.addListener { _, _, v -> label.text = v?.content?.name ?: "(не выбран)" }
+            account.addListener { _, _, v ->
+                label.text = v?.content?.name ?: "(не выбран)"
+                balanceLabel.text = v?.let { accountBalanceText(it) } ?: ""
+            }
             clearButton.disableProperty().bind(account.isNull)
             button.setOnAction {
                 val pre = account.get()?.let { setOf(AccountId(it.uuid)) } ?: emptySet()
@@ -189,44 +193,54 @@ class TransactionDetailController @Inject constructor(
     @FXML private lateinit var incomeMoneyButton: Button
     @FXML private lateinit var incomeMoneyClearButton: Button
     @FXML private lateinit var incomeMoneyLabel: Label
+    @FXML private lateinit var incomeMoneyBalanceLabel: Label
     @FXML private lateinit var incomeBudgetButton: Button
     @FXML private lateinit var incomeBudgetClearButton: Button
     @FXML private lateinit var incomeBudgetLabel: Label
+    @FXML private lateinit var incomeBudgetBalanceLabel: Label
     @FXML private lateinit var incomeAmountField: TextField
     @FXML private lateinit var incomeCurrencyLabel: Label
 
     @FXML private lateinit var expenseMoneyButton: Button
     @FXML private lateinit var expenseMoneyClearButton: Button
     @FXML private lateinit var expenseMoneyLabel: Label
+    @FXML private lateinit var expenseMoneyBalanceLabel: Label
     @FXML private lateinit var expenseBudgetButton: Button
     @FXML private lateinit var expenseBudgetClearButton: Button
     @FXML private lateinit var expenseBudgetLabel: Label
+    @FXML private lateinit var expenseBudgetBalanceLabel: Label
     @FXML private lateinit var expenseAmountField: TextField
     @FXML private lateinit var expenseCurrencyLabel: Label
 
     @FXML private lateinit var transferFromButton: Button
     @FXML private lateinit var transferFromClearButton: Button
     @FXML private lateinit var transferFromLabel: Label
+    @FXML private lateinit var transferFromBalanceLabel: Label
     @FXML private lateinit var transferToButton: Button
     @FXML private lateinit var transferToClearButton: Button
     @FXML private lateinit var transferToLabel: Label
+    @FXML private lateinit var transferToBalanceLabel: Label
     @FXML private lateinit var transferAmountField: TextField
     @FXML private lateinit var transferCurrencyLabel: Label
 
     @FXML private lateinit var exchangeMoney1Button: Button
     @FXML private lateinit var exchangeMoney1ClearButton: Button
     @FXML private lateinit var exchangeMoney1Label: Label
+    @FXML private lateinit var exchangeMoney1BalanceLabel: Label
     @FXML private lateinit var exchangeBudget1Button: Button
     @FXML private lateinit var exchangeBudget1ClearButton: Button
     @FXML private lateinit var exchangeBudget1Label: Label
+    @FXML private lateinit var exchangeBudget1BalanceLabel: Label
     @FXML private lateinit var exchangeAmount1Field: TextField
     @FXML private lateinit var exchangeCurrency1Label: Label
     @FXML private lateinit var exchangeMoney2Button: Button
     @FXML private lateinit var exchangeMoney2ClearButton: Button
     @FXML private lateinit var exchangeMoney2Label: Label
+    @FXML private lateinit var exchangeMoney2BalanceLabel: Label
     @FXML private lateinit var exchangeBudget2Button: Button
     @FXML private lateinit var exchangeBudget2ClearButton: Button
     @FXML private lateinit var exchangeBudget2Label: Label
+    @FXML private lateinit var exchangeBudget2BalanceLabel: Label
     @FXML private lateinit var exchangeAmount2Field: TextField
     @FXML private lateinit var exchangeCurrency2Label: Label
     @FXML private lateinit var exchangeRateLabel: Label
@@ -440,16 +454,16 @@ class TransactionDetailController @Inject constructor(
     // --- operation tabs ---
 
     private fun setupOperationTabs() {
-        incomeMoney = AccountField(incomeMoneyButton, incomeMoneyLabel, incomeMoneyClearButton, { AccountKind.MONEY }, { incomeBudget.value?.content?.currency })
-        incomeBudget = AccountField(incomeBudgetButton, incomeBudgetLabel, incomeBudgetClearButton, { AccountKind.BUDGET }, { incomeMoney.value?.content?.currency })
-        expenseMoney = AccountField(expenseMoneyButton, expenseMoneyLabel, expenseMoneyClearButton, { AccountKind.MONEY }, { expenseBudget.value?.content?.currency })
-        expenseBudget = AccountField(expenseBudgetButton, expenseBudgetLabel, expenseBudgetClearButton, { AccountKind.BUDGET }, { expenseMoney.value?.content?.currency })
-        transferFrom = AccountField(transferFromButton, transferFromLabel, transferFromClearButton, { transferTo.value?.content?.kind }, { transferTo.value?.content?.currency })
-        transferTo = AccountField(transferToButton, transferToLabel, transferToClearButton, { transferFrom.value?.content?.kind }, { transferFrom.value?.content?.currency })
-        exchangeMoney1 = AccountField(exchangeMoney1Button, exchangeMoney1Label, exchangeMoney1ClearButton, { AccountKind.MONEY }, { exchangeBudget1.value?.content?.currency })
-        exchangeBudget1 = AccountField(exchangeBudget1Button, exchangeBudget1Label, exchangeBudget1ClearButton, { AccountKind.BUDGET }, { exchangeMoney1.value?.content?.currency })
-        exchangeMoney2 = AccountField(exchangeMoney2Button, exchangeMoney2Label, exchangeMoney2ClearButton, { AccountKind.MONEY }, { exchangeBudget2.value?.content?.currency })
-        exchangeBudget2 = AccountField(exchangeBudget2Button, exchangeBudget2Label, exchangeBudget2ClearButton, { AccountKind.BUDGET }, { exchangeMoney2.value?.content?.currency })
+        incomeMoney = AccountField(incomeMoneyButton, incomeMoneyLabel, incomeMoneyClearButton, { AccountKind.MONEY }, { incomeBudget.value?.content?.currency }, incomeMoneyBalanceLabel)
+        incomeBudget = AccountField(incomeBudgetButton, incomeBudgetLabel, incomeBudgetClearButton, { AccountKind.BUDGET }, { incomeMoney.value?.content?.currency }, incomeBudgetBalanceLabel)
+        expenseMoney = AccountField(expenseMoneyButton, expenseMoneyLabel, expenseMoneyClearButton, { AccountKind.MONEY }, { expenseBudget.value?.content?.currency }, expenseMoneyBalanceLabel)
+        expenseBudget = AccountField(expenseBudgetButton, expenseBudgetLabel, expenseBudgetClearButton, { AccountKind.BUDGET }, { expenseMoney.value?.content?.currency }, expenseBudgetBalanceLabel)
+        transferFrom = AccountField(transferFromButton, transferFromLabel, transferFromClearButton, { transferTo.value?.content?.kind }, { transferTo.value?.content?.currency }, transferFromBalanceLabel)
+        transferTo = AccountField(transferToButton, transferToLabel, transferToClearButton, { transferFrom.value?.content?.kind }, { transferFrom.value?.content?.currency }, transferToBalanceLabel)
+        exchangeMoney1 = AccountField(exchangeMoney1Button, exchangeMoney1Label, exchangeMoney1ClearButton, { AccountKind.MONEY }, { exchangeBudget1.value?.content?.currency }, exchangeMoney1BalanceLabel)
+        exchangeBudget1 = AccountField(exchangeBudget1Button, exchangeBudget1Label, exchangeBudget1ClearButton, { AccountKind.BUDGET }, { exchangeMoney1.value?.content?.currency }, exchangeBudget1BalanceLabel)
+        exchangeMoney2 = AccountField(exchangeMoney2Button, exchangeMoney2Label, exchangeMoney2ClearButton, { AccountKind.MONEY }, { exchangeBudget2.value?.content?.currency }, exchangeMoney2BalanceLabel)
+        exchangeBudget2 = AccountField(exchangeBudget2Button, exchangeBudget2Label, exchangeBudget2ClearButton, { AccountKind.BUDGET }, { exchangeMoney2.value?.content?.currency }, exchangeBudget2BalanceLabel)
         accountFields = listOf(
             incomeMoney, incomeBudget, expenseMoney, expenseBudget, transferFrom, transferTo,
             exchangeMoney1, exchangeBudget1, exchangeMoney2, exchangeBudget2,
@@ -1059,6 +1073,14 @@ class TransactionDetailController @Inject constructor(
         if (text.isBlank()) return text
         val value = evalMoneyFormula(text) ?: return text
         return runCatching { value.toRawMoney(digits).format(digits) }.getOrDefault(text)
+    }
+
+    private fun accountBalanceText(account: AccountObservable): String {
+        val session = dbService.session ?: return ""
+        val id = AccountId(account.uuid)
+        val rest = runAndShowError { session.transactionDao.accountRest(setOf(id)) }.getOrDefault(emptyMap())
+        val value = rest[id] ?: return ""
+        return "Остаток: ${value.format(digitsOf(account))}"
     }
 
     private fun digitsOf(account: AccountObservable?): Int =
