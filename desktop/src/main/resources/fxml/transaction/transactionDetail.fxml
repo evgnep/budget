@@ -1,10 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
+<?import java.net.URL?>
 <?import javafx.geometry.*?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
+<?import org.controlsfx.control.SearchableComboBox?>
 
 <VBox fx:id="root" spacing="5.0" xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1" fx:controller="su.nepom.budget.desktop.ui.transaction.TransactionDetailController">
+   <stylesheets>
+      <URL value="@transactionDetail.css" />
+   </stylesheets>
    <padding>
       <Insets bottom="5.0" left="5.0" right="5.0" top="5.0" />
    </padding>
@@ -19,23 +24,22 @@
             <RowConstraints vgrow="NEVER" />
             <RowConstraints vgrow="NEVER" />
             <RowConstraints vgrow="NEVER" />
-            <RowConstraints vgrow="NEVER" />
          </rowConstraints>
          <children>
             <Label text="id" />
             <TextField fx:id="idTextField" GridPane.columnIndex="1" />
             <Label text="Дата" GridPane.rowIndex="1" />
-            <DatePicker fx:id="dateEditPicker" maxWidth="1.7976931348623157E308" GridPane.columnIndex="1" GridPane.rowIndex="1" />
-            <Label text="Описание" GridPane.rowIndex="2" />
-            <TextField fx:id="descriptionEditField" GridPane.columnIndex="1" GridPane.rowIndex="2" />
-            <HBox spacing="15.0" GridPane.columnIndex="1" GridPane.rowIndex="3">
+            <HBox alignment="CENTER_LEFT" spacing="15.0" GridPane.columnIndex="1" GridPane.rowIndex="1">
                <children>
+                  <DatePicker fx:id="dateEditPicker" prefWidth="120.0" />
                   <CheckBox fx:id="flagCheckbox" mnemonicParsing="false" text="Флаг" />
                   <CheckBox fx:id="deletedCheckbox" mnemonicParsing="false" text="Удалена" />
                </children>
             </HBox>
-            <Label fx:id="eventInfoLabel" text="Изменено" GridPane.rowIndex="4" />
-            <HBox fx:id="eventInfoBox" alignment="CENTER_LEFT" spacing="5.0" GridPane.columnIndex="1" GridPane.rowIndex="4">
+            <Label text="Описание" GridPane.rowIndex="2" />
+            <TextField fx:id="descriptionEditField" GridPane.columnIndex="1" GridPane.rowIndex="2" />
+            <Label fx:id="eventInfoLabel" text="Изменено" GridPane.rowIndex="3" />
+            <HBox fx:id="eventInfoBox" alignment="CENTER_LEFT" spacing="5.0" GridPane.columnIndex="1" GridPane.rowIndex="3">
                <children>
                   <TextField fx:id="changedAtField" editable="false" prefWidth="120.0" />
                   <Label text="Автор" />
@@ -69,18 +73,18 @@
                               <Label text="Деньги" />
                               <HBox alignment="CENTER_LEFT" spacing="5.0" GridPane.columnIndex="1">
                                  <children>
-                                    <Button fx:id="incomeMoneyButton" mnemonicParsing="false" text="Выбрать..." />
+                                    <SearchableComboBox fx:id="incomeMoneyCombo" prefWidth="220.0" visibleRowCount="20" />
+                                    <Button fx:id="incomeMoneyButton" mnemonicParsing="false" text="..." />
                                     <Button fx:id="incomeMoneyClearButton" mnemonicParsing="false" text="✕" />
-                                    <Label fx:id="incomeMoneyLabel" text="(не выбран)" />
                                     <Label fx:id="incomeMoneyBalanceLabel" />
                                  </children>
                               </HBox>
                               <Label text="Бюджет" GridPane.rowIndex="1" />
                               <HBox alignment="CENTER_LEFT" spacing="5.0" GridPane.columnIndex="1" GridPane.rowIndex="1">
                                  <children>
-                                    <Button fx:id="incomeBudgetButton" mnemonicParsing="false" text="Выбрать..." />
+                                    <SearchableComboBox fx:id="incomeBudgetCombo" prefWidth="220.0" visibleRowCount="20" />
+                                    <Button fx:id="incomeBudgetButton" mnemonicParsing="false" text="..." />
                                     <Button fx:id="incomeBudgetClearButton" mnemonicParsing="false" text="✕" />
-                                    <Label fx:id="incomeBudgetLabel" text="(не выбран)" />
                                     <Label fx:id="incomeBudgetBalanceLabel" />
                                  </children>
                               </HBox>
@@ -114,18 +118,18 @@
                               <Label text="Деньги" />
                               <HBox alignment="CENTER_LEFT" spacing="5.0" GridPane.columnIndex="1">
                                  <children>
-                                    <Button fx:id="expenseMoneyButton" mnemonicParsing="false" text="Выбрать..." />
+                                    <SearchableComboBox fx:id="expenseMoneyCombo" prefWidth="220.0" visibleRowCount="20" />
+                                    <Button fx:id="expenseMoneyButton" mnemonicParsing="false" text="..." />
                                     <Button fx:id="expenseMoneyClearButton" mnemonicParsing="false" text="✕" />
-                                    <Label fx:id="expenseMoneyLabel" text="(не выбран)" />
                                     <Label fx:id="expenseMoneyBalanceLabel" />
                                  </children>
                               </HBox>
                               <Label text="Бюджет" GridPane.rowIndex="1" />
                               <HBox alignment="CENTER_LEFT" spacing="5.0" GridPane.columnIndex="1" GridPane.rowIndex="1">
                                  <children>
-                                    <Button fx:id="expenseBudgetButton" mnemonicParsing="false" text="Выбрать..." />
+                                    <SearchableComboBox fx:id="expenseBudgetCombo" prefWidth="220.0" visibleRowCount="20" />
+                                    <Button fx:id="expenseBudgetButton" mnemonicParsing="false" text="..." />
                                     <Button fx:id="expenseBudgetClearButton" mnemonicParsing="false" text="✕" />
-                                    <Label fx:id="expenseBudgetLabel" text="(не выбран)" />
                                     <Label fx:id="expenseBudgetBalanceLabel" />
                                  </children>
                               </HBox>
@@ -159,18 +163,18 @@
                               <Label text="Со счёта" />
                               <HBox alignment="CENTER_LEFT" spacing="5.0" GridPane.columnIndex="1">
                                  <children>
-                                    <Button fx:id="transferFromButton" mnemonicParsing="false" text="Выбрать..." />
+                                    <SearchableComboBox fx:id="transferFromCombo" prefWidth="220.0" visibleRowCount="20" />
+                                    <Button fx:id="transferFromButton" mnemonicParsing="false" text="..." />
                                     <Button fx:id="transferFromClearButton" mnemonicParsing="false" text="✕" />
-                                    <Label fx:id="transferFromLabel" text="(не выбран)" />
                                     <Label fx:id="transferFromBalanceLabel" />
                                  </children>
                               </HBox>
                               <Label text="На счёт" GridPane.rowIndex="1" />
                               <HBox alignment="CENTER_LEFT" spacing="5.0" GridPane.columnIndex="1" GridPane.rowIndex="1">
                                  <children>
-                                    <Button fx:id="transferToButton" mnemonicParsing="false" text="Выбрать..." />
+                                    <SearchableComboBox fx:id="transferToCombo" prefWidth="220.0" visibleRowCount="20" />
+                                    <Button fx:id="transferToButton" mnemonicParsing="false" text="..." />
                                     <Button fx:id="transferToClearButton" mnemonicParsing="false" text="✕" />
-                                    <Label fx:id="transferToLabel" text="(не выбран)" />
                                     <Label fx:id="transferToBalanceLabel" />
                                  </children>
                               </HBox>
@@ -210,18 +214,18 @@
                               <Label text="Деньги" GridPane.rowIndex="1" />
                               <HBox alignment="CENTER_LEFT" spacing="5.0" GridPane.columnIndex="1" GridPane.rowIndex="1">
                                  <children>
-                                    <Button fx:id="exchangeMoney1Button" mnemonicParsing="false" text="Выбрать..." />
+                                    <SearchableComboBox fx:id="exchangeMoney1Combo" prefWidth="220.0" visibleRowCount="20" />
+                                    <Button fx:id="exchangeMoney1Button" mnemonicParsing="false" text="..." />
                                     <Button fx:id="exchangeMoney1ClearButton" mnemonicParsing="false" text="✕" />
-                                    <Label fx:id="exchangeMoney1Label" text="(не выбран)" />
                                     <Label fx:id="exchangeMoney1BalanceLabel" />
                                  </children>
                               </HBox>
                               <Label text="Бюджет" GridPane.rowIndex="2" />
                               <HBox alignment="CENTER_LEFT" spacing="5.0" GridPane.columnIndex="1" GridPane.rowIndex="2">
                                  <children>
-                                    <Button fx:id="exchangeBudget1Button" mnemonicParsing="false" text="Выбрать..." />
+                                    <SearchableComboBox fx:id="exchangeBudget1Combo" prefWidth="220.0" visibleRowCount="20" />
+                                    <Button fx:id="exchangeBudget1Button" mnemonicParsing="false" text="..." />
                                     <Button fx:id="exchangeBudget1ClearButton" mnemonicParsing="false" text="✕" />
-                                    <Label fx:id="exchangeBudget1Label" text="(не выбран)" />
                                     <Label fx:id="exchangeBudget1BalanceLabel" />
                                  </children>
                               </HBox>
@@ -236,18 +240,18 @@
                               <Label text="Деньги" GridPane.rowIndex="5" />
                               <HBox alignment="CENTER_LEFT" spacing="5.0" GridPane.columnIndex="1" GridPane.rowIndex="5">
                                  <children>
-                                    <Button fx:id="exchangeMoney2Button" mnemonicParsing="false" text="Выбрать..." />
+                                    <SearchableComboBox fx:id="exchangeMoney2Combo" prefWidth="220.0" visibleRowCount="20" />
+                                    <Button fx:id="exchangeMoney2Button" mnemonicParsing="false" text="..." />
                                     <Button fx:id="exchangeMoney2ClearButton" mnemonicParsing="false" text="✕" />
-                                    <Label fx:id="exchangeMoney2Label" text="(не выбран)" />
                                     <Label fx:id="exchangeMoney2BalanceLabel" />
                                  </children>
                               </HBox>
                               <Label text="Бюджет" GridPane.rowIndex="6" />
                               <HBox alignment="CENTER_LEFT" spacing="5.0" GridPane.columnIndex="1" GridPane.rowIndex="6">
                                  <children>
-                                    <Button fx:id="exchangeBudget2Button" mnemonicParsing="false" text="Выбрать..." />
+                                    <SearchableComboBox fx:id="exchangeBudget2Combo" prefWidth="220.0" visibleRowCount="20" />
+                                    <Button fx:id="exchangeBudget2Button" mnemonicParsing="false" text="..." />
                                     <Button fx:id="exchangeBudget2ClearButton" mnemonicParsing="false" text="✕" />
-                                    <Label fx:id="exchangeBudget2Label" text="(не выбран)" />
                                     <Label fx:id="exchangeBudget2BalanceLabel" />
                                  </children>
                               </HBox>

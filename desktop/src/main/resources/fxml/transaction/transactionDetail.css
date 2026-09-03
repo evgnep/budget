@@ -1,0 +1,15 @@
+/* account combo, disabled (either the "history" read-only view, or the "allow editing" checkbox
+   which disables the whole itemsEditorBox and is inherited from there): JavaFX's default disabled
+   styling dims the control via -fx-opacity, which - compounded through SearchableComboBox's
+   internal delegate combo box (also independently :disabled) - washes the text out to
+   near-invisibility. A child's own opacity cannot undo a parent's compositing dimming, so override
+   -fx-opacity at both control levels, and force a readable text color. */
+.searchable-combo-box:disabled,
+.searchable-combo-box:disabled .combo-box-base {
+    -fx-opacity: 1;
+    -fx-background-color: derive(-fx-control-inner-background, -8%);
+}
+
+.searchable-combo-box:disabled .text {
+    -fx-fill: black;
+}
