@@ -48,6 +48,9 @@ class CurrencyController @Inject constructor(
     private lateinit var codeColumn: TableColumn<CurrencyObservable, String>
 
     @FXML
+    private lateinit var symbolColumn: TableColumn<CurrencyObservable, String>
+
+    @FXML
     private lateinit var nameColumn: TableColumn<CurrencyObservable, String>
 
     @FXML
@@ -67,6 +70,7 @@ class CurrencyController @Inject constructor(
         nameColumn.sortType = TableColumn.SortType.ASCENDING
         nameColumn.setCellValueFactory { it.value.name }
         codeColumn.setCellValueFactory { it.value.officialCode }
+        symbolColumn.setCellValueFactory { it.value.symbol }
         digitsAfterPointColumn.setCellValueFactory { it.value.digitsAfterPoint }
         hiddenColumn.visibleProperty().bind(showHiddenCheckbox.selectedProperty())
         hiddenColumn.setCellValueFactory { it.value.hidden }

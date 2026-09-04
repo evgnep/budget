@@ -42,6 +42,9 @@ class CurrencyDetailController @Inject constructor(
     @FXML
     private lateinit var nameTextField: TextField
 
+    @FXML
+    private lateinit var symbolTextField: TextField
+
     lateinit var formDriver: FormDriver<*, CurrencyObservable>
         private set
 
@@ -72,6 +75,12 @@ class CurrencyDetailController @Inject constructor(
                     if (codeTextField.text.isEmpty()) it.error("Код не должен быть пустым")
                 }.immediateClear()
             }
+            .field(
+                "symbol",
+                symbolTextField,
+                symbolTextField.textProperty(),
+                { it?.content?.symbol ?: "" },
+                { symbol = it })
             .field(
                 "digitsAfterPoint",
                 digitsAfterPointTextField,

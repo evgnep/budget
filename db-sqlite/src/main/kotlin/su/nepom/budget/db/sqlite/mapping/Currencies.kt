@@ -20,6 +20,7 @@ internal object Currencies: Table<CurrencyEntity>("currency") {
     val digitsAfterPoint = int("digits_after_point").bindTo { it.digitsAfterPoint }
     val officialCode = varchar("official_code").bindTo { it.officialCode }
     val hidden = boolean("hidden").bindTo { it.hidden }
+    val symbol = varchar("symbol").bindTo { it.symbol }
 }
 
 internal interface CurrencyEntity: Entity<CurrencyEntity> {
@@ -28,6 +29,7 @@ internal interface CurrencyEntity: Entity<CurrencyEntity> {
     var digitsAfterPoint: Int
     var officialCode: String
     var hidden: Boolean
+    var symbol: String
 
     companion object : Entity.Factory<CurrencyEntity>()
 
@@ -36,7 +38,8 @@ internal interface CurrencyEntity: Entity<CurrencyEntity> {
         name,
         digitsAfterPoint,
         officialCode,
-        hidden
+        hidden,
+        symbol
     )
 }
 
@@ -47,6 +50,7 @@ internal fun CurrencyContent.toEntity() = CurrencyEntity {
     digitsAfterPoint = s.digitsAfterPoint
     officialCode = s.officialCode
     hidden = s.hidden
+    symbol = s.symbol
 }
 
 internal val Database.currencies get() = this.sequenceOf(Currencies)

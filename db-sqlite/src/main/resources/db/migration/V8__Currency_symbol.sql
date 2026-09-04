@@ -1,0 +1,2 @@
+ALTER TABLE currency
+    ADD COLUMN symbol TEXT NOT NULL DEFAULT '';

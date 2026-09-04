@@ -13,6 +13,7 @@ data class CurrencyContentV1(
     val digitsAfterPoint: Int,
     val officialCode: String,
     val hidden: Boolean = false,
+    val symbol: String = "",
 ): StorableContent, ActualVersionContent {
     override val objectKind: ObjectKind get() = ObjectKind.CURRENCY
 

@@ -24,9 +24,10 @@ class CurrencyObservable(
     val digitsAfterPoint = contentProperty.map { it.digitsAfterPoint }
     val officialCode = contentProperty.map { it.officialCode }
     val hidden = contentProperty.map { it.hidden }
+    val symbol = contentProperty.map { it.symbol }
 
     override fun properties(): Array<Observable> =
-        arrayOf(uuidObservable, name, digitsAfterPoint, officialCode, hidden)
+        arrayOf(uuidObservable, name, digitsAfterPoint, officialCode, hidden, symbol)
 
     class Builder(source: CurrencyObservable) : ObservableEntityBuilder<CurrencyObservable> {
         private val id = source.content.id
@@ -34,9 +35,10 @@ class CurrencyObservable(
         var digitsAfterPoint: Int = source.content.digitsAfterPoint
         var officialCode: String = source.content.officialCode
         var hidden: Boolean = source.content.hidden
+        var symbol: String = source.content.symbol
 
         override fun buildContent() =
-            CurrencyContent(id, name, digitsAfterPoint, officialCode, hidden)
+            CurrencyContent(id, name, digitsAfterPoint, officialCode, hidden, symbol)
 
         override fun saveAndUpdate(session: Session, target: CurrencyObservable) {
             val content = buildContent()
@@ -47,7 +49,7 @@ class CurrencyObservable(
 
     class Factory : ObservableEntityFactory<CurrencyObservable, Builder> {
         override fun createNew(): CurrencyObservable =
-            CurrencyObservable(CurrencyContent(CurrencyId(Uuid.generate()), "", 2, "", false))
+            CurrencyObservable(CurrencyContent(CurrencyId(Uuid.generate()), "", 2, "", false, ""))
 
         override fun builder(entity: CurrencyObservable) = Builder(entity)
     }

@@ -20,6 +20,7 @@
       <RowConstraints vgrow="NEVER" />
       <RowConstraints vgrow="NEVER" />
       <RowConstraints vgrow="NEVER" />
+      <RowConstraints vgrow="NEVER" />
       <RowConstraints />
       <RowConstraints />
    </rowConstraints>
@@ -28,9 +29,11 @@
       <TextField fx:id="nameTextField" GridPane.columnIndex="1" GridPane.rowIndex="1" />
       <Label text="Код" GridPane.rowIndex="2" />
       <TextField fx:id="codeTextField" GridPane.columnIndex="1" GridPane.rowIndex="2" />
-      <Label text="Число знаков после запятой" GridPane.rowIndex="3" />
-      <TextField fx:id="digitsAfterPointTextField" GridPane.columnIndex="1" GridPane.rowIndex="3" />
-      <ButtonBar GridPane.columnSpan="2" GridPane.rowIndex="5">
+      <Label text="Символ" GridPane.rowIndex="3" />
+      <TextField fx:id="symbolTextField" GridPane.columnIndex="1" GridPane.rowIndex="3" />
+      <Label text="Число знаков после запятой" GridPane.rowIndex="4" />
+      <TextField fx:id="digitsAfterPointTextField" GridPane.columnIndex="1" GridPane.rowIndex="4" />
+      <ButtonBar GridPane.columnSpan="2" GridPane.rowIndex="6">
         <buttons>
           <Button fx:id="okButton" mnemonicParsing="false" text="Сохранить" />
             <Button fx:id="cancelButton" mnemonicParsing="false" text="Отмена" />
@@ -42,7 +45,7 @@
             <Insets top="30.0" />
          </padding>
       </ButtonBar>
-      <CheckBox fx:id="hiddenCheckbox" mnemonicParsing="false" text="Скрытая" GridPane.columnIndex="1" GridPane.rowIndex="4" />
+      <CheckBox fx:id="hiddenCheckbox" mnemonicParsing="false" text="Скрытая" GridPane.columnIndex="1" GridPane.rowIndex="5" />
       <Label text="id" />
       <TextField fx:id="idTextField" GridPane.columnIndex="1" />
    </children>

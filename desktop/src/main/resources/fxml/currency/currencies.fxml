@@ -40,6 +40,7 @@
               <columns>
                 <TableColumn fx:id="nameColumn" editable="false" prefWidth="75.0" text="Название" />
                 <TableColumn fx:id="codeColumn" editable="false" prefWidth="75.0" text="Код" />
+                  <TableColumn fx:id="symbolColumn" editable="false" prefWidth="75.0" text="Символ" />
                   <TableColumn fx:id="digitsAfterPointColumn" editable="false" prefWidth="75.0" text="Знаков" />
                   <TableColumn fx:id="hiddenColumn" editable="false" prefWidth="75.0" text="Скрыта" />
               </columns>
