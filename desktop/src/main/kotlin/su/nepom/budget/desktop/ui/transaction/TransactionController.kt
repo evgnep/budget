@@ -3,6 +3,7 @@ package su.nepom.budget.desktop.ui.transaction
 import jakarta.inject.Inject
 import javafx.animation.PauseTransition
 import javafx.application.Platform
+import javafx.beans.property.SimpleBooleanProperty
 import javafx.beans.property.SimpleStringProperty
 import javafx.collections.FXCollections
 import javafx.event.ActionEvent
@@ -26,6 +27,8 @@ import su.nepom.budget.desktop.model.TransactionObservable
 import su.nepom.budget.desktop.service.AccountService
 import su.nepom.budget.desktop.service.CurrencyService
 import su.nepom.budget.desktop.service.DbService
+import su.nepom.budget.desktop.ui.history.History
+import su.nepom.budget.desktop.util.formatDateTime
 import su.nepom.budget.desktop.util.fx.Controller
 import su.nepom.budget.desktop.util.fx.Disposable
 import su.nepom.budget.desktop.util.fx.FormState
@@ -33,25 +36,20 @@ import su.nepom.budget.desktop.util.fx.MasterDetailFormDriver
 import su.nepom.budget.desktop.util.fx.StageAwareController
 import su.nepom.budget.desktop.util.fx.WeakListeners
 import su.nepom.budget.desktop.util.fx.runAndShowError
-import su.nepom.budget.desktop.util.formatDateTime
-import su.nepom.budget.utils.format
 import su.nepom.budget.desktop.util.toEndOfDayInstant
 import su.nepom.budget.desktop.util.toStartOfDayInstant
-import su.nepom.budget.desktop.ui.history.History
-import su.nepom.budget.event.AccountContent
 import su.nepom.budget.event.TransactionContent
-import su.nepom.budget.event.TransactionContentItem
+import su.nepom.budget.event.TransactionContextItemAndTransaction
 import su.nepom.budget.model.AccountId
-import su.nepom.budget.model.ContentHolder
 import su.nepom.budget.model.CurrencyId
 import su.nepom.budget.model.ObjectKind
 import su.nepom.budget.model.OperationType
 import su.nepom.budget.model.RawMoney
 import su.nepom.budget.model.Uuid
+import su.nepom.budget.utils.format
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.temporal.TemporalAdjusters
-import kotlin.math.abs
 import kotlin.math.ceil
 
 @Suppress("unused", "UNCHECKED_CAST")
@@ -94,7 +92,7 @@ class TransactionController @Inject constructor(
     private var initialFilter: InitialFilter? = null
 
     private val weakListeners = WeakListeners()
-    private val rows = FXCollections.observableArrayList<TransactionObservable>()
+    private val rows = FXCollections.observableArrayList<TransactionContextItemAndTransaction>()
     private val selectedAccounts = mutableListOf<AccountId>()
 
     private var pageIndex = 0
@@ -108,7 +106,7 @@ class TransactionController @Inject constructor(
         setOnFinished { userReload(resetPage = true) }
     }
 
-    private lateinit var masterDetailFormDriver: MasterDetailFormDriver<TransactionObservable, TransactionObservable>
+    private lateinit var masterDetailFormDriver: MasterDetailFormDriver<TransactionContextItemAndTransaction, TransactionObservable>
 
     @FXML private lateinit var transactionDetailController: TransactionDetailController
 
@@ -136,13 +134,14 @@ class TransactionController @Inject constructor(
     @FXML private lateinit var pageLabel: Label
 
     // list
-    @FXML private lateinit var transactionsTable: TableView<TransactionObservable>
-    @FXML private lateinit var dateColumn: TableColumn<TransactionObservable, String>
-    @FXML private lateinit var typeColumn: TableColumn<TransactionObservable, String>
-    @FXML private lateinit var descriptionColumn: TableColumn<TransactionObservable, String>
-    @FXML private lateinit var operationColumn: TableColumn<TransactionObservable, String>
-    @FXML private lateinit var flagColumn: TableColumn<TransactionObservable, Boolean>
-    @FXML private lateinit var deletedColumn: TableColumn<TransactionObservable, Boolean>
+    @FXML private lateinit var transactionsTable: TableView<TransactionContextItemAndTransaction>
+    @FXML private lateinit var dateColumn: TableColumn<TransactionContextItemAndTransaction, String>
+    @FXML private lateinit var typeColumn: TableColumn<TransactionContextItemAndTransaction, String>
+    @FXML private lateinit var accountColumn: TableColumn<TransactionContextItemAndTransaction, String>
+    @FXML private lateinit var amountColumn: TableColumn<TransactionContextItemAndTransaction, String>
+    @FXML private lateinit var descriptionColumn: TableColumn<TransactionContextItemAndTransaction, String>
+    @FXML private lateinit var flagColumn: TableColumn<TransactionContextItemAndTransaction, Boolean>
+    @FXML private lateinit var deletedColumn: TableColumn<TransactionContextItemAndTransaction, Boolean>
 
     override fun initialize(stage: Stage) {
         this.stage = stage
@@ -171,15 +170,16 @@ class TransactionController @Inject constructor(
     private fun wireDetail() {
         transactionDetailController.setStage(stage)
         transactionDetailController.onSaved = { savedUuid -> reload(resetPage = false, preferUuid = savedUuid) }
-        transactionDetailController.masterSelection = { transactionsTable.selectionModel.selectedItem }
+        transactionDetailController.masterSelection =
+            { transactionsTable.selectionModel.selectedItem?.let { TransactionObservable(it.transaction) } }
         masterDetailFormDriver = MasterDetailFormDriver(
             transactionsTable.selectionModel,
             transactionDetailController.formDriver,
             newButton,
+            toDetail = { row -> TransactionObservable(row.transaction) },
+            sameDetail = { a, b -> a.transaction.id == b.transaction.id },
+            onDetailChanged = { detail -> transactionDetailController.onMasterSelectionChanged(detail) },
         )
-        transactionsTable.selectionModel.selectedItemProperty().addListener { _, _, selected ->
-            transactionDetailController.onMasterSelectionChanged(selected)
-        }
         newButton.addEventHandler(ActionEvent.ACTION) {
             val single = selectedAccounts.singleOrNull()?.let { accountService.accounts[it.uuid] }
             transactionDetailController.onNewStarted(single)
@@ -194,7 +194,7 @@ class TransactionController @Inject constructor(
             .bind(transactionsTable.selectionModel.selectedItemProperty().isNull)
         historyButton.setOnAction {
             val selected = transactionsTable.selectionModel.selectedItem ?: return@setOnAction
-            history.show(selected.uuid, ObjectKind.TRANSACTION, "История операции")
+            history.show(selected.transaction.id, ObjectKind.TRANSACTION, "История операции")
         }
     }
 
@@ -250,26 +250,39 @@ class TransactionController @Inject constructor(
 
     private fun setupListTable() {
         transactionsTable.items = rows
-        listOf(dateColumn, typeColumn, descriptionColumn, operationColumn, flagColumn, deletedColumn)
+        listOf(dateColumn, typeColumn, accountColumn, amountColumn, descriptionColumn, flagColumn, deletedColumn)
             .forEach { it.isSortable = false }
-        dateColumn.setCellValueFactory { SimpleStringProperty(it.value.content.date.formatDateTime()) }
-        typeColumn.setCellValueFactory { SimpleStringProperty(operationTypeLabel(operationType(it.value.content))) }
+        // date / type / description are transaction-level - shown only on the first row of a group,
+        // so a multi-leg operation doesn't repeat them on every row
+        dateColumn.setCellValueFactory {
+            SimpleStringProperty(if (it.value.isFirstInGroup) it.value.transaction.date.formatDateTime() else "")
+        }
+        typeColumn.setCellValueFactory {
+            SimpleStringProperty(if (it.value.isFirstInGroup) operationTypeLabel(operationType(it.value.transaction)) else "")
+        }
         typeColumn.setCellFactory {
-            object : TableCell<TransactionObservable, String>() {
+            object : TableCell<TransactionContextItemAndTransaction, String>() {
                 override fun updateItem(item: String?, empty: Boolean) {
                     super.updateItem(item, empty)
                     text = if (empty) null else item
-                    val tx = tableRow?.item
-                    val color = if (empty || tx == null) null else operationTypeColor(operationType(tx.content))
+                    val row = tableRow?.item
+                    val color = if (empty || row == null) null else operationTypeColor(operationType(row.transaction))
                     style = if (color == null) "" else "-fx-background-color: $color;"
                 }
             }
         }
-        descriptionColumn.setCellValueFactory { SimpleStringProperty(it.value.content.description) }
-        operationColumn.setCellValueFactory { SimpleStringProperty(operationText(it.value.content)) }
-        flagColumn.setCellValueFactory { it.value.flag as javafx.beans.value.ObservableValue<Boolean> }
+        accountColumn.setCellValueFactory {
+            SimpleStringProperty(accountValue(it.value))
+        }
+        amountColumn.setCellValueFactory {
+            SimpleStringProperty(formatMoney(it.value.item.money, accountService.accounts[it.value.item.account.uuid]?.content?.currency))
+        }
+        descriptionColumn.setCellValueFactory {
+            SimpleStringProperty(descriptionValue(it.value))
+        }
+        flagColumn.setCellValueFactory { SimpleBooleanProperty(it.value.transaction.flag) }
         flagColumn.cellFactory = CheckBoxTableCell.forTableColumn(flagColumn)
-        deletedColumn.setCellValueFactory { it.value.deleted as javafx.beans.value.ObservableValue<Boolean> }
+        deletedColumn.setCellValueFactory { SimpleBooleanProperty(it.value.transaction.deleted) }
         deletedColumn.cellFactory = CheckBoxTableCell.forTableColumn(deletedColumn)
     }
 
@@ -328,7 +341,7 @@ class TransactionController @Inject constructor(
             return
         }
         val filter = currentFilter()
-        totalCount = runAndShowError { session.transactionDao.countByFilter(filter) }.getOrDefault(0)
+        totalCount = runAndShowError { session.transactionDao.countItemsByFilter(filter) }.getOrDefault(0)
         pageCount = maxOf(1, ceil(totalCount / PAGE_SIZE.toDouble()).toInt())
         if (resetPage) pageIndex = 0
         if (pageIndex >= pageCount) pageIndex = pageCount - 1
@@ -344,16 +357,25 @@ class TransactionController @Inject constructor(
 
     private fun loadPage(filter: TransactionDao.Filter, preferUuid: Uuid? = null) {
         val session = dbService.session ?: return
-        val prevUuid = preferUuid ?: transactionsTable.selectionModel.selectedItem?.uuid
+        val prevSelected = transactionsTable.selectionModel.selectedItem
+        // preferUuid comes from a just-saved transaction, whose item count/order may have changed -
+        // land on any of its rows; otherwise try to keep the exact same leg, falling back to the
+        // first surviving leg of the same transaction
+        val prevTransactionUuid = preferUuid ?: prevSelected?.transaction?.id
+        val prevNo = if (preferUuid == null) prevSelected?.itemNoInTransaction else null
         val query = TransactionDao.Query(
             filter = filter,
             offset = pageIndex * PAGE_SIZE,
             limit = PAGE_SIZE,
             sortByDateAsc = sortComboBox.value?.ascending ?: false,
         )
-        val loaded = runAndShowError { session.transactionDao.getByQuery(query) }.getOrDefault(emptyList())
-        rows.setAll(loaded.map { TransactionObservable(it) })
-        if (prevUuid != null) rows.firstOrNull { it.uuid == prevUuid }?.let(transactionsTable.selectionModel::select)
+        val loaded = runAndShowError { session.transactionDao.getItemsByQuery(query) }.getOrDefault(emptyList())
+        rows.setAll(loaded)
+        if (prevTransactionUuid != null) {
+            val sameTransactionRows = rows.filter { it.transaction.id == prevTransactionUuid }
+            val toSelect = sameTransactionRows.firstOrNull { it.itemNoInTransaction == prevNo } ?: sameTransactionRows.firstOrNull()
+            toSelect?.let(transactionsTable.selectionModel::select)
+        }
         // saved transaction may be outside the current page/filter - keep showing its event info
         if (transactionsTable.selectionModel.selectedItem == null) transactionDetailController.showEventInfoForCurrentItem()
         updatePager()
@@ -442,47 +464,34 @@ class TransactionController @Inject constructor(
         OperationType.MIXED -> null
     }
 
-    private fun currencyOf(item: TransactionContentItem): CurrencyId? =
-        accountService.accounts[item.account.uuid]?.content?.currency
+    private fun accountValue(item: TransactionContextItemAndTransaction): String {
+        val thisAccount = item.item.account.uuid
+        val otherAccounts = (item.transaction.items.mapTo(mutableSetOf()) { it.account.uuid } - thisAccount)
+            .map { accountService.accounts[it]?.content?.name ?: "?" }
+            .sorted()
+        return buildString {
+            if (selectedAccounts.size != 1) {
+                append(accountService.accounts[thisAccount]?.content?.name ?: "?")
+                append(" → ")
+            }
+            otherAccounts.forEachIndexed { index, acc ->
+                append(acc)
+                if (index != otherAccounts.size - 1) append(", ")
+            }
+        }
+    }
+
+    private fun descriptionValue(item: TransactionContextItemAndTransaction) = buildString {
+        if (item.isFirstInGroup) append(item.transaction.description)
+        item.item.description.takeIf { it.isNotBlank() }?.let {
+            if (isNotEmpty()) append(": ")
+            append(it)
+        }
+    }
 
     private fun formatMoney(raw: RawMoney, currencyId: CurrencyId?): String {
         val cur = currencyId?.let { currencyService.currencies[it.uuid] }?.content
         val digits = cur?.digitsAfterPoint ?: 2
         return "${raw.format(digits)} ${cur?.name ?: ""}".trim()
-    }
-
-    private fun operationText(tx: TransactionContent): String {
-        val hidden = selectedAccounts.mapTo(mutableSetOf()) { it.uuid }
-        fun accountsPart(items: List<TransactionContentItem>, separator: String) =
-            items.map { it.account.uuid }
-                .filter { it !in hidden }
-                .distinct()
-                .mapNotNull { accountService.accounts[it]?.content?.name }
-                .joinToString(separator)
-
-        fun withAccounts(head: String, accounts: String) = if (accounts.isEmpty()) head else "$head: $accounts"
-
-        return when (operationType(tx)) {
-            OperationType.INCOME, OperationType.EXPENSE, OperationType.TRANSFER -> {
-                val sorted = tx.items.sortedBy { it.money.value }
-                val amount = RawMoney(abs(sorted.first().money.value))
-                withAccounts(formatMoney(amount, currencyOf(sorted.first())), accountsPart(sorted, " - "))
-            }
-
-            OperationType.CURRENCY_EXCHANGE -> {
-                val currencies = tx.items.mapNotNull { currencyOf(it) }.distinct()
-                val groups = currencies.map { c -> c to tx.items.filter { currencyOf(it) == c } }
-                val source = groups.minByOrNull { (_, items) -> items.first().money.value } ?: groups.first()
-                val target = groups.firstOrNull { it !== source } ?: groups.last()
-                val srcSum = formatMoney(RawMoney(abs(source.second.first().money.value)), source.first)
-                val tgtSum = formatMoney(RawMoney(abs(target.second.first().money.value)), target.first)
-                withAccounts("$srcSum -> $tgtSum", accountsPart(tx.items, ", "))
-            }
-
-            OperationType.MIXED -> {
-                val first = tx.items.first()
-                withAccounts(formatMoney(first.money, currencyOf(first)), accountsPart(tx.items, ", "))
-            }
-        }
     }
 }

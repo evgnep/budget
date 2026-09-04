@@ -74,7 +74,8 @@
               <columns>
                 <TableColumn fx:id="dateColumn" editable="false" prefWidth="130.0" text="Дата" />
                 <TableColumn fx:id="typeColumn" editable="false" prefWidth="90.0" text="Тип" />
-                <TableColumn fx:id="operationColumn" editable="false" prefWidth="360.0" text="Операция" />
+                <TableColumn fx:id="accountColumn" editable="false" prefWidth="200.0" text="Счета" />
+                <TableColumn fx:id="amountColumn" editable="false" prefWidth="120.0" text="Сумма" />
                 <TableColumn fx:id="descriptionColumn" editable="false" prefWidth="220.0" text="Описание" />
                 <TableColumn fx:id="flagColumn" editable="false" prefWidth="60.0" text="Флаг" />
                 <TableColumn fx:id="deletedColumn" editable="false" prefWidth="70.0" text="Удалена" />
