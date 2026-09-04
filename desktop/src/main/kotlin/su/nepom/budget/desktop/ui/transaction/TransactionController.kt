@@ -8,6 +8,7 @@ import javafx.beans.property.SimpleStringProperty
 import javafx.collections.FXCollections
 import javafx.event.ActionEvent
 import javafx.fxml.FXML
+import javafx.geometry.Pos
 import javafx.scene.control.Button
 import javafx.scene.control.CheckBox
 import javafx.scene.control.ComboBox
@@ -139,6 +140,7 @@ class TransactionController @Inject constructor(
     @FXML private lateinit var typeColumn: TableColumn<TransactionContextItemAndTransaction, String>
     @FXML private lateinit var accountColumn: TableColumn<TransactionContextItemAndTransaction, String>
     @FXML private lateinit var amountColumn: TableColumn<TransactionContextItemAndTransaction, String>
+    @FXML private lateinit var currencyColumn: TableColumn<TransactionContextItemAndTransaction, String>
     @FXML private lateinit var descriptionColumn: TableColumn<TransactionContextItemAndTransaction, String>
     @FXML private lateinit var flagColumn: TableColumn<TransactionContextItemAndTransaction, Boolean>
     @FXML private lateinit var deletedColumn: TableColumn<TransactionContextItemAndTransaction, Boolean>
@@ -250,7 +252,7 @@ class TransactionController @Inject constructor(
 
     private fun setupListTable() {
         transactionsTable.items = rows
-        listOf(dateColumn, typeColumn, accountColumn, amountColumn, descriptionColumn, flagColumn, deletedColumn)
+        listOf(dateColumn, typeColumn, accountColumn, amountColumn, currencyColumn, descriptionColumn, flagColumn, deletedColumn)
             .forEach { it.isSortable = false }
         // date / type / description are transaction-level - shown only on the first row of a group,
         // so a multi-leg operation doesn't repeat them on every row
@@ -276,6 +278,18 @@ class TransactionController @Inject constructor(
         }
         amountColumn.setCellValueFactory {
             SimpleStringProperty(formatMoney(it.value.item.money, accountService.accounts[it.value.item.account.uuid]?.content?.currency))
+        }
+        amountColumn.setCellFactory {
+            object : TableCell<TransactionContextItemAndTransaction, String>() {
+                init { alignment = Pos.CENTER_RIGHT }
+                override fun updateItem(item: String?, empty: Boolean) {
+                    super.updateItem(item, empty)
+                    text = if (empty) null else item
+                }
+            }
+        }
+        currencyColumn.setCellValueFactory {
+            SimpleStringProperty(currencyValue(accountService.accounts[it.value.item.account.uuid]?.content?.currency))
         }
         descriptionColumn.setCellValueFactory {
             SimpleStringProperty(descriptionValue(it.value))
@@ -492,6 +506,11 @@ class TransactionController @Inject constructor(
     private fun formatMoney(raw: RawMoney, currencyId: CurrencyId?): String {
         val cur = currencyId?.let { currencyService.currencies[it.uuid] }?.content
         val digits = cur?.digitsAfterPoint ?: 2
-        return "${raw.format(digits)} ${cur?.name ?: ""}".trim()
+        return raw.format(digits)
+    }
+
+    private fun currencyValue(currencyId: CurrencyId?): String {
+        val cur = currencyId?.let { currencyService.currencies[it.uuid] }?.content ?: return ""
+        return cur.symbol.takeIf { it.isNotEmpty() } ?: cur.name
     }
 }
