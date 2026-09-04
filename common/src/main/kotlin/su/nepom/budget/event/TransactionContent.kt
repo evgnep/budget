@@ -40,3 +40,11 @@ data class TransactionContentV1(
 typealias TransactionContent = TransactionContentV1
 
 typealias TransactionContentItem = TransactionContentV1.Item
+
+data class TransactionContextItemAndTransaction(
+    val item: TransactionContentItem,
+    val itemNoInTransaction: Int,
+    // true if this is the first row of its transaction in the list this item came from
+    val isFirstInGroup: Boolean,
+    val transaction: TransactionContent,
+)

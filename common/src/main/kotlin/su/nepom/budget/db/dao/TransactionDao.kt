@@ -3,6 +3,7 @@ package su.nepom.budget.db.dao
 import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
 import su.nepom.budget.event.TransactionContent
+import su.nepom.budget.event.TransactionContextItemAndTransaction
 import su.nepom.budget.model.AccountId
 import su.nepom.budget.model.CurrencyId
 import su.nepom.budget.model.RawMoney
@@ -16,6 +17,10 @@ interface TransactionDao : CrudDao<TransactionContent> {
     fun getByQuery(query: Query): List<TransactionContent>
 
     fun countByFilter(filter: Filter): Int
+
+    fun getItemsByQuery(query: Query): List<TransactionContextItemAndTransaction>
+
+    fun countItemsByFilter(filter: Filter): Int
 
     fun accountRest(accounts: Set<AccountId>, forDate: Instant? = null): Map<AccountId, RawMoney>
 
@@ -38,9 +43,16 @@ interface TransactionDao : CrudDao<TransactionContent> {
         val from: Instant? = null,
         val to: Instant? = null,
         val accounts: Set<AccountId> = setOf(), // if empty, then no filter
+        // you should not use this filter with accounts, those currencies have different digitsAfterPoint
+        val amount: AmountFilter? = null,
         val deleted: Boolean? = false,
         val descriptionLike: String? = null,
         val flag: Boolean? = null,
+    )
+
+    data class AmountFilter (
+        val min: RawMoney? = null,
+        val max: RawMoney? = null,
     )
 
     data class Query(

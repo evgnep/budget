@@ -32,7 +32,7 @@ import java.util.function.Consumer
 import kotlin.time.Duration.Companion.seconds
 
 private val currency1 = createCurrency("rub", "rubles")
-private val currency2 = createCurrency("rub", "dollars")
+private val currency2 = createCurrency("usd", "dollars")
 
 private val accountC1Money = createAccount("account1C1Money", currency1, AccountKind.MONEY)
 private val accountC1Budget = createAccount("account2C1Budget", currency1, AccountKind.BUDGET)
@@ -40,6 +40,10 @@ private val account2C1Money = createAccount("account3C1Money", currency1, Accoun
 private val account2C1Budget = createAccount("account4C1Budget", currency1, AccountKind.BUDGET)
 private val accountC2Money = createAccount("account5C2Money", currency2, AccountKind.MONEY)
 private val accountC2Budget = createAccount("account6C2Budget", currency2, AccountKind.BUDGET)
+
+private val allAccounts: Map<Uuid, AccountContent> =
+    listOf(accountC1Money, accountC1Budget, account2C1Money, account2C1Budget, accountC2Money, accountC2Budget)
+        .associateBy { it.uuid }
 
 internal class SqliteTransactionDaoTest : AbstractDbTest() {
     private lateinit var dao: TransactionDao
@@ -399,11 +403,12 @@ internal class SqliteTransactionDaoTest : AbstractDbTest() {
                 secondsDiff: Int,
                 deleted: Boolean,
                 flag: Boolean,
+                sum: Int,
                 vararg items: AccountContent
             ) {
                 session.save(
                     createTransaction(
-                        *items.map { it to 10 }.toTypedArray(),
+                        *items.map { it to sum }.toTypedArray(),
                         description = description + " ${secondsDiff}s",
                         secondsDiff = secondsDiff,
                         deleted = deleted,
@@ -416,56 +421,162 @@ internal class SqliteTransactionDaoTest : AbstractDbTest() {
                 description: String,
                 secondsDiff: Int,
                 vararg items: AccountContent
-            ) = saveTransaction(description, secondsDiff, false, false, *items)
+            ) = saveTransaction(description, secondsDiff, false, false, 10, *items)
 
             saveTransaction("some", 10, accountC1Money, account2C1Budget)
             saveTransaction("some", 11, accountC1Money, accountC1Budget)
             saveTransaction("other some", 12, accountC1Money, account2C1Budget)
-            saveTransaction("deleted", 13, true, false, accountC1Money, account2C1Budget)
-            saveTransaction("flagged", 14, false, true, accountC1Money, account2C1Budget)
+            saveTransaction("deleted", 13, true, false, 11, accountC1Money, account2C1Budget)
+            saveTransaction("flagged", 14, false, true, 12, accountC1Money, account2C1Budget)
         }
 
-        fun testGetAndCount(query: Query, expectedCount: Int, vararg expected: Int) {
+        fun testGetAndCountTr(query: Query, expectedCount: Int, vararg expected: Int) {
             val actual = dao.getByQuery(query).map { (it.date - TIME_MOMENT).inWholeSeconds.toInt() }
             assertThat(actual).isEqualTo(expected.toList())
             val actualCount = dao.countByFilter(query.filter)
             assertThat(actualCount).isEqualTo(expectedCount)
         }
 
+        fun testGetAndCountItem(query: Query, expectedCount: Int, vararg expected: Pair<Int, AccountContent>) {
+            val actualRows = dao.getItemsByQuery(query)
+            val actual = actualRows
+                .map { (it.transaction.date - TIME_MOMENT).inWholeSeconds.toInt() to
+                        allAccounts[it.item.account.uuid]?.name }
+            assertThat(actual).isEqualTo(expected.map { it.first to it.second.name })
+            // a row starts a new group whenever the transaction (its date, unique in these tests) changes
+            val expectedIsFirstInGroup = expected.mapIndexed { index, (secondsDiff, _) ->
+                index == 0 || expected[index - 1].first != secondsDiff
+            }
+            assertThat(actualRows.map { it.isFirstInGroup }).isEqualTo(expectedIsFirstInGroup)
+            val actualCount = dao.countItemsByFilter(query.filter)
+            assertThat(actualCount).isEqualTo(expectedCount)
+        }
+
         @TestFactory
-        fun testFactory() = listOf(
-            dynamicTest("default") { testGetAndCount(Query(), 4, 14, 12, 11, 10) },
+        fun transactions() = listOf(
+            dynamicTest("default") { testGetAndCountTr(Query(), 4, 14, 12, 11, 10) },
             dynamicTest("from to") {
-                testGetAndCount(
+                testGetAndCountTr(
                     Query(Filter(from = TIME_MOMENT + 11.seconds, to = TIME_MOMENT + 13.seconds)),
                     2,
                     12, 11
                 )
             },
             dynamicTest("account1") {
-                testGetAndCount(Query(Filter(accounts = setOf(accountC1Budget.id))), 1, 11)
+                testGetAndCountTr(Query(Filter(accounts = setOf(accountC1Budget.id))), 1, 11)
             },
             dynamicTest("account2") {
-                testGetAndCount(
+                testGetAndCountTr(
                     Query(Filter(accounts = setOf(accountC1Money.id, accountC1Budget.id))),
                     4,
                     14, 12, 11, 10
                 )
             },
             dynamicTest("with deleted") {
-                testGetAndCount(Query(Filter(deleted = null)), 5, 14, 13, 12, 11, 10)
+                testGetAndCountTr(Query(Filter(deleted = null)), 5, 14, 13, 12, 11, 10)
             },
             dynamicTest("deleted only") {
-                testGetAndCount(Query(Filter(deleted = true)), 1, 13)
+                testGetAndCountTr(Query(Filter(deleted = true)), 1, 13)
             },
             dynamicTest("flagged") {
-                testGetAndCount(Query(Filter(flag = true)), 1, 14)
+                testGetAndCountTr(Query(Filter(flag = true)), 1, 14)
+            },
+            dynamicTest(">=11") {
+                testGetAndCountTr(Query(Filter(deleted = null, amount = TransactionDao.AmountFilter(11.rawMoney, null))),
+                    2, 14, 13)
+            },
+            dynamicTest("<=10") {
+                testGetAndCountTr(Query(Filter(deleted = null, amount = TransactionDao.AmountFilter(null, 10.rawMoney))),
+                    3, 12, 11, 10)
+            },
+            dynamicTest(">=11 and <=11") {
+                testGetAndCountTr(Query(Filter(deleted = null, amount = TransactionDao.AmountFilter(11.rawMoney, 11.rawMoney))),
+                    1, 13)
             },
             dynamicTest("sort asc") {
-                testGetAndCount(Query(sortByDateAsc = true), 4, 10, 11, 12, 14)
+                testGetAndCountTr(Query(sortByDateAsc = true), 4, 10, 11, 12, 14)
             },
-            dynamicTest("page1") { testGetAndCount(Query(limit = 2), 4, 14, 12) },
-            dynamicTest("page2") { testGetAndCount(Query(offset = 2, limit = 1), 4, 11) },
+            dynamicTest("page1") { testGetAndCountTr(Query(limit = 2), 4, 14, 12) },
+            dynamicTest("page2") { testGetAndCountTr(Query(offset = 2, limit = 1), 4, 11) },
+        )
+
+        @TestFactory
+        fun transactionItems() = listOf(
+            dynamicTest("default") {
+                testGetAndCountItem(Query(), 8,
+                    14 to accountC1Money, 14 to account2C1Budget,
+                    12 to accountC1Money, 12 to account2C1Budget,
+                    11 to accountC1Money, 11 to accountC1Budget,
+                    10 to accountC1Money, 10 to account2C1Budget) },
+            dynamicTest("from to") {
+                testGetAndCountItem(
+                    Query(Filter(from = TIME_MOMENT + 11.seconds, to = TIME_MOMENT + 13.seconds)),
+                    4,
+                    12 to accountC1Money, 12 to account2C1Budget,
+                    11 to accountC1Money, 11 to accountC1Budget,
+                )
+            },
+            dynamicTest("account1") {
+                testGetAndCountItem(Query(Filter(accounts = setOf(accountC1Budget.id))), 1,
+                    11 to accountC1Budget)
+            },
+            dynamicTest("account2") {
+                testGetAndCountItem(
+                    Query(Filter(accounts = setOf(accountC1Money.id, accountC1Budget.id))),
+                    5,
+                    14 to accountC1Money,
+                    12 to accountC1Money,
+                    11 to accountC1Money, 11 to accountC1Budget,
+                    10 to accountC1Money,
+                )
+            },
+            dynamicTest("with deleted") {
+                testGetAndCountItem(Query(Filter(deleted = null, accounts = setOf(account2C1Budget.id))), 4,
+                    14 to account2C1Budget,
+                    13 to account2C1Budget,
+                    12 to account2C1Budget,
+                    10 to account2C1Budget)
+            },
+            dynamicTest("deleted only") {
+                testGetAndCountItem(Query(Filter(deleted = true)), 2,
+                    13 to accountC1Money, 13 to account2C1Budget)
+            },
+            dynamicTest("flagged") {
+                testGetAndCountItem(Query(Filter(flag = true)), 2,
+                    14 to accountC1Money, 14 to account2C1Budget)
+            },
+            dynamicTest("sort asc") {
+                testGetAndCountItem(Query(Filter(flag = false), sortByDateAsc = true), 6,
+                    10 to accountC1Money, 10 to account2C1Budget,
+                    11 to accountC1Money, 11 to accountC1Budget,
+                    12 to accountC1Money, 12 to account2C1Budget,)
+            },
+            dynamicTest(">=11") {
+                testGetAndCountItem(
+                    Query(Filter(deleted = null, amount = TransactionDao.AmountFilter(11.rawMoney, null))), 4,
+                    14 to accountC1Money, 14 to account2C1Budget,
+                    13 to accountC1Money, 13 to account2C1Budget,
+                )
+            },
+            dynamicTest("<=10") {
+                testGetAndCountItem(
+                    Query(Filter(deleted = null, amount = TransactionDao.AmountFilter(null, 10.rawMoney))), 6,
+                    12 to accountC1Money, 12 to account2C1Budget,
+                    11 to accountC1Money, 11 to accountC1Budget,
+                    10 to accountC1Money, 10 to account2C1Budget,
+                )
+            },
+            dynamicTest(">=11 and <=11") {
+                testGetAndCountItem(
+                    Query(Filter(deleted = null, amount = TransactionDao.AmountFilter(11.rawMoney, 11.rawMoney))), 2,
+                    13 to accountC1Money, 13 to account2C1Budget,
+                )
+            },
+            dynamicTest("page1") {
+                testGetAndCountItem(Query(limit = 2), 8,
+                    14 to accountC1Money, 14 to account2C1Budget,) },
+            dynamicTest("page2") {
+                testGetAndCountItem(Query(offset = 2, limit = 1), 8, 12 to accountC1Money) },
         )
     }
 

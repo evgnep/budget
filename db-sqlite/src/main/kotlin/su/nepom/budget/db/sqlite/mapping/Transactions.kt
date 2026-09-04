@@ -30,93 +30,103 @@ import su.nepom.budget.model.uuidCode
 import java.sql.Timestamp
 
 internal object Transactions : Table<Nothing>("transaction") {
-    val uuid = varchar("uuid").primaryKey()
-    val date = jdbcTimestamp("date")
-    val description = varchar("description")
-    val flag = boolean("flag")
-    val deleted = boolean("deleted")
+  val uuid = varchar("uuid").primaryKey()
+  val date = jdbcTimestamp("date")
+  val description = varchar("description")
+  val flag = boolean("flag")
+  val deleted = boolean("deleted")
 }
 
 internal object TransactionItems : Table<Nothing>("transaction_item") {
-    val id = long("id").primaryKey()
-    val transactionUuid = varchar("transaction_uuid")
-    val transactionDate = jdbcTimestamp("transaction_date")
-    val transactionDeleted = boolean("transaction_deleted")
-    val accountUuid = varchar("account_uuid")
-    val no = int("no")
-    val money = long("money")
-    val description = varchar("description")
-    val flag = boolean("flag")
-    val reservedUntil = varchar("reserved_until")
+  val id = long("id").primaryKey()
+  val transactionUuid = varchar("transaction_uuid")
+  val transactionDate = jdbcTimestamp("transaction_date")
+  val transactionDeleted = boolean("transaction_deleted")
+  val accountUuid = varchar("account_uuid")
+  val no = int("no")
+  val money = long("money")
+  val description = varchar("description")
+  val flag = boolean("flag")
+  val reservedUntil = varchar("reserved_until")
 }
 
 internal fun AssignmentsBuilder.setFromTransaction(transaction: TransactionContent) {
-    set(Transactions.uuid, transaction.uuidCode())
-    set(Transactions.date, Timestamp(transaction.date.toEpochMilliseconds()))
-    set(Transactions.description, transaction.description)
-    set(Transactions.flag, transaction.flag)
-    set(Transactions.deleted, transaction.deleted)
+  set(Transactions.uuid, transaction.uuidCode())
+  set(Transactions.date, Timestamp(transaction.date.toEpochMilliseconds()))
+  set(Transactions.description, transaction.description)
+  set(Transactions.flag, transaction.flag)
+  set(Transactions.deleted, transaction.deleted)
 }
 
 internal fun BatchInsertStatementBuilder<TransactionItems>.setFromTransactionItems(transaction: TransactionContent) {
-    val date = transaction.date.toTimestamp()
-    transaction.items.forEachIndexed { index, item ->
-        item {
-            set(TransactionItems.transactionUuid, transaction.uuidCode())
-            set(TransactionItems.transactionDate, date)
-            set(TransactionItems.transactionDeleted, transaction.deleted)
-            set(TransactionItems.accountUuid, item.account.uuidCode())
-            set(TransactionItems.no, index)
-            set(TransactionItems.money, item.money.value)
-            set(TransactionItems.description, item.description)
-            set(TransactionItems.flag, item.flag)
-            set(TransactionItems.reservedUntil, item.reservedUntil?.toString())
-        }
+  val date = transaction.date.toTimestamp()
+  transaction.items.forEachIndexed { index, item ->
+    item {
+      set(TransactionItems.transactionUuid, transaction.uuidCode())
+      set(TransactionItems.transactionDate, date)
+      set(TransactionItems.transactionDeleted, transaction.deleted)
+      set(TransactionItems.accountUuid, item.account.uuidCode())
+      set(TransactionItems.no, index)
+      set(TransactionItems.money, item.money.value)
+      set(TransactionItems.description, item.description)
+      set(TransactionItems.flag, item.flag)
+      set(TransactionItems.reservedUntil, item.reservedUntil?.toString())
     }
+  }
+}
+
+internal fun QueryRowSet.toItemAndNo(): Pair<TransactionContentItem, Int> =
+  TransactionContentItem(
+    AccountId(Uuid(this[TransactionItems.accountUuid]!!)),
+    RawMoney(this[TransactionItems.money]!!),
+    this[TransactionItems.description]!!,
+    this[TransactionItems.flag]!!,
+    this[TransactionItems.reservedUntil]?.let { LocalDate.parse(it) }
+  ) to this[TransactionItems.no]!!
+
+internal fun Query.toTransactionsMap(): Map<String,
+        Pair<TransactionContent, MutableList<Pair<TransactionContentItem, Int>>>> {
+  val data = mutableMapOf<String,
+          Pair<TransactionContent,
+                  MutableList<Pair<TransactionContentItem, Int>>>>()
+
+  forEach { rs ->
+    val uuid = rs[Transactions.uuid]!!
+    data.compute(uuid) { _, current ->
+      if (current == null) {
+        val transaction = TransactionContent(
+          Uuid(uuid),
+          Instant.fromEpochMilliseconds(rs[Transactions.date]!!.time),
+          rs[Transactions.description]!!,
+          listOf(),
+          rs[Transactions.flag]!!,
+          rs[Transactions.deleted]!!
+        )
+        val itemAndNo = rs.toItemAndNo()
+        transaction to mutableListOf(itemAndNo)
+      } else {
+        current.second.add(rs.toItemAndNo())
+        current
+      }
+    }
+  }
+  return data
+}
+
+internal fun Pair<TransactionContent, MutableList<Pair<TransactionContentItem, Int>>>.
+        toTransaction(): TransactionContent {
+  val (transactionWithoutItems, itemsWithNo) = this
+  itemsWithNo.sortBy { it.second }
+  return transactionWithoutItems.copy(items = itemsWithNo.map { it.first })
 }
 
 internal fun Query.toTransactions(): List<TransactionContent> {
-    val data = mutableMapOf<Uuid,
-            Pair<TransactionContent,
-                    MutableList<Pair<TransactionContentItem, Int>>>>()
-
-    fun QueryRowSet.toItemAndNo() =
-        TransactionContentItem(
-            AccountId(Uuid(this[TransactionItems.accountUuid]!!)),
-            RawMoney(this[TransactionItems.money]!!),
-            this[TransactionItems.description]!!,
-            this[TransactionItems.flag]!!,
-            this[TransactionItems.reservedUntil]?.let { LocalDate.parse(it) }
-        ) to this[TransactionItems.no]!!
-
-    forEach { rs ->
-        val uuid = Uuid(rs[Transactions.uuid]!!)
-        data.compute(uuid) { _, current ->
-            if (current == null) {
-                val transaction = TransactionContent(
-                    uuid,
-                    Instant.fromEpochMilliseconds(rs[Transactions.date]!!.time),
-                    rs[Transactions.description]!!,
-                    listOf(),
-                    rs[Transactions.flag]!!,
-                    rs[Transactions.deleted]!!
-                )
-                val itemAndNo = rs.toItemAndNo()
-                transaction to mutableListOf(itemAndNo)
-            } else {
-                current.second.add(rs.toItemAndNo())
-                current
-            }
-        }
-    }
-    return data.values.map { (transactionWithoutItems, itemsWithNo) ->
-        itemsWithNo.sortBy { it.second }
-        transactionWithoutItems.copy(items = itemsWithNo.map { it.first })
-    }
+  val data = toTransactionsMap()
+  return data.values.map { it.toTransaction() }
 }
 
 internal fun Database.fromTransactions() = from(TransactionItems)
-    .innerJoin(Transactions, on = TransactionItems.transactionUuid eq Transactions.uuid)
+  .innerJoin(Transactions, on = TransactionItems.transactionUuid eq Transactions.uuid)
 
 internal fun DatabaseHolder.fromTransactions() = getDb().fromTransactions()
 
