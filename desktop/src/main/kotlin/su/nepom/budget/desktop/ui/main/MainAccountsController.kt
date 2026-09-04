@@ -48,6 +48,12 @@ class MainAccountsController @Inject constructor(
 
     private val weakListeners = WeakListeners()
     private val refreshPause = PauseTransition(Duration.millis(200.0)).apply { setOnFinished { reload() } }
+    private val midnightRefreshTimer = PauseTransition().apply {
+        setOnFinished {
+            reload()
+            scheduleMidnightRefresh()
+        }
+    }
 
     @FXML private lateinit var totalsPane: FlowPane
     @FXML private lateinit var cardsPane: FlowPane
@@ -66,6 +72,15 @@ class MainAccountsController @Inject constructor(
             reload()
         }
         accountService.accounts.addListener(ListChangeListener { refreshPause.playFromStart() })
+        scheduleMidnightRefresh()
+    }
+
+    private fun scheduleMidnightRefresh() {
+        val now = java.time.LocalDateTime.now()
+        val nextRun = now.toLocalDate().plusDays(1).atTime(0, 1)
+        val delay = java.time.Duration.between(now, nextRun)
+        midnightRefreshTimer.duration = Duration.millis(delay.toMillis().toDouble())
+        midnightRefreshTimer.playFromStart()
     }
 
     private fun reload() {
