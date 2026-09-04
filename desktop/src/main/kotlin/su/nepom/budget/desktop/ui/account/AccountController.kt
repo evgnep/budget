@@ -35,7 +35,7 @@ class AccountController @Inject constructor(
     private val accounts = FilteredList(accountService.accounts) { !it.content.hidden }
     private val accountsSorted = SortedList(accounts)
     private val visibleCurrencies = FilteredList(currencyService.currencies) { !it.content.hidden }
-    private lateinit var masterDetailFormDriver: MasterDetailFormDriver<AccountObservable>
+    private lateinit var masterDetailFormDriver: MasterDetailFormDriver<AccountObservable, AccountObservable>
 
     @FXML
     private lateinit var accountDetailController: AccountDetailController

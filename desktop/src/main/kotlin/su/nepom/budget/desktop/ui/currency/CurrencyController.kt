@@ -27,7 +27,7 @@ class CurrencyController @Inject constructor(
 ) : Controller, Initializable {
     private val currencies = FilteredList(currencyService.currencies) { !it.content.hidden }
     private val currenciesSorted = SortedList(currencies)
-    private lateinit var masterDetailFormDriver: MasterDetailFormDriver<CurrencyObservable>
+    private lateinit var masterDetailFormDriver: MasterDetailFormDriver<CurrencyObservable, CurrencyObservable>
 
     @FXML
     private lateinit var currencyDetailController: CurrencyDetailController

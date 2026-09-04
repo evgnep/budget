@@ -108,7 +108,7 @@ class TransactionController @Inject constructor(
         setOnFinished { userReload(resetPage = true) }
     }
 
-    private lateinit var masterDetailFormDriver: MasterDetailFormDriver<TransactionObservable>
+    private lateinit var masterDetailFormDriver: MasterDetailFormDriver<TransactionObservable, TransactionObservable>
 
     @FXML private lateinit var transactionDetailController: TransactionDetailController
 

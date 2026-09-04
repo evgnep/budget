@@ -78,7 +78,7 @@ class SubaccountsController @Inject constructor(
     @FXML
     private lateinit var subaccountDetailController: SubaccountDetailController
 
-    private lateinit var masterDetailFormDriver: MasterDetailFormDriver<SubaccountObservable>
+    private lateinit var masterDetailFormDriver: MasterDetailFormDriver<SubaccountObservable, SubaccountObservable>
 
     // set by the window manager before the fxml is fully loaded, so it is ready when initialize() runs
     fun configure(accountId: AccountId) {
