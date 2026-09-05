@@ -4,7 +4,7 @@
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
 
-<StackPane xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1" fx:controller="su.nepom.budget.desktop.ui.common.CsvExportController">
+<StackPane maxHeight="-Infinity" xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1" fx:controller="su.nepom.budget.desktop.ui.common.CsvExportController">
    <children>
       <Button fx:id="exportButton" mnemonicParsing="false" text="Экспорт CSV" />
       <HBox fx:id="progressBox" alignment="CENTER_LEFT" spacing="8.0">
