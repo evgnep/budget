@@ -29,8 +29,10 @@ import javafx.scene.paint.Color
 import javafx.stage.Stage
 import javafx.util.Callback
 import javafx.util.Duration
+import javafx.util.StringConverter
 import su.nepom.budget.db.Db
 import su.nepom.budget.db.dao.TransactionDao
+import su.nepom.budget.desktop.model.CurrencyObservable
 import su.nepom.budget.desktop.model.TransactionObservable
 import su.nepom.budget.desktop.service.AccountService
 import su.nepom.budget.desktop.service.CurrencyService
@@ -58,6 +60,7 @@ import su.nepom.budget.model.RawMoney
 import su.nepom.budget.model.Uuid
 import su.nepom.budget.utils.format
 import su.nepom.budget.utils.toBigDecimal
+import su.nepom.budget.utils.toRawMoneyOrNull
 import su.nepom.budget.desktop.util.toLocalDate
 import java.text.DecimalFormatSymbols
 import java.time.DayOfWeek
@@ -101,6 +104,18 @@ class TransactionController @Inject constructor(
 
     private fun TxRow.dataOrNull(): TransactionContextItemAndTransaction? = (this as? TxRow.Data)?.row
 
+    // maps to TransactionDao.AmountFilter: ANY -> no filter, GTE/LTE -> only one bound set,
+    // BETWEEN -> both. Only enabled once the compared amounts' precision is unambiguous - see
+    // currentAmountDigits()
+    private enum class AmountFilterMode(val label: String) {
+        ANY("любая"),
+        GTE("не менее"),
+        LTE("не более"),
+        BETWEEN("от...до");
+
+        override fun toString() = label
+    }
+
     private enum class DateRangePreset(val label: String) {
         ALL("За все время"),
         TODAY("Сегодня"),
@@ -134,6 +149,9 @@ class TransactionController @Inject constructor(
     private val descriptionPause = PauseTransition(Duration.millis(300.0)).apply {
         setOnFinished { userReload(resetPage = true) }
     }
+    private val amountFilterPause = PauseTransition(Duration.millis(300.0)).apply {
+        setOnFinished { userReload(resetPage = true) }
+    }
 
     private lateinit var masterDetailFormDriver: MasterDetailFormDriver<TxRow, TransactionObservable>
     // amountColumn..flagColumn combined width/x-offset, kept live as columns resize - see setupListTable()
@@ -150,6 +168,11 @@ class TransactionController @Inject constructor(
     @FXML private lateinit var toDatePicker: DatePicker
     @FXML private lateinit var pickAccountsButton: Button
     @FXML private lateinit var accountsSummaryLabel: Label
+    @FXML private lateinit var currencyFilterComboBox: ComboBox<CurrencyObservable>
+    @FXML private lateinit var amountFilterBox: HBox
+    @FXML private lateinit var amountModeComboBox: ComboBox<AmountFilterMode>
+    @FXML private lateinit var amountFromField: TextField
+    @FXML private lateinit var amountToField: TextField
     @FXML private lateinit var deletedToggle: ToggleButton
     @FXML private lateinit var descriptionFilterField: TextField
     @FXML private lateinit var flagAllToggle: ToggleButton
@@ -209,6 +232,7 @@ class TransactionController @Inject constructor(
         weakListeners.dispose()
         refreshPause.stop()
         descriptionPause.stop()
+        amountFilterPause.stop()
     }
 
     private fun wireDetail() {
@@ -254,6 +278,25 @@ class TransactionController @Inject constructor(
         deletedToggle.selectedProperty().addListener { _, _, _ -> userReload(resetPage = true) }
         flagGroup.selectedToggleProperty().addListener { _, _, _ -> userReload(resetPage = true) }
         descriptionFilterField.textProperty().addListener { _, _, _ -> descriptionPause.playFromStart() }
+
+        currencyFilterComboBox.items = currencyService.currencies
+        currencyFilterComboBox.converter = object : StringConverter<CurrencyObservable>() {
+            override fun toString(currency: CurrencyObservable?) = currency?.content?.name ?: ""
+            override fun fromString(string: String?): CurrencyObservable? = null
+        }
+        currencyFilterComboBox.valueProperty().addListener { _, _, _ ->
+            updateAmountFilterAvailability()
+            userReload(resetPage = true)
+        }
+        amountModeComboBox.items.setAll(*AmountFilterMode.entries.toTypedArray())
+        amountModeComboBox.selectionModel.select(AmountFilterMode.ANY)
+        amountModeComboBox.valueProperty().addListener { _, _, _ ->
+            updateAmountModeVisibility()
+            userReload(resetPage = true)
+        }
+        amountFromField.textProperty().addListener { _, _, _ -> amountFilterPause.playFromStart() }
+        amountToField.textProperty().addListener { _, _, _ -> amountFilterPause.playFromStart() }
+        updateAmountFilterAvailability()
 
         pickAccountsButton.setOnAction { pickFilterAccounts() }
         resetFilterButton.setOnAction { resetFilter() }
@@ -591,10 +634,60 @@ class TransactionController @Inject constructor(
             from = fromDate?.toStartOfDayInstant(),
             to = toDate?.toEndOfDayInstant(),
             accounts = selectedAccounts.toSet(),
+            amount = currentAmountFilter(),
             deleted = deletedToggle.isSelected,
             descriptionLike = descriptionFilterField.text.trim().takeIf { it.isNotEmpty() }?.let { "%$it%" },
             flag = currentFlagFilter(),
+            currency = currencyFilterComboBox.value?.content?.id,
         )
+    }
+
+    // comparing raw amounts only makes sense once the digits-after-point of every compared
+    // currency is known to match - either a single currency is picked directly, or every
+    // selected account happens to share the same currency precision (see plan notes on the
+    // amount filter)
+    private fun currentAmountDigits(): Int? =
+        currencyFilterComboBox.value?.content?.digitsAfterPoint
+            ?: selectedAccounts.mapNotNull { accountService.accounts[it.uuid]?.content?.currency }
+                .mapNotNull { currencyService.currencies[it.uuid]?.content?.digitsAfterPoint }
+                .toSet()
+                .singleOrNull()
+
+    private fun currentAmountFilter(): TransactionDao.AmountFilter? {
+        val digits = currentAmountDigits() ?: return null
+        fun parse(field: TextField): RawMoney? = field.text.trim().takeIf { it.isNotEmpty() }?.toRawMoneyOrNull(digits)
+        return when (amountModeComboBox.value) {
+            AmountFilterMode.GTE -> parse(amountFromField)?.let { TransactionDao.AmountFilter(min = it) }
+            AmountFilterMode.LTE -> parse(amountToField)?.let { TransactionDao.AmountFilter(max = it) }
+            AmountFilterMode.BETWEEN -> {
+                val min = parse(amountFromField)
+                val max = parse(amountToField)
+                if (min == null && max == null) null else TransactionDao.AmountFilter(min, max)
+            }
+            AmountFilterMode.ANY, null -> null
+        }
+    }
+
+    // hides the whole "Сумма" row when the precision is ambiguous (see currentAmountDigits) -
+    // resets it to "любая" first so a stale filter can't keep applying while hidden
+    private fun updateAmountFilterAvailability() {
+        val available = currentAmountDigits() != null
+        amountFilterBox.isVisible = available
+        amountFilterBox.isManaged = available
+        if (!available) {
+            amountModeComboBox.selectionModel.select(AmountFilterMode.ANY)
+            amountFromField.clear()
+            amountToField.clear()
+        }
+        updateAmountModeVisibility()
+    }
+
+    private fun updateAmountModeVisibility() {
+        val mode = amountModeComboBox.value ?: AmountFilterMode.ANY
+        amountFromField.isVisible = mode == AmountFilterMode.GTE || mode == AmountFilterMode.BETWEEN
+        amountFromField.isManaged = amountFromField.isVisible
+        amountToField.isVisible = mode == AmountFilterMode.LTE || mode == AmountFilterMode.BETWEEN
+        amountToField.isManaged = amountToField.isVisible
     }
 
     private fun currentFlagFilter(): Boolean? = when {
@@ -676,6 +769,8 @@ class TransactionController @Inject constructor(
             fromDatePicker.value != null ||
             toDatePicker.value != null ||
             selectedAccounts.isNotEmpty() ||
+            currencyFilterComboBox.value != null ||
+            amountModeComboBox.value != AmountFilterMode.ANY ||
             deletedToggle.isSelected ||
             !flagAllToggle.isSelected ||
             descriptionFilterField.text.isNotBlank()
@@ -745,6 +840,7 @@ class TransactionController @Inject constructor(
         selectedAccounts.clear()
         selectedAccounts.addAll(filter.accounts)
         updateAccountsSummary()
+        updateAmountFilterAvailability()
     }
 
     private fun resetFilter() {
@@ -754,11 +850,13 @@ class TransactionController @Inject constructor(
         toDatePicker.value = null
         selectedAccounts.clear()
         updateAccountsSummary()
+        currencyFilterComboBox.value = null
         deletedToggle.isSelected = false
         flagAllToggle.isSelected = true
         sortByDateAsc = false
         dateColumn.sortType = TableColumn.SortType.DESCENDING
         descriptionFilterField.clear()
+        updateAmountFilterAvailability()
         reload(resetPage = true)
     }
 
@@ -768,6 +866,7 @@ class TransactionController @Inject constructor(
         selectedAccounts.clear()
         selectedAccounts.addAll(picked)
         updateAccountsSummary()
+        updateAmountFilterAvailability()
         reload(resetPage = true)
     }
 

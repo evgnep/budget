@@ -41,6 +41,20 @@
                   </HBox>
                   <HBox alignment="CENTER_LEFT" spacing="5.0">
                      <children>
+                        <Label text="Валюта" />
+                        <ComboBox fx:id="currencyFilterComboBox" prefWidth="100.0" />
+                     </children>
+                  </HBox>
+                  <HBox fx:id="amountFilterBox" alignment="CENTER_LEFT" spacing="5.0">
+                     <children>
+                        <Label text="Сумма" />
+                        <ComboBox fx:id="amountModeComboBox" prefWidth="90.0" />
+                        <TextField fx:id="amountFromField" prefWidth="90.0" />
+                        <TextField fx:id="amountToField" prefWidth="90.0" />
+                     </children>
+                  </HBox>
+                  <HBox alignment="CENTER_LEFT" spacing="5.0">
+                     <children>
                         <Label text="Описание" />
                         <TextField fx:id="descriptionFilterField" />
                      </children>
