@@ -29,10 +29,11 @@ private data class WindowBounds(
 @Serializable
 private data class WindowSettings(
     val windows: MutableMap<String, WindowBounds> = mutableMapOf(),
+    var lastExportFolder: String? = null,
 )
 
 /**
- * Keeps size and position of windows in `settings.json` next to the app.
+ * Keeps size and position of windows and other settings in `settings.json` next to the app.
  * When a window has no saved state, its current (default) bounds are left untouched.
  */
 @Singleton
@@ -102,4 +103,12 @@ class WindowStateService @Inject constructor() {
 
     private fun isOnScreen(x: Double, y: Double, width: Double, height: Double): Boolean =
         Screen.getScreensForRectangle(x, y, width, height).isNotEmpty()
+
+    /** Folder last picked in a file-save dialog (e.g. CSV export), remembered across restarts. */
+    var lastExportFolder: String?
+        get() = settings.lastExportFolder
+        set(value) {
+            settings.lastExportFolder = value
+            saveDebounce.playFromStart()
+        }
 }

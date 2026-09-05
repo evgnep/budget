@@ -56,6 +56,17 @@ fun <S> TableView<S>.enableCopySelectionToClipboard() {
     })
 }
 
+/**
+ * Leaf columns paired with a function producing each one's export text for an arbitrary item -
+ * not necessarily one currently shown in the table. Reuses [setClipboardValue] overrides so a CSV
+ * export renders cells the same way as the "copy selection" clipboard text. Columns with a blank
+ * header (e.g. a purely decorative marker column) are skipped.
+ */
+fun <S> TableView<S>.exportColumns(): List<Pair<String, (S) -> String>> =
+    columns.flatMap { it.leavesWithHeader() }
+        .filter { (title, _) -> title.isNotBlank() }
+        .map { (title, column) -> title to { item: S -> column.clipboardValue(item) } }
+
 private fun <S> TableView<S>.copySelectionToClipboard() {
     val selected = selectionModel.selectedIndices.sorted().mapNotNull { items.getOrNull(it) }
     if (selected.isEmpty()) return

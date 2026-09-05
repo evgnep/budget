@@ -82,6 +82,7 @@
          <right>
             <HBox alignment="TOP_RIGHT" spacing="8.0" BorderPane.alignment="TOP_RIGHT">
                <children>
+                  <fx:include fx:id="csvExport" source="../common/csvExport.fxml" />
                   <Button fx:id="newButton" mnemonicParsing="false" styleClass="accent" text="+ Создать">
                      <tooltip><Tooltip text="Создать операцию (Ctrl+N)" /></tooltip>
                   </Button>

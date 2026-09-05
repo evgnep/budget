@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<StackPane xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1" fx:controller="su.nepom.budget.desktop.ui.common.CsvExportController">
+   <children>
+      <Button fx:id="exportButton" mnemonicParsing="false" text="Экспорт CSV" />
+      <HBox fx:id="progressBox" alignment="CENTER_LEFT" spacing="8.0">
+         <children>
+            <ProgressBar fx:id="progressBar" prefWidth="120.0" progress="0.0" />
+            <Label fx:id="progressLabel" />
+            <Hyperlink fx:id="cancelLink" text="Отменить" />
+         </children>
+      </HBox>
+   </children>
+</StackPane>

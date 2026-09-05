@@ -37,6 +37,8 @@ import su.nepom.budget.desktop.model.TransactionObservable
 import su.nepom.budget.desktop.service.AccountService
 import su.nepom.budget.desktop.service.CurrencyService
 import su.nepom.budget.desktop.service.DbService
+import su.nepom.budget.desktop.ui.common.CsvExportController
+import su.nepom.budget.desktop.ui.common.CsvExportSpec
 import su.nepom.budget.desktop.util.formatDateForClipboard
 import su.nepom.budget.desktop.util.formatTime
 import su.nepom.budget.desktop.util.fx.Controller
@@ -46,6 +48,7 @@ import su.nepom.budget.desktop.util.fx.MasterDetailFormDriver
 import su.nepom.budget.desktop.util.fx.StageAwareController
 import su.nepom.budget.desktop.util.fx.WeakListeners
 import su.nepom.budget.desktop.util.fx.enableCopySelectionToClipboard
+import su.nepom.budget.desktop.util.fx.exportColumns
 import su.nepom.budget.desktop.util.fx.runAndShowError
 import su.nepom.budget.desktop.util.fx.setClipboardValue
 import su.nepom.budget.desktop.util.fx.setupFlexibleDateFormat
@@ -180,6 +183,7 @@ class TransactionController @Inject constructor(
     @FXML private lateinit var flagOffToggle: ToggleButton
     @FXML private lateinit var resetFilterButton: Hyperlink
     @FXML private lateinit var newButton: Button
+    @FXML private lateinit var csvExportController: CsvExportController
 
     // pager
     @FXML private lateinit var rangeLabel: Label
@@ -216,6 +220,7 @@ class TransactionController @Inject constructor(
         setupFilterPanel()
         setupListTable()
         wireDetail()
+        wireCsvExport()
         applyInitialFilter()
 
         weakListeners.addListenerAndCallNow(dbService.sessionProperty) { _, _, session ->
@@ -233,6 +238,7 @@ class TransactionController @Inject constructor(
         refreshPause.stop()
         descriptionPause.stop()
         amountFilterPause.stop()
+        csvExportController.dispose()
     }
 
     private fun wireDetail() {
@@ -252,6 +258,46 @@ class TransactionController @Inject constructor(
             val single = selectedAccounts.singleOrNull()?.let { accountService.accounts[it.uuid] }
             transactionDetailController.onNewStarted(single)
         }
+    }
+
+    private fun wireCsvExport() {
+        csvExportController.setStage(stage)
+        csvExportController.configure { buildCsvExportSpec() }
+    }
+
+    // filter snapshot is taken here (not read again mid-export), and the extra read session is
+    // opened/closed around the whole export - the UI session (dbService.session) is thread-bound
+    // to the FX thread and can't be used from the export's background coroutine
+    private fun buildCsvExportSpec(): CsvExportSpec? {
+        val db = dbService.db ?: return null
+        val filter = currentFilter()
+        val exportSortByDateAsc = sortByDateAsc
+        val (header, extractors) = transactionsTable.exportColumns().unzip()
+        val session = db.createSession("csv-export", createEvents = false)
+        return CsvExportSpec(
+            suggestedFileName = csvExportFileName(),
+            header = header,
+            totalCount = { session.coroDbOp { transactionDao.countItemsByFilter(filter) } },
+            fetchPage = { offset, limit ->
+                val query = TransactionDao.Query(filter = filter, offset = offset, limit = limit, sortByDateAsc = exportSortByDateAsc)
+                val items = session.coroDbOp { transactionDao.getItemsByQuery(query) }
+                items.map { item -> extractors.map { it(TxRow.Data(item)) } }
+            },
+            onFinished = { session.coroDbOp { close() } },
+        )
+    }
+
+    private fun csvExportFileName(): String {
+        val accountName = selectedAccounts.firstOrNull()?.let { accountService.accounts[it.uuid]?.content?.name }
+        val (from, to) = currentDateRange()
+        val fmt = DateTimeFormatter.ofPattern("dd.MM.yyyy")
+        val rangePart = when {
+            from == null && to == null -> ""
+            from == to -> " ${from!!.format(fmt)}"
+            else -> " ${from?.format(fmt)?.let { "$it-" } ?: ""}${(to ?: LocalDate.now()).format(fmt)}"
+        }
+        val name = "${accountName ?: "Операции"}$rangePart"
+        return name.replace(Regex("[\\\\/:*?\"<>|]"), "_") + ".csv"
     }
 
     private fun setupFilterPanel() {
