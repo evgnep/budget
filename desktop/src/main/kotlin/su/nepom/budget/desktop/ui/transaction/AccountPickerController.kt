@@ -199,15 +199,27 @@ class AccountPickerController @Inject constructor(
         }
 
         // Space toggles the checkbox of the selected rows when multi-select is on.
+        // Enter toggles the checkbox of the current row and confirms, like the OK button.
         if (multi) {
             accountsTableView.setOnKeyPressed { e ->
-                if (e.code == KeyCode.SPACE) {
-                    val rows = accountsTableView.selectionModel.selectedItems.filterNotNull()
-                    if (rows.isNotEmpty()) {
-                        val newValue = !rows.all { it.selected.get() }
-                        rows.forEach { it.selected.set(newValue) }
-                        e.consume()
+                when (e.code) {
+                    KeyCode.SPACE -> {
+                        val rows = accountsTableView.selectionModel.selectedItems.filterNotNull()
+                        if (rows.isNotEmpty()) {
+                            val newValue = !rows.all { it.selected.get() }
+                            rows.forEach { it.selected.set(newValue) }
+                            e.consume()
+                        }
                     }
+                    KeyCode.ENTER -> {
+                        val row = accountsTableView.selectionModel.selectedItem
+                        if (row != null) {
+                            row.selected.set(true)
+                            e.consume()
+                            onOk()
+                        }
+                    }
+                    else -> {}
                 }
             }
         }
@@ -222,10 +234,12 @@ class AccountPickerController @Inject constructor(
     }
 
     private fun buildRows() {
-        val rows = accountService.accounts.map { account ->
-            val currencyName = currencyService.currencies[account.content.currency.uuid]?.content?.name ?: "-"
-            Row(account, currencyName).apply { selected.set(account.uuid.id in preselectedIds) }
-        }
+        val rows = accountService.accounts
+            .sortedBy { it.content.name }
+            .map { account ->
+                val currencyName = currencyService.currencies[account.content.currency.uuid]?.content?.name ?: "-"
+                Row(account, currencyName).apply { selected.set(account.uuid.id in preselectedIds) }
+            }
         allRows.setAll(rows)
     }
 

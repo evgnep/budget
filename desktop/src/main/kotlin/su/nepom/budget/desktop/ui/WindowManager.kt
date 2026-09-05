@@ -12,6 +12,7 @@ import javafx.stage.Stage
 import su.nepom.budget.desktop.service.WindowStateService
 import su.nepom.budget.desktop.ui.history.HistoryController
 import su.nepom.budget.desktop.ui.subaccount.SubaccountsController
+import su.nepom.budget.desktop.ui.transaction.AccountPicker
 import su.nepom.budget.desktop.ui.transaction.TransactionController
 import su.nepom.budget.desktop.util.fx.Controller
 import su.nepom.budget.desktop.util.fx.Disposable
@@ -29,18 +30,23 @@ import su.nepom.budget.model.Uuid
 class WindowManager @Inject constructor(
     private val fxmlService: FxmlService,
     private val windowStateService: WindowStateService,
+    private val accountPicker: AccountPicker,
 ) {
     private class OpenWindow(val stage: Stage, val titleBase: String)
 
     private val openWindows = mutableListOf<OpenWindow>()
 
     fun openTransactions(initialFilter: TransactionController.InitialFilter? = null) {
+        val filter = initialFilter ?: run {
+            val picked = accountPicker.pick(null) ?: emptySet()
+            TransactionController.InitialFilter(picked, null, null)
+        }
         open("Операции", "transactions") { stage, collect ->
             stage.setIcon("operations")
             fxmlService.load<Parent>("transaction/transactions.fxml", stage, null) { controller ->
                 collect(controller)
-                if (initialFilter != null && controller is TransactionController) {
-                    controller.setInitialFilter(initialFilter)
+                if (controller is TransactionController) {
+                    controller.setInitialFilter(filter)
                 }
             }
         }

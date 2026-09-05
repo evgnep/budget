@@ -19,6 +19,13 @@
                <children>
                   <HBox alignment="CENTER_LEFT" spacing="5.0">
                      <children>
+                        <Label text="Счета" />
+                        <Button fx:id="pickAccountsButton" mnemonicParsing="false" text="Выбрать..." />
+                        <Label fx:id="accountsSummaryLabel" />
+                     </children>
+                  </HBox>
+                  <HBox alignment="CENTER_LEFT" spacing="5.0">
+                     <children>
                         <Label text="Период" />
                         <ComboBox fx:id="dateRangeComboBox" />
                         <Label fx:id="periodHintLabel" style="-fx-text-fill: #8b95a2; -fx-font-family: monospace;" />
@@ -30,13 +37,6 @@
                         <DatePicker fx:id="fromDatePicker" prefWidth="180.0" />
                         <Label text="по" />
                         <DatePicker fx:id="toDatePicker" prefWidth="180.0" />
-                     </children>
-                  </HBox>
-                  <HBox alignment="CENTER_LEFT" spacing="5.0">
-                     <children>
-                        <Label text="Счета" />
-                        <Button fx:id="pickAccountsButton" mnemonicParsing="false" text="Выбрать..." />
-                        <Label fx:id="accountsSummaryLabel" />
                      </children>
                   </HBox>
                   <HBox alignment="CENTER_LEFT" spacing="5.0">
