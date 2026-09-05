@@ -45,6 +45,7 @@ import su.nepom.budget.desktop.util.fx.Controller
 import su.nepom.budget.desktop.util.fx.FormDriver
 import su.nepom.budget.desktop.util.fx.FormState
 import su.nepom.budget.desktop.util.fx.runAndShowError
+import su.nepom.budget.desktop.util.fx.setupFlexibleDateFormat
 import su.nepom.budget.desktop.util.formatDateTime
 import su.nepom.budget.desktop.util.toLocalDate
 import su.nepom.budget.utils.evalMoneyFormula
@@ -66,7 +67,6 @@ import su.nepom.budget.model.Uuid
 import java.math.RoundingMode
 import java.net.URL
 import java.time.LocalDate
-import java.time.format.DateTimeFormatter
 import java.util.*
 import kotlin.math.abs
 
@@ -201,6 +201,10 @@ class TransactionDetailController @Inject constructor(
 
   private lateinit var stage: Stage
   private var viewOnly = false
+  // mirrors the "Разрешить редактирование" master switch (off by default) - toggling the
+  // deleted checkbox programmatically does not by itself move FormDriver's state to EDIT
+  // unless editing is allowed, so the delete/restore button must respect it too
+  private var editingAllowed = true
 
   // conflict-resolution dialog: edit in memory, no DB reads (a sync may hold the DB) and no DB write
   private var conflictMode = false
@@ -403,19 +407,25 @@ class TransactionDetailController @Inject constructor(
   @FXML
   private lateinit var eventInfoLabel: Label
   @FXML
-  private lateinit var eventInfoBox: HBox
+  private lateinit var changedAtLabel: Label
   @FXML
-  private lateinit var changedAtField: TextField
+  private lateinit var creatorRowLabel: Label
   @FXML
-  private lateinit var creatorField: TextField
+  private lateinit var creatorLabel: Label
   @FXML
-  private lateinit var placeField: TextField
+  private lateinit var metaToggleLabel: Label
+  @FXML
+  private lateinit var metaPane: javafx.scene.layout.GridPane
+  @FXML
+  private lateinit var copyIdButton: Button
   @FXML
   private lateinit var addItemButton: Button
   @FXML
   private lateinit var removeItemButton: Button
   @FXML
   private lateinit var balanceLabel: Label
+  @FXML
+  private lateinit var deleteButton: Button
   @FXML
   private lateinit var okButton: Button
   @FXML
@@ -424,13 +434,65 @@ class TransactionDetailController @Inject constructor(
   private lateinit var copyButton: Button
 
   override fun initialize(location: URL?, resources: ResourceBundle?) {
-    setupDatePicker()
+    dateEditPicker.setupFlexibleDateFormat()
     setupItemsEditor()
     setupOperationTabs()
     setupForm()
     setupShortcuts()
+    setupMetaToggle()
+    setupFooterButtons()
     updateEventInfo(null)
     updateCopyButton()
+  }
+
+  // "Служебные данные" (id / changed at / creator / place) starts collapsed - it's rarely needed
+  private fun setupMetaToggle() {
+    metaPane.isVisible = false
+    metaPane.isManaged = false
+    metaToggleLabel.setOnMouseClicked {
+      val expand = !metaPane.isVisible
+      metaPane.isVisible = expand
+      metaPane.isManaged = expand
+      metaToggleLabel.text = if (expand) "▾ Служебные данные" else "▸ Служебные данные"
+    }
+    copyIdButton.setOnAction {
+      val content = javafx.scene.input.ClipboardContent()
+      content.putString(idTextField.text)
+      javafx.scene.input.Clipboard.getSystemClipboard().setContent(content)
+    }
+  }
+
+  // "Удалить операцию" / "Восстановить операцию" (footer, left) toggles the "Удалена" checkbox
+  // and saves - deleting asks for confirmation first, restoring does not (non-destructive).
+  private fun setupFooterButtons() {
+    deleteButton.setOnAction { onDeleteButtonClicked() }
+    deletedCheckbox.selectedProperty().addListener { _, _, deleted -> updateDeleteButton(deleted) }
+    updateDeleteButton(deletedCheckbox.isSelected)
+  }
+
+  private fun updateDeleteButton(deleted: Boolean) {
+    deleteButton.text = if (deleted) "Восстановить операцию" else "Удалить операцию"
+    deleteButton.style = "-fx-background-color: transparent; -fx-text-fill: " +
+      if (deleted) "#2e5aac;" else "#c23b32;"
+  }
+
+  private fun onDeleteButtonClicked() {
+    if (deletedCheckbox.isSelected) {
+      deletedCheckbox.isSelected = false
+      okButton.fire()
+      return
+    }
+    val alert = Alert(
+      Alert.AlertType.CONFIRMATION,
+      "Удалить операцию?",
+      ButtonType.OK, ButtonType.CANCEL,
+    )
+    alert.title = "Удаление операции"
+    alert.headerText = null
+    if (::stage.isInitialized) alert.initOwner(stage)
+    if (alert.showAndWait().orElse(null) != ButtonType.OK) return
+    deletedCheckbox.isSelected = true
+    okButton.fire()
   }
 
   // Esc - cancel, Shift+Enter - save, Ctrl+Shift+Enter - save and copy.
@@ -447,37 +509,15 @@ class TransactionDetailController @Inject constructor(
     }
   }
 
-  // date field shows and parses ДД-ММ-ГГГГ
-  private fun setupDatePicker() {
-    val fmt = DateTimeFormatter.ofPattern("dd-MM-yyyy")
-    dateEditPicker.promptText = "д[-м[-гг]]"
-    dateEditPicker.converter = object : StringConverter<LocalDate>() {
-      override fun toString(date: LocalDate?): String = date?.format(fmt) ?: ""
-
-      // accepts ДД-ММ-ГГГГ and short forms like 1-2-22 (2-digit year -> 20xx), 1-2 (current year), 1 (current month/year)
-      override fun fromString(text: String?): LocalDate? {
-        val currentDate = LocalDate.now()
-        val parts = text?.trim()?.takeIf { it.isNotEmpty() }?.split('-') ?: return null
-        if (parts.isEmpty()) return null
-        val day = parts[0].toIntOrNull() ?: return null
-        val month = if (parts.size < 2) currentDate.month.value else (parts[1].toIntOrNull() ?: return null)
-        val year =
-          if (parts.size < 3) currentDate.year
-          else (parts[2].toIntOrNull() ?: return null).let { if (it < 100) 2000 + it else it }
-        return runCatching {
-          LocalDate.of(year, month, day)
-        }.getOrNull()
-      }
-    }
-  }
-
   fun setStage(stage: Stage) {
     this.stage = stage
   }
 
   // when off, existing transactions open read-only; new transactions and copying stay available
   fun setEditingAllowed(allowed: Boolean) {
+    editingAllowed = allowed
     formDriver.setEditingEnabled(allowed)
+    refreshDeleteButtonDisabled()
   }
 
   fun onMasterSelectionChanged(selected: TransactionObservable?) {
@@ -538,7 +578,13 @@ class TransactionDetailController @Inject constructor(
     itemsEditorBox.isDisable = false
     operationTabPane.isDisable = false
     itemsTable.isEditable = false
-    listOf(addItemButton, removeItemButton, copyButton, eventInfoLabel, eventInfoBox).forEach {
+    // eventInfoLabel/changedAtLabel/creatorRowLabel/creatorLabel show the *current* transaction's
+    // last event, which would be misleading for a past version shown here - keep them hidden
+    // regardless of the meta toggle. The toggle itself (and the id row) stays usable, same as edit.
+    listOf(
+      addItemButton, removeItemButton, copyButton, deleteButton,
+      eventInfoLabel, changedAtLabel, creatorRowLabel, creatorLabel,
+    ).forEach {
       it.isVisible = false
       it.isManaged = false
     }
@@ -1170,6 +1216,11 @@ class TransactionDetailController @Inject constructor(
     copyButton.isDisable = state == FormState.EMPTY
     val modified = state == FormState.EDIT || state == FormState.NEW
     copyButton.text = if (modified) "Сохранить и скопировать" else "Скопировать"
+    refreshDeleteButtonDisabled()
+  }
+
+  private fun refreshDeleteButtonDisabled() {
+    deleteButton.isDisable = formDriver.state == FormState.EMPTY || !editingAllowed
   }
 
   // asks the master list to refresh and move its selection onto the saved transaction. Called
@@ -1360,8 +1411,9 @@ class TransactionDetailController @Inject constructor(
     val event = if (tx != null && session != null)
       runAndShowError { session.eventDao.getLastEventForObject(tx.uuid, ObjectKind.TRANSACTION) }.getOrNull()
     else null
-    changedAtField.text = event?.created?.formatDateTime() ?: ""
-    creatorField.text = event?.creator ?: ""
-    placeField.text = event?.coords?.source?.code ?: ""
+    changedAtLabel.text = event?.created?.formatDateTime() ?: ""
+    val creator = event?.creator ?: ""
+    val place = event?.coords?.source?.code ?: ""
+    creatorLabel.text = listOf(creator, place).filter { it.isNotBlank() }.joinToString(" · ")
   }
 }

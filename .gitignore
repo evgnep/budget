@@ -1,4 +1,12 @@
 /.idea
 /.gradle
+/.kotlin
 build
 /_data
+/common/src/test/kotlin/su/nepom/budget/currenciesexchangerates/HttpCurrenciesExchangeRatesProviderIntegrationTest.kt
+/db-sqlite/test-db.sqlite
+/logs
+/desktop/logs
+/install.bat
+/settings.json
+/budget.sqlite

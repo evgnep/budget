@@ -72,6 +72,7 @@ dependencies {
     implementation(project(":common"))
     implementation(project(":db-sqlite"))
     implementation(project(":events"))
+    implementation(libs.atlantafx.base)
     implementation(libs.dagger.lib)
     implementation(libs.fx.controls)
     implementation(libs.fx.validation)

@@ -1,0 +1,25 @@
+/* deleted transactions (shown only while the "Удалённые" filter toggle is on) are struck through
+   and dimmed instead of using a separate boolean column - see TransactionController's row factory,
+   which sets the ":deleted-row" pseudo-class. The descendant selector reaches into every cell's
+   internal Text node (style class "text" comes from the platform's own default stylesheet). */
+.table-row-cell:deleted-row {
+    -fx-opacity: 0.7;
+}
+
+.table-row-cell:deleted-row .text {
+    -fx-strikethrough: true;
+}
+
+/* no blue focus ring around the whole table */
+.transactions-table {
+    -fx-focus-color: transparent;
+    -fx-faint-focus-color: transparent;
+}
+
+/* flag filter segments (Все / С флагом / Без флага) - selected segment reads as amber, matching
+   the design's flag color, distinct from the app's blue accent used for primary actions */
+.flag-toggle:selected {
+    -fx-background-color: #fdf1de;
+    -fx-border-color: #c9821e;
+    -fx-text-fill: #8a5a12;
+}

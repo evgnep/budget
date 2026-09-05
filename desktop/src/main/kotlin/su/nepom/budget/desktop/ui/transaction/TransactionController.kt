@@ -3,7 +3,6 @@ package su.nepom.budget.desktop.ui.transaction
 import jakarta.inject.Inject
 import javafx.animation.PauseTransition
 import javafx.application.Platform
-import javafx.beans.property.SimpleBooleanProperty
 import javafx.beans.property.SimpleStringProperty
 import javafx.collections.FXCollections
 import javafx.event.ActionEvent
@@ -13,14 +12,17 @@ import javafx.scene.control.Button
 import javafx.scene.control.CheckBox
 import javafx.scene.control.ComboBox
 import javafx.scene.control.DatePicker
+import javafx.scene.control.Hyperlink
 import javafx.scene.control.Label
 import javafx.scene.control.SelectionMode
 import javafx.scene.control.TableCell
 import javafx.scene.control.TableColumn
 import javafx.scene.control.TableView
 import javafx.scene.control.TextField
-import javafx.scene.control.cell.CheckBoxTableCell
+import javafx.scene.control.ToggleButton
+import javafx.scene.control.ToggleGroup
 import javafx.scene.layout.HBox
+import javafx.scene.paint.Color
 import javafx.stage.Stage
 import javafx.util.Duration
 import su.nepom.budget.db.Db
@@ -40,6 +42,7 @@ import su.nepom.budget.desktop.util.fx.WeakListeners
 import su.nepom.budget.desktop.util.fx.enableCopySelectionToClipboard
 import su.nepom.budget.desktop.util.fx.runAndShowError
 import su.nepom.budget.desktop.util.fx.setClipboardValue
+import su.nepom.budget.desktop.util.fx.setupFlexibleDateFormat
 import su.nepom.budget.desktop.util.toEndOfDayInstant
 import su.nepom.budget.desktop.util.toStartOfDayInstant
 import su.nepom.budget.event.TransactionContent
@@ -55,6 +58,7 @@ import su.nepom.budget.utils.toBigDecimal
 import java.text.DecimalFormatSymbols
 import java.time.DayOfWeek
 import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 import java.time.temporal.TemporalAdjusters
 import kotlin.math.ceil
 
@@ -69,14 +73,11 @@ class TransactionController @Inject constructor(
 
     private companion object {
         const val PAGE_SIZE = 100
+        val DELETED_ROW_PSEUDO_CLASS: javafx.css.PseudoClass = javafx.css.PseudoClass.getPseudoClass("deleted-row")
     }
 
     /** Filter to apply once when the window opens (e.g. from the balances window). */
     class InitialFilter(val accounts: Set<AccountId>, val from: LocalDate?, val to: LocalDate?)
-
-    private class TriState(val label: String, val value: Boolean?) {
-        override fun toString() = label
-    }
 
     private class SortOption(val label: String, val ascending: Boolean) {
         override fun toString() = label
@@ -118,37 +119,42 @@ class TransactionController @Inject constructor(
 
     // filter panel
     @FXML private lateinit var dateRangeComboBox: ComboBox<DateRangePreset>
+    @FXML private lateinit var periodHintLabel: Label
     @FXML private lateinit var customDateBox: HBox
     @FXML private lateinit var fromDatePicker: DatePicker
     @FXML private lateinit var toDatePicker: DatePicker
     @FXML private lateinit var pickAccountsButton: Button
     @FXML private lateinit var accountsSummaryLabel: Label
-    @FXML private lateinit var deletedComboBox: ComboBox<TriState>
+    @FXML private lateinit var deletedToggle: ToggleButton
     @FXML private lateinit var descriptionFilterField: TextField
-    @FXML private lateinit var flagComboBox: ComboBox<TriState>
+    @FXML private lateinit var flagAllToggle: ToggleButton
+    @FXML private lateinit var flagOnToggle: ToggleButton
+    @FXML private lateinit var flagOffToggle: ToggleButton
     @FXML private lateinit var sortComboBox: ComboBox<SortOption>
-    @FXML private lateinit var resetFilterButton: Button
-    @FXML private lateinit var applyFilterButton: Button
+    @FXML private lateinit var resetFilterButton: Hyperlink
     @FXML private lateinit var historyButton: Button
     @FXML private lateinit var allowEditCheckbox: CheckBox
     @FXML private lateinit var newButton: Button
 
     // pager
+    @FXML private lateinit var rangeLabel: Label
+    @FXML private lateinit var firstPageButton: Button
     @FXML private lateinit var prevPageButton: Button
     @FXML private lateinit var nextPageButton: Button
+    @FXML private lateinit var lastPageButton: Button
     @FXML private lateinit var pageField: TextField
-    @FXML private lateinit var pageLabel: Label
+    @FXML private lateinit var pageCountLabel: Label
 
     // list
     @FXML private lateinit var transactionsTable: TableView<TransactionContextItemAndTransaction>
+    @FXML private lateinit var markerColumn: TableColumn<TransactionContextItemAndTransaction, String>
     @FXML private lateinit var dateColumn: TableColumn<TransactionContextItemAndTransaction, String>
     @FXML private lateinit var typeColumn: TableColumn<TransactionContextItemAndTransaction, String>
     @FXML private lateinit var accountColumn: TableColumn<TransactionContextItemAndTransaction, String>
     @FXML private lateinit var amountColumn: TableColumn<TransactionContextItemAndTransaction, String>
     @FXML private lateinit var currencyColumn: TableColumn<TransactionContextItemAndTransaction, String>
     @FXML private lateinit var descriptionColumn: TableColumn<TransactionContextItemAndTransaction, String>
-    @FXML private lateinit var flagColumn: TableColumn<TransactionContextItemAndTransaction, Boolean>
-    @FXML private lateinit var deletedColumn: TableColumn<TransactionContextItemAndTransaction, Boolean>
+    @FXML private lateinit var flagColumn: TableColumn<TransactionContextItemAndTransaction, String>
 
     override fun initialize(stage: Stage) {
         this.stage = stage
@@ -206,45 +212,44 @@ class TransactionController @Inject constructor(
     }
 
     private fun setupFilterPanel() {
-        deletedComboBox.items.setAll(
-            TriState("Активные", false),
-            TriState("Удалённые", true),
-            TriState("Все", null),
-        )
-        deletedComboBox.selectionModel.select(0)
-        flagComboBox.items.setAll(
-            TriState("Все", null),
-            TriState("С флагом", true),
-            TriState("Без флага", false),
-        )
-        flagComboBox.selectionModel.select(0)
+        val flagGroup = ToggleGroup()
+        flagAllToggle.toggleGroup = flagGroup
+        flagOnToggle.toggleGroup = flagGroup
+        flagOffToggle.toggleGroup = flagGroup
+        flagAllToggle.isSelected = true
+        // a segmented tri-state control must not allow deselecting down to "nothing chosen" -
+        // clicking the already-selected segment is a no-op instead of leaving the group empty
+        flagGroup.selectedToggleProperty().addListener { _, old, new -> if (new == null) flagGroup.selectToggle(old) }
         sortComboBox.items.setAll(
             SortOption("Сначала новые", false),
             SortOption("Сначала старые", true),
         )
         sortComboBox.selectionModel.select(0)
         dateRangeComboBox.items.setAll(*DateRangePreset.entries.toTypedArray())
-        dateRangeComboBox.selectionModel.select(DateRangePreset.CUSTOM)
+        dateRangeComboBox.selectionModel.select(DateRangePreset.ALL)
         updateCustomDateVisibility()
 
         dateRangeComboBox.valueProperty().addListener { _, _, _ ->
             updateCustomDateVisibility()
             userReload(resetPage = true)
         }
+        fromDatePicker.setupFlexibleDateFormat()
+        toDatePicker.setupFlexibleDateFormat()
         fromDatePicker.valueProperty().addListener { _, _, _ -> userReload(resetPage = true) }
         toDatePicker.valueProperty().addListener { _, _, _ -> userReload(resetPage = true) }
-        deletedComboBox.valueProperty().addListener { _, _, _ -> userReload(resetPage = true) }
-        flagComboBox.valueProperty().addListener { _, _, _ -> userReload(resetPage = true) }
+        deletedToggle.selectedProperty().addListener { _, _, _ -> userReload(resetPage = true) }
+        flagGroup.selectedToggleProperty().addListener { _, _, _ -> userReload(resetPage = true) }
         sortComboBox.valueProperty().addListener { _, _, _ -> userReload(resetPage = true) }
         descriptionFilterField.textProperty().addListener { _, _, _ -> descriptionPause.playFromStart() }
 
         pickAccountsButton.setOnAction { pickFilterAccounts() }
         resetFilterButton.setOnAction { resetFilter() }
-        applyFilterButton.setOnAction { userReload(resetPage = true) }
         updateAccountsSummary()
 
+        firstPageButton.setOnAction { goToPage(0) }
         prevPageButton.setOnAction { goToPage(pageIndex - 1) }
         nextPageButton.setOnAction { goToPage(pageIndex + 1) }
+        lastPageButton.setOnAction { goToPage(pageCount - 1) }
         pageField.setOnAction { jumpToTypedPage() }
         pageField.focusedProperty().addListener { _, _, focused -> if (!focused) jumpToTypedPage() }
     }
@@ -259,9 +264,23 @@ class TransactionController @Inject constructor(
         transactionsTable.items = rows
         transactionsTable.selectionModel.selectionMode = SelectionMode.MULTIPLE
         transactionsTable.enableCopySelectionToClipboard()
-        listOf(dateColumn, typeColumn, accountColumn, amountColumn, currencyColumn, descriptionColumn, flagColumn, deletedColumn)
+        listOf(markerColumn, dateColumn, typeColumn, accountColumn, amountColumn, currencyColumn, descriptionColumn, flagColumn)
             .forEach { it.isSortable = false }
         currencyColumn.text = "Валюта"
+        // colored stripe showing the operation type of the whole row's transaction - applies to
+        // every leg of a multi-row operation, not just the first
+        markerColumn.setCellValueFactory { SimpleStringProperty("") }
+        markerColumn.setCellFactory {
+            object : TableCell<TransactionContextItemAndTransaction, String>() {
+                override fun updateItem(item: String?, empty: Boolean) {
+                    super.updateItem(item, empty)
+                    text = null
+                    val row = tableRow?.item
+                    val color = if (empty || row == null) null else operationTypeMarkerColor(operationType(row.transaction))
+                    style = if (color == null) "" else "-fx-background-color: $color;"
+                }
+            }
+        }
         // date / type / description are transaction-level - shown only on the first row of a group,
         // so a multi-leg operation doesn't repeat them on every row
         dateColumn.setCellValueFactory {
@@ -276,13 +295,22 @@ class TransactionController @Inject constructor(
                     super.updateItem(item, empty)
                     text = if (empty) null else item
                     val row = tableRow?.item
-                    val color = if (empty || row == null) null else operationTypeColor(operationType(row.transaction))
-                    style = if (color == null) "" else "-fx-background-color: $color;"
+                    textFill = if (empty || row == null) Color.BLACK else operationTypeTextColor(operationType(row.transaction))
                 }
             }
         }
         accountColumn.setCellValueFactory {
             SimpleStringProperty(accountValue(it.value))
+        }
+        accountColumn.setCellFactory {
+            object : TableCell<TransactionContextItemAndTransaction, String>() {
+                override fun updateItem(item: String?, empty: Boolean) {
+                    super.updateItem(item, empty)
+                    text = if (empty) null else item
+                    val row = tableRow?.item
+                    textFill = if (empty || row == null || row.isFirstInGroup) Color.BLACK else Color.web("#6b7480")
+                }
+            }
         }
         amountColumn.setCellValueFactory {
             SimpleStringProperty(formatMoney(it.value.item.money, accountService.accounts[it.value.item.account.uuid]?.content?.currency))
@@ -293,6 +321,8 @@ class TransactionController @Inject constructor(
                 override fun updateItem(item: String?, empty: Boolean) {
                     super.updateItem(item, empty)
                     text = if (empty) null else item
+                    val row = tableRow?.item
+                    textFill = if (empty || row == null) Color.BLACK else amountTextColor(row.item.money)
                 }
             }
         }
@@ -302,15 +332,50 @@ class TransactionController @Inject constructor(
         currencyColumn.setCellValueFactory {
             SimpleStringProperty(currencyValue(accountService.accounts[it.value.item.account.uuid]?.content?.currency))
         }
+        currencyColumn.setCellFactory {
+            object : TableCell<TransactionContextItemAndTransaction, String>() {
+                override fun updateItem(item: String?, empty: Boolean) {
+                    super.updateItem(item, empty)
+                    text = if (empty) null else item
+                    textFill = Color.web("#8b95a2")
+                }
+            }
+        }
         descriptionColumn.setCellValueFactory {
             SimpleStringProperty(descriptionValue(it.value))
         }
-        flagColumn.setCellValueFactory { SimpleBooleanProperty(it.value.transaction.flag) }
-        flagColumn.cellFactory = CheckBoxTableCell.forTableColumn(flagColumn)
+        descriptionColumn.setCellFactory {
+            object : TableCell<TransactionContextItemAndTransaction, String>() {
+                override fun updateItem(item: String?, empty: Boolean) {
+                    super.updateItem(item, empty)
+                    text = if (empty) null else item
+                    val row = tableRow?.item
+                    textFill = if (empty || row == null || row.isFirstInGroup) Color.BLACK else Color.web("#6b7480")
+                }
+            }
+        }
+        flagColumn.setCellValueFactory { SimpleStringProperty(if (it.value.transaction.flag) "⚑" else "") }
+        flagColumn.setCellFactory {
+            object : TableCell<TransactionContextItemAndTransaction, String>() {
+                init { alignment = Pos.CENTER }
+                override fun updateItem(item: String?, empty: Boolean) {
+                    super.updateItem(item, empty)
+                    text = if (empty) null else item
+                    textFill = Color.web("#c23b32")
+                }
+            }
+        }
         flagColumn.setClipboardValue { row -> if (row.transaction.flag) "Да" else "Нет" }
-        deletedColumn.setCellValueFactory { SimpleBooleanProperty(it.value.transaction.deleted) }
-        deletedColumn.cellFactory = CheckBoxTableCell.forTableColumn(deletedColumn)
-        deletedColumn.setClipboardValue { row -> if (row.transaction.deleted) "Да" else "Нет" }
+        // deleted rows are only ever shown while the "Удалённые" toggle is on - strike them
+        // through instead of a separate boolean column (see transactions.css .deleted-row)
+        transactionsTable.setRowFactory {
+            object : javafx.scene.control.TableRow<TransactionContextItemAndTransaction>() {
+                override fun updateItem(item: TransactionContextItemAndTransaction?, empty: Boolean) {
+                    super.updateItem(item, empty)
+                    pseudoClassStateChanged(DELETED_ROW_PSEUDO_CLASS, !empty && item != null && item.transaction.deleted)
+                }
+            }
+        }
     }
 
     // no grouping separator and the system decimal separator, so Excel / Google Sheets parse the
@@ -330,10 +395,16 @@ class TransactionController @Inject constructor(
             from = fromDate?.toStartOfDayInstant(),
             to = toDate?.toEndOfDayInstant(),
             accounts = selectedAccounts.toSet(),
-            deleted = deletedComboBox.value?.value,
+            deleted = deletedToggle.isSelected,
             descriptionLike = descriptionFilterField.text.trim().takeIf { it.isNotEmpty() }?.let { "%$it%" },
-            flag = flagComboBox.value?.value,
+            flag = currentFlagFilter(),
         )
+    }
+
+    private fun currentFlagFilter(): Boolean? = when {
+        flagOnToggle.isSelected -> true
+        flagOffToggle.isSelected -> false
+        else -> null
     }
 
     private fun currentDateRange(): Pair<LocalDate?, LocalDate?> {
@@ -355,6 +426,24 @@ class TransactionController @Inject constructor(
         val custom = dateRangeComboBox.value == DateRangePreset.CUSTOM
         customDateBox.isVisible = custom
         customDateBox.isManaged = custom
+        updatePeriodHint()
+    }
+
+    // shows the resolved date range next to the preset combo (e.g. "29.08.2026 — 04.09.2026"),
+    // except for ALL (no range) and CUSTOM (the range is already visible as date pickers)
+    private fun updatePeriodHint() {
+        val preset = dateRangeComboBox.value
+        if (preset == null || preset == DateRangePreset.ALL || preset == DateRangePreset.CUSTOM) {
+            periodHintLabel.text = ""
+            return
+        }
+        val (from, to) = currentDateRange()
+        val fmt = DateTimeFormatter.ofPattern("dd.MM.yyyy")
+        periodHintLabel.text = when {
+            from == null || to == null -> ""
+            from == to -> from.format(fmt)
+            else -> "${from.format(fmt)} — ${to.format(fmt)}"
+        }
     }
 
     // a filter / paging change started by the user: first let the detail form resolve any pending
@@ -382,7 +471,18 @@ class TransactionController @Inject constructor(
         if (resetPage) pageIndex = 0
         if (pageIndex >= pageCount) pageIndex = pageCount - 1
         loadPage(filter, preferUuid)
+        resetFilterButton.isDisable = !isFilterDirty()
     }
+
+    private fun isFilterDirty(): Boolean =
+        dateRangeComboBox.value != DateRangePreset.ALL ||
+            fromDatePicker.value != null ||
+            toDatePicker.value != null ||
+            selectedAccounts.isNotEmpty() ||
+            deletedToggle.isSelected ||
+            !flagAllToggle.isSelected ||
+            sortComboBox.selectionModel.selectedIndex != 0 ||
+            descriptionFilterField.text.isNotBlank()
 
     private fun goToPage(index: Int) {
         if (index < 0 || index >= pageCount || index == pageIndex) return
@@ -419,9 +519,14 @@ class TransactionController @Inject constructor(
 
     private fun updatePager() {
         pageField.text = (pageIndex + 1).toString()
-        pageLabel.text = "из $pageCount  (всего $totalCount)"
+        pageCountLabel.text = "/ $pageCount"
+        val from = if (totalCount == 0) 0 else pageIndex * PAGE_SIZE + 1
+        val to = minOf(totalCount, pageIndex * PAGE_SIZE + rows.size)
+        rangeLabel.text = "$from–$to из $totalCount"
+        firstPageButton.isDisable = pageIndex <= 0
         prevPageButton.isDisable = pageIndex <= 0
         nextPageButton.isDisable = pageIndex >= pageCount - 1
+        lastPageButton.isDisable = pageIndex >= pageCount - 1
     }
 
     private fun scheduleRefresh() {
@@ -447,13 +552,13 @@ class TransactionController @Inject constructor(
 
     private fun resetFilter() {
         if (!transactionDetailController.formDriver.requestLeaveEdit()) return
-        dateRangeComboBox.selectionModel.select(DateRangePreset.CUSTOM)
+        dateRangeComboBox.selectionModel.select(DateRangePreset.ALL)
         fromDatePicker.value = null
         toDatePicker.value = null
         selectedAccounts.clear()
         updateAccountsSummary()
-        deletedComboBox.selectionModel.select(0)
-        flagComboBox.selectionModel.select(0)
+        deletedToggle.isSelected = false
+        flagAllToggle.isSelected = true
         sortComboBox.selectionModel.select(0)
         descriptionFilterField.clear()
         reload(resetPage = true)
@@ -492,12 +597,29 @@ class TransactionController @Inject constructor(
         OperationType.MIXED -> "Сложная"
     }
 
-    private fun operationTypeColor(type: OperationType): String? = when (type) {
-        OperationType.INCOME -> "#d9f2d9"
-        OperationType.EXPENSE -> "#f8d9d9"
-        OperationType.TRANSFER -> "#f8f2cc"
-        OperationType.CURRENCY_EXCHANGE -> "#d4ebf7"
-        OperationType.MIXED -> null
+    // 3px stripe in the leftmost column, one color per operation type (same for every leg of a
+    // multi-row operation)
+    private fun operationTypeMarkerColor(type: OperationType): String = when (type) {
+        OperationType.INCOME -> "#8fcfa8"
+        OperationType.EXPENSE -> "#eab3ad"
+        OperationType.TRANSFER -> "#c7ccd4"
+        OperationType.CURRENCY_EXCHANGE -> "#cdb8e6"
+        OperationType.MIXED -> "#c7ccd4"
+    }
+
+    private fun operationTypeTextColor(type: OperationType): Color = when (type) {
+        OperationType.INCOME -> Color.web("#2e7d46")
+        OperationType.EXPENSE -> Color.web("#c23b32")
+        OperationType.TRANSFER -> Color.web("#5b6472")
+        OperationType.CURRENCY_EXCHANGE -> Color.web("#7a4fae")
+        OperationType.MIXED -> Color.web("#5b6472")
+    }
+
+    // each leg's own signed amount, independent of the transaction's overall operation type
+    private fun amountTextColor(money: RawMoney): Color = when {
+        money.value > 0 -> Color.web("#2e7d46")
+        money.value < 0 -> Color.web("#c23b32")
+        else -> Color.web("#5b6472")
     }
 
     private fun accountValue(item: TransactionContextItemAndTransaction): String {

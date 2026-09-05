@@ -1,32 +1,30 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
+<?import java.net.URL?>
 <?import javafx.geometry.*?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
 
-<SplitPane dividerPositions="0.6" prefHeight="640.0" prefWidth="1100.0" xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1" fx:controller="su.nepom.budget.desktop.ui.transaction.TransactionController">
-   <items>
-      <VBox spacing="5.0">
-         <padding>
-            <Insets bottom="5.0" left="5.0" right="5.0" top="5.0" />
-         </padding>
-         <children>
-            <GridPane hgap="5.0" vgap="5.0">
-               <columnConstraints>
-                  <ColumnConstraints hgrow="NEVER" />
-                  <ColumnConstraints hgrow="SOMETIMES" minWidth="120.0" />
-                  <ColumnConstraints hgrow="NEVER" />
-                  <ColumnConstraints hgrow="SOMETIMES" minWidth="120.0" />
-               </columnConstraints>
-               <rowConstraints>
-                  <RowConstraints vgrow="NEVER" />
-                  <RowConstraints vgrow="NEVER" />
-                  <RowConstraints vgrow="NEVER" />
-               </rowConstraints>
+<VBox prefHeight="640.0" prefWidth="1100.0" spacing="5.0" xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1" fx:controller="su.nepom.budget.desktop.ui.transaction.TransactionController">
+   <stylesheets>
+      <URL value="@transactions.css" />
+   </stylesheets>
+   <padding>
+      <Insets bottom="5.0" left="5.0" right="5.0" top="5.0" />
+   </padding>
+   <children>
+      <BorderPane>
+         <center>
+            <FlowPane hgap="10.0" vgap="6.0">
                <children>
-                  <Label text="Период" />
-                  <ComboBox fx:id="dateRangeComboBox" maxWidth="1.7976931348623157E308" GridPane.columnIndex="1" />
-                  <HBox fx:id="customDateBox" alignment="CENTER_LEFT" spacing="5.0" GridPane.columnIndex="2" GridPane.columnSpan="2">
+                  <HBox alignment="CENTER_LEFT" spacing="5.0">
+                     <children>
+                        <Label text="Период" />
+                        <ComboBox fx:id="dateRangeComboBox" />
+                        <Label fx:id="periodHintLabel" style="-fx-text-fill: #8b95a2; -fx-font-family: monospace;" />
+                     </children>
+                  </HBox>
+                  <HBox fx:id="customDateBox" alignment="CENTER_LEFT" spacing="5.0">
                      <children>
                         <Label text="с" />
                         <DatePicker fx:id="fromDatePicker" prefWidth="130.0" />
@@ -34,59 +32,90 @@
                         <DatePicker fx:id="toDatePicker" prefWidth="130.0" />
                      </children>
                   </HBox>
-                  <Label text="Счета" GridPane.rowIndex="1" />
-                  <HBox alignment="CENTER_LEFT" spacing="5.0" GridPane.columnIndex="1" GridPane.columnSpan="3" GridPane.rowIndex="1">
+                  <HBox alignment="CENTER_LEFT" spacing="5.0">
                      <children>
+                        <Label text="Счета" />
                         <Button fx:id="pickAccountsButton" mnemonicParsing="false" text="Выбрать..." />
-                        <Label fx:id="accountsSummaryLabel" maxWidth="1.7976931348623157E308" HBox.hgrow="ALWAYS" />
+                        <Label fx:id="accountsSummaryLabel" />
                      </children>
                   </HBox>
-                  <Label text="Описание" GridPane.rowIndex="2" />
-                  <TextField fx:id="descriptionFilterField" GridPane.columnIndex="1" GridPane.rowIndex="2" />
-                  <Label text="Флаг" GridPane.columnIndex="2" GridPane.rowIndex="2" />
-                  <ComboBox fx:id="flagComboBox" maxWidth="1.7976931348623157E308" GridPane.columnIndex="3" GridPane.rowIndex="2" />
+                  <HBox alignment="CENTER_LEFT" spacing="5.0">
+                     <children>
+                        <Label text="Описание" />
+                        <TextField fx:id="descriptionFilterField" />
+                     </children>
+                  </HBox>
+                  <HBox alignment="CENTER_LEFT" spacing="0.0">
+                     <children>
+                        <ToggleButton fx:id="flagAllToggle" mnemonicParsing="false" style="-fx-background-radius: 3 0 0 3; -fx-border-radius: 3 0 0 3; -fx-border-width: 1 0 1 1;" styleClass="flag-toggle" text="Все">
+                           <tooltip><Tooltip text="Фильтр по флагу" /></tooltip>
+                        </ToggleButton>
+                        <ToggleButton fx:id="flagOnToggle" mnemonicParsing="false" style="-fx-background-radius: 0; -fx-border-radius: 0; -fx-border-width: 1 0 1 1;" styleClass="flag-toggle" text="⚑ С флагом">
+                           <tooltip><Tooltip text="Фильтр по флагу" /></tooltip>
+                        </ToggleButton>
+                        <ToggleButton fx:id="flagOffToggle" mnemonicParsing="false" style="-fx-background-radius: 0 3 3 0; -fx-border-radius: 0 3 3 0; -fx-border-width: 1;" styleClass="flag-toggle" text="Без флага">
+                           <tooltip><Tooltip text="Фильтр по флагу" /></tooltip>
+                        </ToggleButton>
+                     </children>
+                  </HBox>
+                  <ToggleButton fx:id="deletedToggle" mnemonicParsing="false" text="🗑 Удалённые">
+                     <tooltip><Tooltip text="Показать удалённые операции вместо активных" /></tooltip>
+                  </ToggleButton>
+                  <HBox alignment="CENTER_LEFT" spacing="5.0">
+                     <children>
+                        <Label text="Сортировка" />
+                        <ComboBox fx:id="sortComboBox" prefWidth="150.0" />
+                     </children>
+                  </HBox>
+                  <Hyperlink fx:id="resetFilterButton" text="Сбросить все" />
                </children>
-            </GridPane>
-            <HBox alignment="CENTER_LEFT" spacing="5.0">
+            </FlowPane>
+         </center>
+         <right>
+            <HBox alignment="TOP_RIGHT" spacing="8.0" BorderPane.alignment="TOP_RIGHT">
                <children>
-                  <Label text="Показывать" />
-                  <ComboBox fx:id="deletedComboBox" prefWidth="130.0" />
-                  <Label text="Сортировка" />
-                  <ComboBox fx:id="sortComboBox" prefWidth="150.0" />
-                  <Button fx:id="resetFilterButton" mnemonicParsing="false" text="Сбросить" />
-                  <Button fx:id="applyFilterButton" mnemonicParsing="false" text="Применить" />
-               </children>
-            </HBox>
-            <HBox alignment="CENTER_LEFT" spacing="5.0">
-               <children>
-                  <Button fx:id="prevPageButton" mnemonicParsing="false" text="◀" />
-                  <Label text="Стр." />
-                  <TextField fx:id="pageField" prefWidth="60.0" />
-                  <Label fx:id="pageLabel" />
-                  <Button fx:id="nextPageButton" mnemonicParsing="false" text="▶" />
-                  <Region HBox.hgrow="ALWAYS" />
                   <Button fx:id="historyButton" mnemonicParsing="false" text="История" />
                   <CheckBox fx:id="allowEditCheckbox" mnemonicParsing="false" selected="false" text="Разрешить редактирование" />
-                  <Button fx:id="newButton" mnemonicParsing="false" style="-fx-font-weight: bold;" text="Создать" />
+                  <Button fx:id="newButton" mnemonicParsing="false" styleClass="accent" text="+ Создать" />
                </children>
             </HBox>
-            <TableView fx:id="transactionsTable" VBox.vgrow="ALWAYS">
-              <columns>
-                <TableColumn fx:id="dateColumn" editable="false" prefWidth="130.0" text="Дата" />
-                <TableColumn fx:id="typeColumn" editable="false" prefWidth="90.0" text="Тип" />
-                <TableColumn fx:id="accountColumn" editable="false" prefWidth="200.0" text="Счета" />
-                <TableColumn fx:id="amountColumn" editable="false" prefWidth="120.0" text="Сумма" />
-                <TableColumn fx:id="currencyColumn" editable="false" prefWidth="60.0" text="" />
-                <TableColumn fx:id="descriptionColumn" editable="false" prefWidth="220.0" text="Описание" />
-                <TableColumn fx:id="flagColumn" editable="false" prefWidth="60.0" text="Флаг" />
-                <TableColumn fx:id="deletedColumn" editable="false" prefWidth="70.0" text="Удалена" />
-              </columns>
-               <columnResizePolicy>
-                  <TableView fx:constant="CONSTRAINED_RESIZE_POLICY" />
-               </columnResizePolicy>
-            </TableView>
-         </children>
-      </VBox>
-      <fx:include fx:id="transactionDetail" source="transactionDetail.fxml" />
-   </items>
-</SplitPane>
+         </right>
+      </BorderPane>
+      <SplitPane dividerPositions="0.6" VBox.vgrow="ALWAYS">
+         <items>
+            <VBox spacing="5.0">
+               <children>
+                  <TableView fx:id="transactionsTable" VBox.vgrow="ALWAYS" styleClass="transactions-table">
+                    <columns>
+                      <TableColumn fx:id="markerColumn" editable="false" maxWidth="8.0" minWidth="8.0" prefWidth="8.0" resizable="false" sortable="false" text="" />
+                      <TableColumn fx:id="dateColumn" editable="false" prefWidth="130.0" text="Дата" />
+                      <TableColumn fx:id="typeColumn" editable="false" prefWidth="90.0" text="Тип" />
+                      <TableColumn fx:id="accountColumn" editable="false" prefWidth="200.0" text="Счета" />
+                      <TableColumn fx:id="amountColumn" editable="false" prefWidth="120.0" text="Сумма" />
+                      <TableColumn fx:id="currencyColumn" editable="false" prefWidth="60.0" text="" />
+                      <TableColumn fx:id="descriptionColumn" editable="false" prefWidth="220.0" text="Описание" />
+                      <TableColumn fx:id="flagColumn" editable="false" prefWidth="60.0" text="Флаг" />
+                    </columns>
+                     <columnResizePolicy>
+                        <TableView fx:constant="CONSTRAINED_RESIZE_POLICY" />
+                     </columnResizePolicy>
+                  </TableView>
+                  <HBox alignment="CENTER_LEFT" spacing="5.0">
+                     <children>
+                        <Label fx:id="rangeLabel" style="-fx-text-fill: #7c8593; -fx-font-family: monospace;" />
+                        <Region HBox.hgrow="ALWAYS" />
+                        <Button fx:id="firstPageButton" mnemonicParsing="false" text="«" />
+                        <Button fx:id="prevPageButton" mnemonicParsing="false" text="‹" />
+                        <TextField fx:id="pageField" alignment="CENTER_RIGHT" prefWidth="50.0" />
+                        <Label fx:id="pageCountLabel" style="-fx-font-family: monospace;" />
+                        <Button fx:id="nextPageButton" mnemonicParsing="false" text="›" />
+                        <Button fx:id="lastPageButton" mnemonicParsing="false" text="»" />
+                     </children>
+                  </HBox>
+               </children>
+            </VBox>
+            <fx:include fx:id="transactionDetail" source="transactionDetail.fxml" />
+         </items>
+      </SplitPane>
+   </children>
+</VBox>

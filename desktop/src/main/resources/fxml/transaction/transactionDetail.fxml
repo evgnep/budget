@@ -22,32 +22,20 @@
          <rowConstraints>
             <RowConstraints vgrow="NEVER" />
             <RowConstraints vgrow="NEVER" />
-            <RowConstraints vgrow="NEVER" />
-            <RowConstraints vgrow="NEVER" />
          </rowConstraints>
          <children>
-            <Label text="id" />
-            <TextField fx:id="idTextField" GridPane.columnIndex="1" />
-            <Label text="Дата" GridPane.rowIndex="1" />
-            <HBox alignment="CENTER_LEFT" spacing="15.0" GridPane.columnIndex="1" GridPane.rowIndex="1">
+            <Label text="Дата" />
+            <HBox alignment="CENTER_LEFT" spacing="15.0" GridPane.columnIndex="1">
                <children>
-                  <DatePicker fx:id="dateEditPicker" prefWidth="120.0" />
+                  <DatePicker fx:id="dateEditPicker" prefWidth="180.0" />
                   <CheckBox fx:id="flagCheckbox" mnemonicParsing="false" text="Флаг" />
-                  <CheckBox fx:id="deletedCheckbox" mnemonicParsing="false" text="Удалена" />
+                  <!-- no visible checkbox - the footer "Удалить операцию" / "Восстановить операцию"
+                       button drives this field instead; the node stays for FormDriver's field wiring -->
+                  <CheckBox fx:id="deletedCheckbox" mnemonicParsing="false" text="Удалена" visible="false" managed="false" />
                </children>
             </HBox>
-            <Label text="Описание" GridPane.rowIndex="2" />
-            <TextField fx:id="descriptionEditField" GridPane.columnIndex="1" GridPane.rowIndex="2" />
-            <Label fx:id="eventInfoLabel" text="Изменено" GridPane.rowIndex="3" />
-            <HBox fx:id="eventInfoBox" alignment="CENTER_LEFT" spacing="5.0" GridPane.columnIndex="1" GridPane.rowIndex="3">
-               <children>
-                  <TextField fx:id="changedAtField" editable="false" prefWidth="120.0" />
-                  <Label text="Автор" />
-                  <TextField fx:id="creatorField" editable="false" prefWidth="100.0" HBox.hgrow="ALWAYS" />
-                  <Label text="Где" />
-                  <TextField fx:id="placeField" editable="false" prefWidth="90.0" />
-               </children>
-            </HBox>
+            <Label text="Описание" GridPane.rowIndex="1" />
+            <TextField fx:id="descriptionEditField" GridPane.columnIndex="1" GridPane.rowIndex="1" />
          </children>
       </GridPane>
       <VBox fx:id="itemsEditorBox" spacing="5.0" VBox.vgrow="ALWAYS">
@@ -305,18 +293,47 @@
             </TabPane>
          </children>
       </VBox>
-      <ButtonBar>
-        <buttons>
-          <Button fx:id="okButton" mnemonicParsing="false" text="Сохранить">
-            <tooltip><Tooltip text="Сохранить (Shift+Enter)" /></tooltip>
-          </Button>
-          <Button fx:id="copyButton" mnemonicParsing="false" prefHeight="26.0" prefWidth="210.0" text="Скопировать">
-            <tooltip><Tooltip text="Скопировать / Сохранить и скопировать (Ctrl+Shift+Enter)" /></tooltip>
-          </Button>
-          <Button fx:id="cancelButton" mnemonicParsing="false" text="Отмена">
-            <tooltip><Tooltip text="Отмена (Esc)" /></tooltip>
-          </Button>
-        </buttons>
-      </ButtonBar>
+      <Label fx:id="metaToggleLabel" style="-fx-cursor: hand; -fx-font-size: 11px; -fx-text-fill: #6b7480;" text="▸ Служебные данные" />
+      <GridPane fx:id="metaPane" hgap="5.0" vgap="4.0">
+         <columnConstraints>
+            <ColumnConstraints halignment="RIGHT" hgrow="NEVER" minWidth="80.0" />
+            <ColumnConstraints hgrow="SOMETIMES" minWidth="150.0" />
+         </columnConstraints>
+         <rowConstraints>
+            <RowConstraints vgrow="NEVER" />
+            <RowConstraints vgrow="NEVER" />
+            <RowConstraints vgrow="NEVER" />
+         </rowConstraints>
+         <children>
+            <Label text="id" />
+            <HBox alignment="CENTER_LEFT" spacing="4.0" GridPane.columnIndex="1">
+               <children>
+                  <TextField fx:id="idTextField" editable="false" styleClass="id-field" HBox.hgrow="ALWAYS" />
+                  <Button fx:id="copyIdButton" mnemonicParsing="false" style="-fx-padding: 1 6 1 6; -fx-font-size: 12px;" text="📋">
+                     <tooltip><Tooltip text="Скопировать id в буфер обмена" /></tooltip>
+                  </Button>
+               </children>
+            </HBox>
+            <Label fx:id="eventInfoLabel" text="Изменено" GridPane.rowIndex="1" />
+            <Label fx:id="changedAtLabel" style="-fx-font-family: monospace; -fx-text-fill: #7c8593;" GridPane.columnIndex="1" GridPane.rowIndex="1" />
+            <Label fx:id="creatorRowLabel" text="Автор" GridPane.rowIndex="2" />
+            <Label fx:id="creatorLabel" style="-fx-text-fill: #7c8593;" GridPane.columnIndex="1" GridPane.rowIndex="2" />
+         </children>
+      </GridPane>
+      <HBox alignment="CENTER_LEFT" spacing="8.0">
+         <children>
+            <Button fx:id="deleteButton" mnemonicParsing="false" style="-fx-background-color: transparent; -fx-text-fill: #c23b32;" text="Удалить операцию" />
+            <Region HBox.hgrow="ALWAYS" />
+            <Button fx:id="cancelButton" mnemonicParsing="false" text="Отмена">
+               <tooltip><Tooltip text="Отмена (Esc)" /></tooltip>
+            </Button>
+            <Button fx:id="okButton" mnemonicParsing="false" styleClass="accent" text="Сохранить">
+               <tooltip><Tooltip text="Сохранить (Shift+Enter)" /></tooltip>
+            </Button>
+            <Button fx:id="copyButton" mnemonicParsing="false" prefHeight="26.0" prefWidth="210.0" text="Скопировать">
+               <tooltip><Tooltip text="Скопировать / Сохранить и скопировать (Ctrl+Shift+Enter)" /></tooltip>
+            </Button>
+         </children>
+      </HBox>
    </children>
 </VBox>

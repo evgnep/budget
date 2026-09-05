@@ -1,5 +1,6 @@
 package su.nepom.budget.desktop
 
+import atlantafx.base.theme.PrimerLight
 import io.github.oshai.kotlinlogging.KotlinLogging
 import javafx.application.Application
 import javafx.application.Platform
@@ -31,6 +32,7 @@ class BudgetApplication : Application() {
     override fun start(stage: Stage) {
         logger.info { "Starting budget desktop application" }
 
+        Application.setUserAgentStylesheet(PrimerLight().userAgentStylesheet)
         createAndLoadComponents(stage)
 
         stage.title = "Budget!"

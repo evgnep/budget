@@ -1,4 +1,6 @@
 [libraries]
+atlantafx-base = { module = "io.github.mkpaz:atlantafx-base", version = "2.0.1" }
+
 dagger-lib = { module = "com.google.dagger:dagger", version.ref = "dagger"}
 dagger-compiler = { module = "com.google.dagger:dagger-compiler", version.ref = "dagger"}
 
