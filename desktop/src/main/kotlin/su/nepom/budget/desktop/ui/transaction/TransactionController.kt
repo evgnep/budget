@@ -3,6 +3,7 @@ package su.nepom.budget.desktop.ui.transaction
 import jakarta.inject.Inject
 import javafx.animation.PauseTransition
 import javafx.application.Platform
+import javafx.beans.binding.DoubleBinding
 import javafx.beans.property.SimpleStringProperty
 import javafx.collections.FXCollections
 import javafx.collections.ListChangeListener
@@ -34,7 +35,8 @@ import su.nepom.budget.desktop.model.TransactionObservable
 import su.nepom.budget.desktop.service.AccountService
 import su.nepom.budget.desktop.service.CurrencyService
 import su.nepom.budget.desktop.service.DbService
-import su.nepom.budget.desktop.util.formatDateTime
+import su.nepom.budget.desktop.util.formatDateForClipboard
+import su.nepom.budget.desktop.util.formatTime
 import su.nepom.budget.desktop.util.fx.Controller
 import su.nepom.budget.desktop.util.fx.Disposable
 import su.nepom.budget.desktop.util.fx.FormState
@@ -56,11 +58,13 @@ import su.nepom.budget.model.RawMoney
 import su.nepom.budget.model.Uuid
 import su.nepom.budget.utils.format
 import su.nepom.budget.utils.toBigDecimal
+import su.nepom.budget.desktop.util.toLocalDate
 import java.text.DecimalFormatSymbols
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.temporal.TemporalAdjusters
+import java.util.Locale
 import kotlin.math.ceil
 
 @Suppress("unused", "UNCHECKED_CAST")
@@ -74,10 +78,28 @@ class TransactionController @Inject constructor(
     private companion object {
         const val PAGE_SIZE = 100
         val DELETED_ROW_PSEUDO_CLASS: javafx.css.PseudoClass = javafx.css.PseudoClass.getPseudoClass("deleted-row")
+        val GROUP_HEADER_ROW_PSEUDO_CLASS: javafx.css.PseudoClass = javafx.css.PseudoClass.getPseudoClass("group-header-row")
+        val GROUP_HEADER_WEEKDAY_FORMAT: DateTimeFormatter =
+            DateTimeFormatter.ofPattern("EEE", Locale.forLanguageTag("ru"))
+        val GROUP_HEADER_DATE_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("d-MM-yyyy")
     }
 
     /** Filter to apply once when the window opens (e.g. from the balances window). */
     class InitialFilter(val accounts: Set<AccountId>, val from: LocalDate?, val to: LocalDate?)
+
+    // one calendar day's worth of table rows is a synthetic header (date + count + per-currency
+    // subtotal) followed by its data rows - built client-side in buildDisplayRows(), no DB/SQL
+    // changes involved
+    // income and expense turnover for one currency within a day - never both zero (a currency
+    // with no flow at all in either direction is simply left out of the group header)
+    private data class CurrencyTurnover(val currency: CurrencyId, val income: RawMoney, val expense: RawMoney)
+
+    private sealed class TxRow {
+        data class Data(val row: TransactionContextItemAndTransaction) : TxRow()
+        data class GroupHeader(val date: LocalDate, val count: Int, val turnovers: List<CurrencyTurnover>) : TxRow()
+    }
+
+    private fun TxRow.dataOrNull(): TransactionContextItemAndTransaction? = (this as? TxRow.Data)?.row
 
     private enum class DateRangePreset(val label: String) {
         ALL("За все время"),
@@ -95,12 +117,13 @@ class TransactionController @Inject constructor(
     private var initialFilter: InitialFilter? = null
 
     private val weakListeners = WeakListeners()
-    private val rows = FXCollections.observableArrayList<TransactionContextItemAndTransaction>()
+    private val rows = FXCollections.observableArrayList<TxRow>()
     private val selectedAccounts = mutableListOf<AccountId>()
 
     private var pageIndex = 0
     private var pageCount = 1
     private var totalCount = 0
+    private var pageItemCount = 0
     // default matches the removed "Сначала новые" sort option; toggled by clicking dateColumn's
     // header instead of a filter combo box now
     private var sortByDateAsc = false
@@ -112,7 +135,10 @@ class TransactionController @Inject constructor(
         setOnFinished { userReload(resetPage = true) }
     }
 
-    private lateinit var masterDetailFormDriver: MasterDetailFormDriver<TransactionContextItemAndTransaction, TransactionObservable>
+    private lateinit var masterDetailFormDriver: MasterDetailFormDriver<TxRow, TransactionObservable>
+    // amountColumn..flagColumn combined width/x-offset, kept live as columns resize - see setupListTable()
+    private lateinit var groupHeaderSpanWidth: DoubleBinding
+    private lateinit var groupHeaderSpanX: DoubleBinding
 
     @FXML private lateinit var transactionDetailController: TransactionDetailController
 
@@ -142,15 +168,15 @@ class TransactionController @Inject constructor(
     @FXML private lateinit var pageCountLabel: Label
 
     // list
-    @FXML private lateinit var transactionsTable: TableView<TransactionContextItemAndTransaction>
-    @FXML private lateinit var markerColumn: TableColumn<TransactionContextItemAndTransaction, String>
-    @FXML private lateinit var dateColumn: TableColumn<TransactionContextItemAndTransaction, String>
-    @FXML private lateinit var typeColumn: TableColumn<TransactionContextItemAndTransaction, String>
-    @FXML private lateinit var accountColumn: TableColumn<TransactionContextItemAndTransaction, String>
-    @FXML private lateinit var amountColumn: TableColumn<TransactionContextItemAndTransaction, String>
-    @FXML private lateinit var currencyColumn: TableColumn<TransactionContextItemAndTransaction, String>
-    @FXML private lateinit var descriptionColumn: TableColumn<TransactionContextItemAndTransaction, String>
-    @FXML private lateinit var flagColumn: TableColumn<TransactionContextItemAndTransaction, String>
+    @FXML private lateinit var transactionsTable: TableView<TxRow>
+    @FXML private lateinit var markerColumn: TableColumn<TxRow, String>
+    @FXML private lateinit var dateColumn: TableColumn<TxRow, String>
+    @FXML private lateinit var typeColumn: TableColumn<TxRow, String>
+    @FXML private lateinit var accountColumn: TableColumn<TxRow, String>
+    @FXML private lateinit var amountColumn: TableColumn<TxRow, String>
+    @FXML private lateinit var currencyColumn: TableColumn<TxRow, String>
+    @FXML private lateinit var descriptionColumn: TableColumn<TxRow, String>
+    @FXML private lateinit var flagColumn: TableColumn<TxRow, String>
 
     override fun initialize(stage: Stage) {
         this.stage = stage
@@ -189,13 +215,13 @@ class TransactionController @Inject constructor(
         transactionDetailController.setStage(stage)
         transactionDetailController.onSaved = { savedUuid -> reload(resetPage = false, preferUuid = savedUuid) }
         transactionDetailController.masterSelection =
-            { transactionsTable.selectionModel.selectedItem?.let { TransactionObservable(it.transaction) } }
+            { transactionsTable.selectionModel.selectedItem?.dataOrNull()?.let { TransactionObservable(it.transaction) } }
         masterDetailFormDriver = MasterDetailFormDriver(
             transactionsTable.selectionModel,
             transactionDetailController.formDriver,
             newButton,
-            toDetail = { row -> TransactionObservable(row.transaction) },
-            sameDetail = { a, b -> a.transaction.id == b.transaction.id },
+            toDetail = { row -> row.dataOrNull()?.let { TransactionObservable(it.transaction) } },
+            sameDetail = { a, b -> a.dataOrNull() != null && a.dataOrNull()?.transaction?.id == b.dataOrNull()?.transaction?.id },
             onDetailChanged = { detail -> transactionDetailController.onMasterSelectionChanged(detail) },
         )
         newButton.addEventHandler(ActionEvent.ACTION) {
@@ -286,16 +312,27 @@ class TransactionController @Inject constructor(
             .forEach { it.isSortable = false }
         setupDateSort()
         currencyColumn.text = "Валюта"
+        // the group header's turnover line is drawn as an overlay on the row, sized to cover
+        // accountColumn..flagColumn, giving the look of merged cells without JavaFX's TableView
+        // actually supporting colspan
+        groupHeaderSpanWidth = accountColumn.widthProperty()
+            .add(amountColumn.widthProperty())
+            .add(currencyColumn.widthProperty())
+            .add(descriptionColumn.widthProperty())
+            .add(flagColumn.widthProperty())
+        groupHeaderSpanX = markerColumn.widthProperty()
+            .add(dateColumn.widthProperty())
+            .add(typeColumn.widthProperty())
         // colored stripe showing the operation type of the whole row's transaction - applies to
         // every leg of a multi-row operation, not just the first
         markerColumn.setCellValueFactory { SimpleStringProperty("") }
         markerColumn.setCellFactory {
-            object : TableCell<TransactionContextItemAndTransaction, String>() {
+            object : TableCell<TxRow, String>() {
                 override fun updateItem(item: String?, empty: Boolean) {
                     super.updateItem(item, empty)
                     text = null
-                    val row = tableRow?.item
-                    val color = if (empty || row == null) null else operationTypeMarkerColor(operationType(row.transaction))
+                    val data = (tableRow?.item as? TxRow.Data)?.row
+                    val color = if (empty || data == null) null else operationTypeMarkerColor(operationType(data.transaction))
                     style = if (color == null) "" else "-fx-background-color: $color;"
                 }
             }
@@ -303,56 +340,91 @@ class TransactionController @Inject constructor(
         // date / type / description are transaction-level - shown only on the first row of a group,
         // so a multi-leg operation doesn't repeat them on every row
         dateColumn.setCellValueFactory {
-            SimpleStringProperty(if (it.value.isFirstInGroup) it.value.transaction.date.formatDateTime() else "")
+            SimpleStringProperty(
+                when (val v = it.value) {
+                    is TxRow.GroupHeader -> groupHeaderDateLabel(v.date)
+                    is TxRow.Data -> if (v.row.isFirstInGroup) v.row.transaction.date.formatTime() else ""
+                }
+            )
+        }
+        dateColumn.setCellFactory {
+            object : TableCell<TxRow, String>() {
+                override fun updateItem(item: String?, empty: Boolean) {
+                    super.updateItem(item, empty)
+                    text = if (empty) null else item
+                    style = if (!empty && tableRow?.item is TxRow.GroupHeader) "-fx-font-weight: bold;" else ""
+                }
+            }
+        }
+        // the cell itself shows only the time (the date is already visible in the day's group
+        // header) - Excel still needs the actual date, so the clipboard copy carries both
+        dateColumn.setClipboardValue { row ->
+            row.dataOrNull()?.let { "${it.transaction.date.formatDateForClipboard()} ${it.transaction.date.formatTime()}" } ?: ""
         }
         typeColumn.setCellValueFactory {
-            SimpleStringProperty(if (it.value.isFirstInGroup) operationTypeLabel(operationType(it.value.transaction)) else "")
+            SimpleStringProperty(
+                when (val v = it.value) {
+                    is TxRow.GroupHeader -> groupHeaderCountLabel(v.count)
+                    is TxRow.Data -> if (v.row.isFirstInGroup) operationTypeLabel(operationType(v.row.transaction)) else ""
+                }
+            )
         }
         typeColumn.setCellFactory {
-            object : TableCell<TransactionContextItemAndTransaction, String>() {
+            object : TableCell<TxRow, String>() {
                 override fun updateItem(item: String?, empty: Boolean) {
                     super.updateItem(item, empty)
                     text = if (empty) null else item
                     val row = tableRow?.item
-                    textFill = if (empty || row == null) Color.BLACK else operationTypeTextColor(operationType(row.transaction))
+                    textFill = when {
+                        empty || row == null -> Color.BLACK
+                        row is TxRow.GroupHeader -> Color.web("#6b7480")
+                        row is TxRow.Data -> operationTypeTextColor(operationType(row.row.transaction))
+                        else -> Color.BLACK
+                    }
                 }
             }
         }
         accountColumn.setCellValueFactory {
-            SimpleStringProperty(accountValue(it.value))
+            SimpleStringProperty((it.value as? TxRow.Data)?.let { d -> accountValue(d.row) } ?: "")
         }
         accountColumn.setCellFactory {
-            object : TableCell<TransactionContextItemAndTransaction, String>() {
+            object : TableCell<TxRow, String>() {
                 override fun updateItem(item: String?, empty: Boolean) {
                     super.updateItem(item, empty)
                     text = if (empty) null else item
                     val row = tableRow?.item
-                    textFill = if (empty || row == null || row.isFirstInGroup) Color.BLACK else Color.web("#6b7480")
+                    textFill = when {
+                        empty || row == null -> Color.BLACK
+                        row is TxRow.Data && row.row.isFirstInGroup -> Color.BLACK
+                        else -> Color.web("#6b7480")
+                    }
                 }
             }
         }
         amountColumn.setCellValueFactory {
-            SimpleStringProperty(formatMoney(it.value.item.money, accountService.accounts[it.value.item.account.uuid]?.content?.currency))
+            SimpleStringProperty(
+                (it.value as? TxRow.Data)?.let { d -> formatMoney(d.row.item.money, accountService.accounts[d.row.item.account.uuid]?.content?.currency) } ?: ""
+            )
         }
         amountColumn.setCellFactory {
-            object : TableCell<TransactionContextItemAndTransaction, String>() {
+            object : TableCell<TxRow, String>() {
                 init { alignment = Pos.CENTER_RIGHT }
                 override fun updateItem(item: String?, empty: Boolean) {
                     super.updateItem(item, empty)
                     text = if (empty) null else item
-                    val row = tableRow?.item
-                    textFill = if (empty || row == null) Color.BLACK else amountTextColor(row.item.money)
+                    val data = (tableRow?.item as? TxRow.Data)?.row
+                    textFill = if (empty || data == null) Color.BLACK else amountTextColor(data.item.money)
                 }
             }
         }
         amountColumn.setClipboardValue { row ->
-            formatMoneyForClipboard(row.item.money, accountService.accounts[row.item.account.uuid]?.content?.currency)
+            row.dataOrNull()?.let { formatMoneyForClipboard(it.item.money, accountService.accounts[it.item.account.uuid]?.content?.currency) } ?: ""
         }
         currencyColumn.setCellValueFactory {
-            SimpleStringProperty(currencyValue(accountService.accounts[it.value.item.account.uuid]?.content?.currency))
+            SimpleStringProperty((it.value as? TxRow.Data)?.let { d -> currencyValue(accountService.accounts[d.row.item.account.uuid]?.content?.currency) } ?: "")
         }
         currencyColumn.setCellFactory {
-            object : TableCell<TransactionContextItemAndTransaction, String>() {
+            object : TableCell<TxRow, String>() {
                 override fun updateItem(item: String?, empty: Boolean) {
                     super.updateItem(item, empty)
                     text = if (empty) null else item
@@ -361,21 +433,30 @@ class TransactionController @Inject constructor(
             }
         }
         descriptionColumn.setCellValueFactory {
-            SimpleStringProperty(descriptionValue(it.value))
+            SimpleStringProperty(
+                when (val v = it.value) {
+                    is TxRow.GroupHeader -> ""
+                    is TxRow.Data -> descriptionValue(v.row)
+                }
+            )
         }
         descriptionColumn.setCellFactory {
-            object : TableCell<TransactionContextItemAndTransaction, String>() {
+            object : TableCell<TxRow, String>() {
                 override fun updateItem(item: String?, empty: Boolean) {
                     super.updateItem(item, empty)
                     text = if (empty) null else item
                     val row = tableRow?.item
-                    textFill = if (empty || row == null || row.isFirstInGroup) Color.BLACK else Color.web("#6b7480")
+                    textFill = when {
+                        empty || row == null -> Color.BLACK
+                        row is TxRow.Data && row.row.isFirstInGroup -> Color.BLACK
+                        else -> Color.web("#6b7480")
+                    }
                 }
             }
         }
-        flagColumn.setCellValueFactory { SimpleStringProperty(if (it.value.transaction.flag) "⚑" else "") }
+        flagColumn.setCellValueFactory { SimpleStringProperty(if ((it.value as? TxRow.Data)?.row?.transaction?.flag == true) "⚑" else "") }
         flagColumn.setCellFactory {
-            object : TableCell<TransactionContextItemAndTransaction, String>() {
+            object : TableCell<TxRow, String>() {
                 init { alignment = Pos.CENTER }
                 override fun updateItem(item: String?, empty: Boolean) {
                     super.updateItem(item, empty)
@@ -384,15 +465,111 @@ class TransactionController @Inject constructor(
                 }
             }
         }
-        flagColumn.setClipboardValue { row -> if (row.transaction.flag) "Да" else "Нет" }
+        flagColumn.setClipboardValue { row -> if (row.dataOrNull()?.transaction?.flag == true) "Да" else "Нет" }
         // deleted rows are only ever shown while the "Удалённые" toggle is on - strike them
-        // through instead of a separate boolean column (see transactions.css .deleted-row)
+        // through instead of a separate boolean column (see transactions.css .deleted-row).
+        // Group header rows get their own shaded pseudo-class and ignore mouse clicks, so they
+        // can't become the table selection (see transactions.css .group-header-row)
         transactionsTable.setRowFactory {
-            object : javafx.scene.control.TableRow<TransactionContextItemAndTransaction>() {
-                override fun updateItem(item: TransactionContextItemAndTransaction?, empty: Boolean) {
+            object : javafx.scene.control.TableRow<TxRow>() {
+                // TableCellSkinBase clips each cell to its own column's bounds, so a turnover
+                // line drawn as a cell's graphic gets cut at that column's edge no matter how it's
+                // sized. Adding this node directly as an *unmanaged* child of the row instead
+                // (rather than as a TableCell's graphic) keeps it outside that per-cell clipping -
+                // it is manually positioned/sized in layoutChildren() below to cover
+                // amountColumn..flagColumn, on top of those columns' (blank) cells.
+                private var headerOverlay: HBox? = null
+
+                override fun updateItem(item: TxRow?, empty: Boolean) {
                     super.updateItem(item, empty)
-                    pseudoClassStateChanged(DELETED_ROW_PSEUDO_CLASS, !empty && item != null && item.transaction.deleted)
+                    pseudoClassStateChanged(DELETED_ROW_PSEUDO_CLASS, !empty && item?.dataOrNull()?.transaction?.deleted == true)
+                    val header = (if (empty) null else item) as? TxRow.GroupHeader
+                    pseudoClassStateChanged(GROUP_HEADER_ROW_PSEUDO_CLASS, header != null)
+                    isMouseTransparent = header != null
+                    headerOverlay?.let { children.remove(it); headerOverlay = null }
+                    if (header != null) {
+                        headerOverlay = turnoversNode(header.turnovers).also {
+                            it.isManaged = false
+                            children.add(it)
+                        }
+                        requestLayout()
+                    }
                 }
+
+                override fun layoutChildren() {
+                    super.layoutChildren()
+                    // never shrink below the content's own preferred width - HBox would otherwise
+                    // squeeze its Labels down toward their min width, which lets JavaFX ellipsize
+                    // ("...") the money text. If there are more currencies than the span fits, the
+                    // line simply overflows past flagColumn and gets clipped by the table itself.
+                    headerOverlay?.let {
+                        val width = maxOf(groupHeaderSpanWidth.get(), it.prefWidth(-1.0))
+                        it.resizeRelocate(groupHeaderSpanX.get(), 0.0, width, height)
+                    }
+                }
+            }
+        }
+    }
+
+    // groups the current page's rows by calendar day, inserting a synthetic header row (date,
+    // operation count, per-currency income/expense turnover) before each day's data rows. A day
+    // split across a page boundary only sees the rows that landed on this page - no extra DB
+    // query for the rest.
+    private fun buildDisplayRows(items: List<TransactionContextItemAndTransaction>): List<TxRow> {
+        val result = ArrayList<TxRow>(items.size + items.size / 3 + 1)
+        var i = 0
+        while (i < items.size) {
+            val day = items[i].transaction.date.toLocalDate()
+            var count = 0
+            val income = LinkedHashMap<CurrencyId, Long>()
+            val expense = LinkedHashMap<CurrencyId, Long>()
+            var j = i
+            while (j < items.size && items[j].transaction.date.toLocalDate() == day) {
+                val row = items[j]
+                if (row.isFirstInGroup) count++
+                val value = row.item.money.value
+                accountService.accounts[row.item.account.uuid]?.content?.currency?.let { currency ->
+                    when {
+                        value > 0 -> income[currency] = (income[currency] ?: 0L) + value
+                        value < 0 -> expense[currency] = (expense[currency] ?: 0L) + value
+                    }
+                }
+                j++
+            }
+            val currencies = LinkedHashSet<CurrencyId>().apply { addAll(income.keys); addAll(expense.keys) }
+            val turnovers = currencies.map { currency ->
+                CurrencyTurnover(currency, RawMoney(income[currency] ?: 0L), RawMoney(expense[currency] ?: 0L))
+            }
+            result += TxRow.GroupHeader(day, count, turnovers)
+            for (k in i until j) result += TxRow.Data(items[k])
+            i = j
+        }
+        return result
+    }
+
+    private fun groupHeaderDateLabel(date: LocalDate): String {
+        val weekday = GROUP_HEADER_WEEKDAY_FORMAT.format(date).replaceFirstChar { it.titlecase(Locale.forLanguageTag("ru")) }
+        return "$weekday, ${GROUP_HEADER_DATE_FORMAT.format(date)}"
+    }
+
+    private fun groupHeaderCountLabel(count: Int): String = when {
+        count % 10 == 1 && count % 100 != 11 -> "$count операция"
+        count % 10 in 2..4 && count % 100 !in 12..14 -> "$count операции"
+        else -> "$count операций"
+    }
+
+    // income shown with a leading "+" in green, expense with its already-present leading "-" in
+    // red; a currency with no flow in one of the two directions just omits that label. Sizing is
+    // done by the row's layoutChildren() override (see setRowFactory), not by this node itself.
+    private fun turnoversNode(turnovers: List<CurrencyTurnover>): HBox = HBox(12.0).apply {
+        alignment = Pos.CENTER_LEFT
+        turnovers.forEach { t ->
+            val symbol = currencyValue(t.currency)
+            if (t.income.value != 0L) {
+                children += Label("+${formatMoney(t.income, t.currency)} $symbol").apply { textFill = Color.web("#2e7d46") }
+            }
+            if (t.expense.value != 0L) {
+                children += Label("${formatMoney(t.expense, t.currency)} $symbol").apply { textFill = Color.web("#c23b32") }
             }
         }
     }
@@ -481,6 +658,7 @@ class TransactionController @Inject constructor(
             totalCount = 0
             pageCount = 1
             pageIndex = 0
+            pageItemCount = 0
             updatePager()
             return
         }
@@ -511,7 +689,7 @@ class TransactionController @Inject constructor(
 
     private fun loadPage(filter: TransactionDao.Filter, preferUuid: Uuid? = null) {
         val session = dbService.session ?: return
-        val prevSelected = transactionsTable.selectionModel.selectedItem
+        val prevSelected = transactionsTable.selectionModel.selectedItem?.dataOrNull()
         // preferUuid comes from a just-saved transaction, whose item count/order may have changed -
         // land on any of its rows; otherwise try to keep the exact same leg, falling back to the
         // first surviving leg of the same transaction
@@ -524,11 +702,12 @@ class TransactionController @Inject constructor(
             sortByDateAsc = sortByDateAsc,
         )
         val loaded = runAndShowError { session.transactionDao.getItemsByQuery(query) }.getOrDefault(emptyList())
-        rows.setAll(loaded)
+        pageItemCount = loaded.size
+        rows.setAll(buildDisplayRows(loaded))
         if (prevTransactionUuid != null) {
-            val sameTransactionRows = rows.filter { it.transaction.id == prevTransactionUuid }
+            val sameTransactionRows = rows.mapNotNull { it.dataOrNull() }.filter { it.transaction.id == prevTransactionUuid }
             val toSelect = sameTransactionRows.firstOrNull { it.itemNoInTransaction == prevNo } ?: sameTransactionRows.firstOrNull()
-            toSelect?.let(transactionsTable.selectionModel::select)
+            toSelect?.let { data -> rows.firstOrNull { it.dataOrNull() === data }?.let(transactionsTable.selectionModel::select) }
         }
         // saved transaction may be outside the current page/filter - keep showing its event info
         if (transactionsTable.selectionModel.selectedItem == null) transactionDetailController.showEventInfoForCurrentItem()
@@ -539,7 +718,7 @@ class TransactionController @Inject constructor(
         pageField.text = (pageIndex + 1).toString()
         pageCountLabel.text = "/ $pageCount"
         val from = if (totalCount == 0) 0 else pageIndex * PAGE_SIZE + 1
-        val to = minOf(totalCount, pageIndex * PAGE_SIZE + rows.size)
+        val to = minOf(totalCount, pageIndex * PAGE_SIZE + pageItemCount)
         rangeLabel.text = "$from–$to из $totalCount"
         firstPageButton.isDisable = pageIndex <= 0
         prevPageButton.isDisable = pageIndex <= 0

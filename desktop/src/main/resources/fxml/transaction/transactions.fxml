@@ -27,9 +27,9 @@
                   <HBox fx:id="customDateBox" alignment="CENTER_LEFT" spacing="5.0">
                      <children>
                         <Label text="с" />
-                        <DatePicker fx:id="fromDatePicker" prefWidth="130.0" />
+                        <DatePicker fx:id="fromDatePicker" prefWidth="180.0" />
                         <Label text="по" />
-                        <DatePicker fx:id="toDatePicker" prefWidth="130.0" />
+                        <DatePicker fx:id="toDatePicker" prefWidth="180.0" />
                      </children>
                   </HBox>
                   <HBox alignment="CENTER_LEFT" spacing="5.0">

@@ -10,6 +10,13 @@
     -fx-strikethrough: true;
 }
 
+/* day group header row (see TransactionController.buildDisplayRows) - shaded background, no
+   selection highlight since the row is mouse-transparent */
+.table-row-cell:group-header-row {
+    -fx-background-color: #f2f4f7;
+    -fx-border-color: transparent transparent #e2e6eb transparent;
+}
+
 /* no blue focus ring around the whole table */
 .transactions-table {
     -fx-focus-color: transparent;
