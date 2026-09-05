@@ -1,10 +1,12 @@
 /* balances tree: zebra striping + bold group rows */
+/* plain literal colors, not derive()/looked-up values - those trigger a JavaFX
+   CSS cache bug (ClassCastException in calculateValue) on :odd rows */
 .tree-table-row-cell:even {
-    -fx-background-color: -fx-control-inner-background;
+    -fx-background-color: #ffffff;
 }
 
 .tree-table-row-cell:odd {
-    -fx-background-color: derive(-fx-control-inner-background, -5%);
+    -fx-background-color: #f2f2f2;
 }
 
 .tree-table-row-cell:group-row {
