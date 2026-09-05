@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import java.net.URL?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<ScrollPane fitToWidth="true" styleClass="account-rests-scroll" xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1" fx:controller="su.nepom.budget.desktop.ui.balance.AccountRestsController">
+   <stylesheets>
+      <URL value="@accountRests.css" />
+   </stylesheets>
+   <content>
+      <FlowPane fx:id="cardsPane" hgap="8.0" vgap="8.0" styleClass="account-rests-pane" />
+   </content>
+</ScrollPane>

@@ -33,6 +33,7 @@ import javafx.util.StringConverter
 import su.nepom.budget.db.Db
 import su.nepom.budget.db.dao.TransactionDao
 import su.nepom.budget.desktop.model.CurrencyObservable
+import su.nepom.budget.desktop.ui.balance.AccountRestsController
 import su.nepom.budget.desktop.model.TransactionObservable
 import su.nepom.budget.desktop.service.AccountService
 import su.nepom.budget.desktop.service.CurrencyService
@@ -162,6 +163,7 @@ class TransactionController @Inject constructor(
     private lateinit var groupHeaderSpanX: DoubleBinding
 
     @FXML private lateinit var transactionDetailController: TransactionDetailController
+    @FXML private lateinit var accountRestsController: AccountRestsController
 
     // filter panel
     @FXML private lateinit var dateRangeComboBox: ComboBox<DateRangePreset>
@@ -239,10 +241,12 @@ class TransactionController @Inject constructor(
         descriptionPause.stop()
         amountFilterPause.stop()
         csvExportController.dispose()
+        accountRestsController.dispose()
     }
 
     private fun wireDetail() {
         transactionDetailController.setStage(stage)
+        accountRestsController.setStage(stage)
         transactionDetailController.onSaved = { savedUuid -> reload(resetPage = false, preferUuid = savedUuid) }
         transactionDetailController.masterSelection =
             { transactionsTable.selectionModel.selectedItem?.dataOrNull()?.let { TransactionObservable(it.transaction) } }
@@ -798,13 +802,17 @@ class TransactionController @Inject constructor(
             pageCount = 1
             pageIndex = 0
             pageItemCount = 0
+            accountRestsController.clearAccounts()
             updatePager()
             return
         }
         val filter = currentFilter()
         totalCount = runAndShowError { session.transactionDao.countItemsByFilter(filter) }.getOrDefault(0)
         pageCount = maxOf(1, ceil(totalCount / PAGE_SIZE.toDouble()).toInt())
-        if (resetPage) pageIndex = 0
+        if (resetPage) {
+            pageIndex = 0
+            accountRestsController.clearAccounts()
+        }
         if (pageIndex >= pageCount) pageIndex = pageCount - 1
         loadPage(filter, preferUuid)
         resetFilterButton.isDisable = !isFilterDirty()
@@ -845,6 +853,7 @@ class TransactionController @Inject constructor(
         val loaded = runAndShowError { session.transactionDao.getItemsByQuery(query) }.getOrDefault(emptyList())
         pageItemCount = loaded.size
         rows.setAll(buildDisplayRows(loaded))
+        loaded.distinctBy { it.transaction.id }.forEach { accountRestsController.addAccountsFromTransaction(it.transaction) }
         if (prevTransactionUuid != null) {
             val sameTransactionRows = rows.mapNotNull { it.dataOrNull() }.filter { it.transaction.id == prevTransactionUuid }
             val toSelect = sameTransactionRows.firstOrNull { it.itemNoInTransaction == prevNo } ?: sameTransactionRows.firstOrNull()

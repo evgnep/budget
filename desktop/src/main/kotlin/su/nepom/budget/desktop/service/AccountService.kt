@@ -6,6 +6,8 @@ import javafx.collections.FXCollections
 import javafx.collections.ListChangeListener
 import javafx.collections.ObservableList
 import su.nepom.budget.db.Db
+import su.nepom.budget.db.Session
+import su.nepom.budget.db.model.AccountRest
 import su.nepom.budget.desktop.model.AccountObservable
 import su.nepom.budget.desktop.util.db.ObservableEntitiesList
 import su.nepom.budget.event.AccountContent
@@ -22,9 +24,9 @@ class AccountService @Inject constructor(
     val accounts =
         ObservableEntitiesList(
             dbService.sessionProperty,
-            { session -> session.accountDao.getAll().map { newObservable(it) } },
+            ::loadInitialAccounts,
             ::processEvents,
-            setOf(Db.SubscribeKind.ACCOUNT)
+            setOf(Db.SubscribeKind.ACCOUNT, Db.SubscribeKind.ACCOUNT_REST)
         )
 
     /**
@@ -42,19 +44,28 @@ class AccountService @Inject constructor(
         if (all != tags.toHashSet()) tags.setAll(all)
     }
 
-    private fun newObservable(content: AccountContent) =
-        AccountObservable(content, RawMoney.ZERO, currencyService.currencies)
+    private fun loadInitialAccounts(session: Session): List<AccountObservable> {
+        val contents = session.accountDao.getAll()
+        val ids = contents.mapTo(mutableSetOf()) { it.id }
+        val rests = session.transactionDao.accountRest(ids, null)
+        return contents.map { newObservable(it, rests[it.id] ?: RawMoney.ZERO) }
+    }
+
+    private fun newObservable(content: AccountContent, rest: RawMoney = RawMoney.ZERO) =
+        AccountObservable(content, rest, currencyService.currencies)
 
     private fun processEvents(
         events: Collection<Event<*>>,
         target: ObservableEntitiesList<AccountObservable>
     ) {
         events.forEach { event ->
-            val content = event.content
-            if (content is AccountContent) {
-                val current = target[event.uuid]
-                if (current != null) current.contentProperty.set(content)
-                else target.add(newObservable(content))
+            when (val content = event.content) {
+                is AccountContent -> {
+                    val current = target[event.uuid]
+                    if (current != null) current.contentProperty.set(content)
+                    else target.add(newObservable(content))
+                }
+                is AccountRest -> target[content.accountId.uuid]?.restProperty?.set(content.rest)
             }
         }
     }

@@ -1,0 +1,31 @@
+.account-rests-pane {
+    -fx-padding: 4;
+}
+
+/* thin border, accent-colored top edge - matches the card look used on the "Главная" screen */
+.account-rest-card {
+    -fx-background-color: -color-bg-default;
+    -fx-border-color: -color-accent-emphasis -color-border-default -color-border-default -color-border-default;
+    -fx-border-width: 3 1 1 1;
+    -fx-border-radius: 4;
+    -fx-background-radius: 4;
+    -fx-padding: 10 14 10 14;
+    -fx-min-width: 160;
+}
+
+.account-rest-name {
+    -fx-text-fill: -color-fg-muted;
+}
+
+.account-rest-value {
+    -fx-font-size: 20px;
+    -fx-font-weight: bold;
+}
+
+.account-rest-value:negative {
+    -fx-text-fill: #c23b32;
+}
+
+.account-rest-currency {
+    -fx-text-fill: -color-fg-muted;
+}

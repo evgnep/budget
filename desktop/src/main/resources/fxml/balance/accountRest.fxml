@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<VBox spacing="4.0" styleClass="account-rest-card" xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1" fx:controller="su.nepom.budget.desktop.ui.balance.AccountRestController">
+   <children>
+      <Label fx:id="nameLabel" styleClass="account-rest-name" />
+      <HBox alignment="BASELINE_LEFT" spacing="6.0">
+         <children>
+            <Label fx:id="restLabel" styleClass="account-rest-value" />
+            <Label fx:id="currencyLabel" styleClass="account-rest-currency" />
+         </children>
+      </HBox>
+   </children>
+</VBox>

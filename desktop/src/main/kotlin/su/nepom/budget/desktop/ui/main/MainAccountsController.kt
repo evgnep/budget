@@ -96,11 +96,6 @@ class MainAccountsController @Inject constructor(
         showEmpty(accounts.isEmpty())
         if (session == null || accounts.isEmpty()) return
 
-        val ids = accounts.mapTo(mutableSetOf()) { it.content.id }
-        val restById = runAndShowError {
-            session.transactionDao.accountRest(ids, null)
-        }.getOrDefault(emptyMap())
-
         val today = LocalDate.now().toKotlinLocalDate()
         val budgetIds = accounts.filter { it.content.kind == AccountKind.BUDGET }
             .mapTo(mutableSetOf()) { it.content.id }
@@ -112,7 +107,7 @@ class MainAccountsController @Inject constructor(
         accounts.forEach { account ->
             val id = account.content.id
             val currency = currencyService.currencies[account.content.currency.uuid]
-            val rest = restById[id] ?: RawMoney.ZERO
+            val rest = account.restProperty.get()
             val daily = if (account.content.kind == AccountKind.BUDGET)
                 dailyBalanceOf(account, rest, reservedSums[id], today) else null
             val norm = if (account.content.kind == AccountKind.BUDGET)
@@ -120,14 +115,14 @@ class MainAccountsController @Inject constructor(
             cardsPane.children.add(buildCard(account, rest, currency, daily, norm))
         }
 
-        buildTotals(accounts, restById)
+        buildTotals(accounts)
     }
 
-    private fun buildTotals(accounts: List<AccountObservable>, restById: Map<AccountId, RawMoney>) {
+    private fun buildTotals(accounts: List<AccountObservable>) {
         accounts.groupBy { it.content.currency.uuid }
             .map { (uuid, group) ->
                 val currency = currencyService.currencies[uuid]
-                val sum = RawMoney(group.sumOf { (restById[it.content.id] ?: RawMoney.ZERO).value })
+                val sum = RawMoney(group.sumOf { it.restProperty.get().value })
                 (currency?.content?.name ?: "-") to formatMoney(sum, currency)
             }
             .sortedBy { it.first.lowercase() }

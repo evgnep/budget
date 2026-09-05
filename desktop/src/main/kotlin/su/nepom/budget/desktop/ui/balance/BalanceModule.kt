@@ -12,4 +12,14 @@ interface BalanceModule {
     @IntoMap
     @ClassKey(BalanceController::class)
     fun balanceController(v: BalanceController): Controller
+
+    @Binds
+    @IntoMap
+    @ClassKey(AccountRestsController::class)
+    fun accountRestsController(v: AccountRestsController): Controller
+
+    @Binds
+    @IntoMap
+    @ClassKey(AccountRestController::class)
+    fun accountRestController(v: AccountRestController): Controller
 }
