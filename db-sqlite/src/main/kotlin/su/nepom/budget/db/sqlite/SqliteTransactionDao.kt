@@ -279,8 +279,8 @@ internal class SqliteTransactionDao(override val session: SqliteSession) : Trans
     }
     val rests: MutableMap<String, Pair<AccountRestEntity, Boolean>> =
       accountRests.filter { it.uuid inList accountIds }.associateTo(mutableMapOf()) { it.uuid to (it to false) }
-    oldEntity?.items?.forEach { it.updateRests(rests, -1) }
-    newEntity.items.forEach { it.updateRests(rests, 1) }
+    oldEntity?.items?.forEach { it.updateRests(rests, -1, oldEntity.deleted) }
+    newEntity.items.forEach { it.updateRests(rests, 1, newEntity.deleted) }
     rests.values.forEach { (restEntity, isNew) ->
       if (isNew) accountRests.add(restEntity)
       else restEntity.flushChanges()
@@ -307,16 +307,18 @@ internal class SqliteTransactionDao(override val session: SqliteSession) : Trans
 
   private fun TransactionContentItem.updateRests(
     rests: MutableMap<String, Pair<AccountRestEntity, Boolean>>,
-    multiplier: Int
+    multiplier: Int,
+    deleted: Boolean
   ) {
+    val moneyToAdd = if (deleted) 0 else multiplier * money.value
     rests.compute(account.uuidCode()) { _, accountRest ->
       if (accountRest == null) AccountRestEntity {
         uuid = account.uuidCode()
         name = session.db.accountCache.getOrThrow(account).name
-        rest = multiplier * money.value
+        rest = moneyToAdd
       } to true
       else {
-        accountRest.first.rest += multiplier * money.value
+        accountRest.first.rest += moneyToAdd
         accountRest
       }
     }

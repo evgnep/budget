@@ -332,6 +332,23 @@ internal class SqliteTransactionDaoTest : AbstractDbTest() {
         }
 
         @Test
+        fun accountRestForDeleted() {
+            val transaction = createTransaction(*items, secondsDiff = -150)
+            session.save(transaction)
+            session.commit()
+            assertThat(dao.accountRest(setOf(accountC1Money.id))).containsValue((10 * 51).rawMoney)
+
+            session.save(transaction.copy(deleted = true))
+            assertThat(dao.accountRest(setOf(accountC1Money.id))).containsValue((10 * 50).rawMoney)
+
+            session.commit()
+            assertThat(dao.accountRest(setOf(accountC1Money.id))).containsValue((10 * 50).rawMoney)
+
+            session.save(transaction.copy(deleted = false))
+            assertThat(dao.accountRest(setOf(accountC1Money.id))).containsValue((10 * 51).rawMoney)
+        }
+
+        @Test
         fun currencyRest() {
             assertThat(dao.currencyRest(setOf())).containsExactlyInAnyOrderEntriesOf(
                 mapOf(
