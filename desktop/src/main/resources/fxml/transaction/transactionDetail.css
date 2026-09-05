@@ -1,17 +1,91 @@
-/* account combo, disabled (either the "history" read-only view, or the "allow editing" checkbox
+/* ControlsFX's own customtextfield.css (used by SearchableComboBox's internal search field)
+   reads Modena-only variables (-fx-text-inner-color, -fx-control-inner-background,
+   -fx-text-box-border, -fx-focus-color, -fx-faint-focus-color, -fx-accent) that AtlantaFX
+   (PrimerLight) never defines, so JavaFX's CSS engine got an unresolved lookup / a raw string
+   where it expected a Color and logged warnings on every style pass - including the
+   ":focused"/"-fx-highlight-fill" rule, which is a likely reason the focus ring only caught up
+   after a key press instead of appearing as soon as the field got focus. Variable lookups walk up
+   the scene graph, so defining them here on the panel's own root re-points them at real AtlantaFX
+   tokens for every descendant, including the combo's internal text field. */
+.transaction-detail-root {
+    -fx-text-inner-color: -color-fg-default;
+    -fx-control-inner-background: -color-bg-default;
+    -fx-text-box-border: -color-border-default;
+    -fx-focus-color: -color-accent-emphasis;
+    -fx-faint-focus-color: -color-accent-muted;
+    -fx-accent: -color-accent-emphasis;
+}
+
+/* account combo, disabled (either the "history" read-only view, or the "allow editing" toggle
    which disables the whole itemsEditorBox and is inherited from there): JavaFX's default disabled
    styling dims the control via -fx-opacity, which - compounded through SearchableComboBox's
    internal delegate combo box (also independently :disabled) - washes the text out to
    near-invisibility. A child's own opacity cannot undo a parent's compositing dimming, so override
    -fx-opacity at both control levels, and force a readable text color. */
+/* -fx-control-inner-background is a Modena-only variable - AtlantaFX (PrimerLight) leaves it
+   unresolved, which made derive() hand JavaFX's CSS engine a raw string instead of a Color and
+   throw a ClassCastException on every style pass. -color-bg-subtle is AtlantaFX's own token and
+   always resolves to a real Color. */
 .searchable-combo-box:disabled,
 .searchable-combo-box:disabled .combo-box-base {
     -fx-opacity: 1;
-    -fx-background-color: derive(-fx-control-inner-background, -8%);
+    -fx-background-color: -color-bg-subtle;
 }
 
 .searchable-combo-box:disabled .text {
     -fx-fill: black;
+}
+
+/* focusRingOverlay: Tab-ing onto a SearchableComboBox or a CheckBox does set :focused right away,
+   but AtlantaFX's own :focused style for them apparently needs a later repaint (typing, a click,
+   ...) to actually show - it never appears from Tab traversal alone, and neither did a plain
+   CSS ":focused" rule of our own. TransactionDetailController positions and shows this rectangle
+   over whatever field currently has focus instead, sidestepping the CSS pseudo-class entirely. */
+.focus-ring-overlay {
+    -fx-stroke: -color-accent-emphasis;
+}
+
+/* "Отдаём" / "Получаем" section headers on the exchange tab - the same colors the main
+   transactions table uses for EXPENSE / INCOME (see TransactionController.operationTypeTextColor):
+   giving money away reads like an expense, receiving it reads like income. */
+.exchange-section-label {
+    -fx-font-weight: bold;
+}
+.exchange-section-label-out {
+    -fx-text-fill: #c23b32;
+}
+.exchange-section-label-in {
+    -fx-text-fill: #2e7d46;
+}
+
+/* "Редактирование запрещено, разрешить" / "Редактирование разрешено" toggle: off = the same blue
+   used for the primary "accent" buttons (Сохранить / + Создать) so it reads as a call to action;
+   on = the same neutral/amber look transactions.css uses for a selected "flag-toggle" segment
+   (e.g. "Все"), since editing being allowed is the normal, unremarkable state. */
+.allow-edit-toggle {
+    -fx-background-color: -color-accent-emphasis;
+    -fx-background-radius: 12px;
+    -fx-border-radius: 12px;
+    -fx-text-fill: white;
+    -fx-font-size: 11px;
+    -fx-padding: 3px 10px 3px 10px;
+}
+/* the selected state adds a real -fx-border-color (unlike the unselected/AtlantaFX-default look,
+   which fakes its border via a second background layer) - it needs its own -fx-border-radius,
+   JavaFX does not fall back to -fx-background-radius and draws a square-cornered border otherwise */
+.allow-edit-toggle:selected {
+    -fx-background-color: #fdf1de;
+    -fx-background-radius: 12px;
+    -fx-border-color: #c9821e;
+    -fx-border-radius: 12px;
+    -fx-text-fill: #8a5a12;
+}
+
+/* AtlantaFX turns a Hyperlink black (":visited") the first time it is clicked, mimicking a
+   browser's visited-link color - "История операции" is clicked repeatedly, not "visited" once,
+   so keep it the normal link color regardless */
+.hyperlink:visited {
+    -fx-text-fill: -color-link-fg;
 }
 
 /* id field in "Служебные данные" reads as plain text, not an input box - it's always disabled

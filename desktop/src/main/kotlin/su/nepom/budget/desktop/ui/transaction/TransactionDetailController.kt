@@ -10,26 +10,32 @@ import javafx.collections.ListChangeListener
 import javafx.event.ActionEvent
 import javafx.fxml.FXML
 import javafx.fxml.Initializable
+import javafx.scene.Node
 import javafx.scene.control.Alert
 import javafx.scene.control.Button
 import javafx.scene.control.ButtonBar
 import javafx.scene.control.ButtonType
 import javafx.scene.control.CheckBox
+import javafx.scene.control.Hyperlink
 import javafx.scene.control.ComboBox
 import javafx.scene.control.DatePicker
 import javafx.scene.control.Label
-import javafx.scene.control.Tab
 import javafx.scene.control.TableCell
 import javafx.scene.control.TableColumn
 import javafx.scene.control.TableView
-import javafx.scene.control.TabPane
+import javafx.scene.control.TextArea
 import javafx.scene.control.TextField
+import javafx.scene.control.ToggleButton
+import javafx.scene.control.ToggleGroup
 import javafx.scene.control.cell.CheckBoxTableCell
 import javafx.scene.control.cell.TextFieldTableCell
 import javafx.scene.input.KeyCode
 import javafx.scene.input.KeyEvent
+import javafx.scene.layout.GridPane
 import javafx.scene.layout.HBox
+import javafx.scene.layout.StackPane
 import javafx.scene.layout.VBox
+import javafx.scene.shape.Rectangle
 import javafx.scene.paint.Color
 import javafx.stage.Stage
 import javafx.util.StringConverter
@@ -41,6 +47,7 @@ import su.nepom.budget.desktop.model.TransactionObservable
 import su.nepom.budget.desktop.service.AccountService
 import su.nepom.budget.desktop.service.CurrencyService
 import su.nepom.budget.desktop.service.DbService
+import su.nepom.budget.desktop.ui.history.History
 import su.nepom.budget.desktop.util.fx.Controller
 import su.nepom.budget.desktop.util.fx.FormDriver
 import su.nepom.budget.desktop.util.fx.FormState
@@ -76,6 +83,7 @@ class TransactionDetailController @Inject constructor(
   private val accountService: AccountService,
   private val currencyService: CurrencyService,
   private val accountPicker: AccountPicker,
+  private val history: History,
 ) : Controller, Initializable {
 
   private class ItemRow(
@@ -105,7 +113,6 @@ class TransactionDetailController @Inject constructor(
     private val clearButton: Button,
     private val kindProvider: () -> AccountKind?,
     private val currencyProvider: () -> CurrencyId?,
-    private val balanceLabel: Label,
   ) {
     val account = SimpleObjectProperty<AccountObservable?>(this, "account", null)
     val pickButton: Button get() = button
@@ -124,6 +131,10 @@ class TransactionDetailController @Inject constructor(
     private var settlePending = false
 
     init {
+      // keep Tab within the meaningful sequence of fields (date/accounts/amount/description/flag) -
+      // the "..." picker and "x" clear buttons stay reachable by mouse only
+      button.isFocusTraversable = false
+      clearButton.isFocusTraversable = false
       combo.converter = object : StringConverter<AccountObservable>() {
         override fun toString(a: AccountObservable?): String = a?.let(::accountComboText) ?: ""
         override fun fromString(text: String?): AccountObservable? = null
@@ -170,7 +181,6 @@ class TransactionDetailController @Inject constructor(
         applyingAccount = true
         combo.value = v
         applyingAccount = false
-        balanceLabel.text = v?.let { accountBalanceText(it) } ?: ""
       }
       clearButton.disableProperty().bind(account.isNull)
       clearButton.setOnAction { account.set(null) }
@@ -230,6 +240,12 @@ class TransactionDetailController @Inject constructor(
 
   private val operationTabProperty = SimpleObjectProperty(this, "operationTab", OperationTab.EXPENSE)
 
+  // last operation-type tab visited (INCOME/EXPENSE/TRANSFER/EXCHANGE) - restored when switching
+  // the view mode back from "Проводки" to "Обычная операция"
+  private var lastTypeTab = OperationTab.EXPENSE
+  private lateinit var viewModeGroup: ToggleGroup
+  private lateinit var typeGroup: ToggleGroup
+
   // structured tab account pickers
   private lateinit var incomeMoney: AccountField
   private lateinit var incomeBudget: AccountField
@@ -243,10 +259,6 @@ class TransactionDetailController @Inject constructor(
   private lateinit var exchangeBudget2: AccountField
   private lateinit var accountFields: List<AccountField>
 
-  // projected account balance keyed by account uuid: stored rest adjusted by the unsaved change of
-  // this transaction's rows for that account (may be several rows per account)
-  private val projectedRestByAccount = mutableMapOf<Uuid, RawMoney>()
-
   lateinit var formDriver: FormDriver<*, TransactionObservable>
     private set
 
@@ -254,13 +266,15 @@ class TransactionDetailController @Inject constructor(
 
   // detail form
   @FXML
-  private lateinit var root: VBox
+  private lateinit var root: StackPane
+  @FXML
+  private lateinit var focusRingOverlay: Rectangle
   @FXML
   private lateinit var idTextField: TextField
   @FXML
   private lateinit var dateEditPicker: DatePicker
   @FXML
-  private lateinit var descriptionEditField: TextField
+  private lateinit var descriptionEditField: TextArea
   @FXML
   private lateinit var flagCheckbox: CheckBox
   @FXML
@@ -268,17 +282,39 @@ class TransactionDetailController @Inject constructor(
   @FXML
   private lateinit var itemsEditorBox: VBox
   @FXML
-  private lateinit var operationTabPane: TabPane
+  private lateinit var viewModeBox: HBox
   @FXML
-  private lateinit var incomeTab: Tab
+  private lateinit var viewModeNormalButton: ToggleButton
   @FXML
-  private lateinit var expenseTab: Tab
+  private lateinit var viewModeEntriesButton: ToggleButton
   @FXML
-  private lateinit var transferTab: Tab
+  private lateinit var allowEditToggle: ToggleButton
   @FXML
-  private lateinit var exchangeTab: Tab
+  private lateinit var typeSwitchBox: HBox
   @FXML
-  private lateinit var detailsTab: Tab
+  private lateinit var typeIncomeButton: ToggleButton
+  @FXML
+  private lateinit var typeExpenseButton: ToggleButton
+  @FXML
+  private lateinit var typeTransferButton: ToggleButton
+  @FXML
+  private lateinit var typeExchangeButton: ToggleButton
+  @FXML
+  private lateinit var operationContentPane: StackPane
+  @FXML
+  private lateinit var incomePane: GridPane
+  @FXML
+  private lateinit var expensePane: GridPane
+  @FXML
+  private lateinit var transferPane: GridPane
+  @FXML
+  private lateinit var exchangePane: GridPane
+  @FXML
+  private lateinit var entriesPane: VBox
+  @FXML
+  private lateinit var entriesDateGrid: GridPane
+  @FXML
+  private lateinit var entriesFooterGrid: GridPane
 
   @FXML
   private lateinit var incomeMoneyCombo: SearchableComboBox<AccountObservable>
@@ -287,15 +323,11 @@ class TransactionDetailController @Inject constructor(
   @FXML
   private lateinit var incomeMoneyClearButton: Button
   @FXML
-  private lateinit var incomeMoneyBalanceLabel: Label
-  @FXML
   private lateinit var incomeBudgetCombo: SearchableComboBox<AccountObservable>
   @FXML
   private lateinit var incomeBudgetButton: Button
   @FXML
   private lateinit var incomeBudgetClearButton: Button
-  @FXML
-  private lateinit var incomeBudgetBalanceLabel: Label
   @FXML
   private lateinit var incomeAmountField: TextField
   @FXML
@@ -308,15 +340,11 @@ class TransactionDetailController @Inject constructor(
   @FXML
   private lateinit var expenseMoneyClearButton: Button
   @FXML
-  private lateinit var expenseMoneyBalanceLabel: Label
-  @FXML
   private lateinit var expenseBudgetCombo: SearchableComboBox<AccountObservable>
   @FXML
   private lateinit var expenseBudgetButton: Button
   @FXML
   private lateinit var expenseBudgetClearButton: Button
-  @FXML
-  private lateinit var expenseBudgetBalanceLabel: Label
   @FXML
   private lateinit var expenseAmountField: TextField
   @FXML
@@ -329,15 +357,11 @@ class TransactionDetailController @Inject constructor(
   @FXML
   private lateinit var transferFromClearButton: Button
   @FXML
-  private lateinit var transferFromBalanceLabel: Label
-  @FXML
   private lateinit var transferToCombo: SearchableComboBox<AccountObservable>
   @FXML
   private lateinit var transferToButton: Button
   @FXML
   private lateinit var transferToClearButton: Button
-  @FXML
-  private lateinit var transferToBalanceLabel: Label
   @FXML
   private lateinit var transferAmountField: TextField
   @FXML
@@ -350,15 +374,11 @@ class TransactionDetailController @Inject constructor(
   @FXML
   private lateinit var exchangeMoney1ClearButton: Button
   @FXML
-  private lateinit var exchangeMoney1BalanceLabel: Label
-  @FXML
   private lateinit var exchangeBudget1Combo: SearchableComboBox<AccountObservable>
   @FXML
   private lateinit var exchangeBudget1Button: Button
   @FXML
   private lateinit var exchangeBudget1ClearButton: Button
-  @FXML
-  private lateinit var exchangeBudget1BalanceLabel: Label
   @FXML
   private lateinit var exchangeAmount1Field: TextField
   @FXML
@@ -370,15 +390,11 @@ class TransactionDetailController @Inject constructor(
   @FXML
   private lateinit var exchangeMoney2ClearButton: Button
   @FXML
-  private lateinit var exchangeMoney2BalanceLabel: Label
-  @FXML
   private lateinit var exchangeBudget2Combo: SearchableComboBox<AccountObservable>
   @FXML
   private lateinit var exchangeBudget2Button: Button
   @FXML
   private lateinit var exchangeBudget2ClearButton: Button
-  @FXML
-  private lateinit var exchangeBudget2BalanceLabel: Label
   @FXML
   private lateinit var exchangeAmount2Field: TextField
   @FXML
@@ -397,8 +413,6 @@ class TransactionDetailController @Inject constructor(
   @FXML
   private lateinit var itemAmountColumn: TableColumn<ItemRow, String>
   @FXML
-  private lateinit var itemBalanceColumn: TableColumn<ItemRow, String>
-  @FXML
   private lateinit var itemDescriptionColumn: TableColumn<ItemRow, String>
   @FXML
   private lateinit var itemFlagColumn: TableColumn<ItemRow, Boolean>
@@ -413,11 +427,11 @@ class TransactionDetailController @Inject constructor(
   @FXML
   private lateinit var creatorLabel: Label
   @FXML
+  private lateinit var historyLink: Hyperlink
+  @FXML
   private lateinit var metaToggleLabel: Label
   @FXML
   private lateinit var metaPane: javafx.scene.layout.GridPane
-  @FXML
-  private lateinit var copyIdButton: Button
   @FXML
   private lateinit var addItemButton: Button
   @FXML
@@ -441,8 +455,75 @@ class TransactionDetailController @Inject constructor(
     setupShortcuts()
     setupMetaToggle()
     setupFooterButtons()
+    setupDescriptionTabTraversal()
+    setupFocusRingRefresh()
+    setupAllowEditToggle()
     updateEventInfo(null)
     updateCopyButton()
+  }
+
+  // "Разрешить редактирование" used to be a checkbox next to the master list, now a toggle right
+  // beside the "Обычная операция" / "Проводки" switch - off by default, existing operations open
+  // read-only until explicitly unlocked
+  private fun setupAllowEditToggle() {
+    updateAllowEditToggleChrome(allowEditToggle.isSelected)
+    allowEditToggle.selectedProperty().addListener { _, _, allowed ->
+      updateAllowEditToggleChrome(allowed)
+      setEditingAllowed(allowed)
+    }
+    setEditingAllowed(allowEditToggle.isSelected)
+  }
+
+  private fun updateAllowEditToggleChrome(allowed: Boolean) {
+    allowEditToggle.text = if (allowed) "Редактирование разрешено" else "Редактирование запрещено, разрешить"
+  }
+
+  // Tab-ing onto a SearchableComboBox or flagCheckbox does set its :focused pseudo-class right
+  // away, but AtlantaFX's own :focused style for them apparently needs a later repaint (typing, a
+  // click, ...) to actually show - a plain CSS ":focused" rule of our own didn't help either.
+  // Sidestep the whole CSS pseudo-class path: draw focusRingOverlay (see the FXML/CSS) directly
+  // over whichever of those controls currently has focus, positioned in root's own coordinates
+  // since it is root's sibling in the StackPane.
+  private fun setupFocusRingRefresh() {
+    fun bind(scene: javafx.scene.Scene) {
+      scene.focusOwnerProperty().addListener { _, _, focused -> updateFocusRing(focused) }
+      updateFocusRing(scene.focusOwner)
+    }
+    root.scene?.let(::bind)
+    root.sceneProperty().addListener { _, _, scene -> scene?.let(::bind) }
+  }
+
+  private fun updateFocusRing(focused: Node?) {
+    if (focused == null || (focused !is SearchableComboBox<*> && focused !== flagCheckbox)) {
+      focusRingOverlay.isVisible = false
+      return
+    }
+    val bounds = root.sceneToLocal(focused.localToScene(focused.boundsInLocal))
+    focusRingOverlay.x = bounds.minX - 2
+    focusRingOverlay.y = bounds.minY - 2
+    focusRingOverlay.width = bounds.width + 4
+    focusRingOverlay.height = bounds.height + 4
+    focusRingOverlay.isVisible = true
+  }
+
+  // TextArea's default behavior inserts a tab character instead of moving focus - Tab must follow
+  // the same field order as everywhere else: onward to flagCheckbox, back to the active tab's
+  // amount field
+  private fun setupDescriptionTabTraversal() {
+    descriptionEditField.addEventFilter(KeyEvent.KEY_PRESSED) { e ->
+      if (e.code != KeyCode.TAB) return@addEventFilter
+      e.consume()
+      if (e.isShiftDown) fieldBeforeDescription(operationTabProperty.value).requestFocus()
+      else flagCheckbox.requestFocus()
+    }
+  }
+
+  private fun fieldBeforeDescription(tab: OperationTab): Node = when (tab) {
+    OperationTab.INCOME -> incomeAmountField
+    OperationTab.EXPENSE -> expenseAmountField
+    OperationTab.TRANSFER -> transferAmountField
+    OperationTab.EXCHANGE -> exchangeAmount2Field
+    OperationTab.DETAILS -> addItemButton
   }
 
   // "Служебные данные" (id / changed at / creator / place) starts collapsed - it's rarely needed
@@ -454,11 +535,6 @@ class TransactionDetailController @Inject constructor(
       metaPane.isVisible = expand
       metaPane.isManaged = expand
       metaToggleLabel.text = if (expand) "▾ Служебные данные" else "▸ Служебные данные"
-    }
-    copyIdButton.setOnAction {
-      val content = javafx.scene.input.ClipboardContent()
-      content.putString(idTextField.text)
-      javafx.scene.input.Clipboard.getSystemClipboard().setContent(content)
     }
   }
 
@@ -549,6 +625,9 @@ class TransactionDetailController @Inject constructor(
     applyPendingFirstAccount()
     updateCurrencyLabels()
     updateRateLabel()
+    // Tab order starts at the type selector, then walks date -> accounts -> amount -> description
+    // -> flag; land the initial focus there instead of wherever the mouse click left it
+    Platform.runLater { typeButtonFor(operationTabProperty.value).requestFocus() }
   }
 
   // saved transaction may be outside the current page/filter - keep showing its event info
@@ -561,6 +640,10 @@ class TransactionDetailController @Inject constructor(
     onCancel: () -> Unit,
   ) {
     conflictMode = true
+    // editing is already forced on for conflict resolution (see formDriver.editItem below) - the
+    // "Разрешить редактирование" toggle would be redundant and misleading here
+    allowEditToggle.isVisible = false
+    allowEditToggle.isManaged = false
     formDriver.contentSink = { onAccept(it as TransactionContent) }
     formDriver.cancelSink = onCancel
     formDriver.editItem(TransactionObservable(content))
@@ -574,16 +657,17 @@ class TransactionDetailController @Inject constructor(
     viewOnlyTypeTab = tabForType(operationType(content.items))
     formDriver.showReadOnly(TransactionObservable(content))
     // keep the tab area usable for selection/copy, just turn off editing and the buttons
-    // (FormDriver.applyReadOnly disables the whole TabPane - re-enable it and gate per-tab instead)
-    itemsEditorBox.isDisable = false
-    operationTabPane.isDisable = false
+    // (FormDriver.applyReadOnly would otherwise disable the whole operationContentPane subtree -
+    // re-enable it and gate per-control instead; viewModeBox/typeSwitchBox are never a FormDriver
+    // field, so mode/type switching always stays available)
+    operationContentPane.isDisable = false
     itemsTable.isEditable = false
     // eventInfoLabel/changedAtLabel/creatorRowLabel/creatorLabel show the *current* transaction's
     // last event, which would be misleading for a past version shown here - keep them hidden
     // regardless of the meta toggle. The toggle itself (and the id row) stays usable, same as edit.
     listOf(
       addItemButton, removeItemButton, copyButton, deleteButton,
-      eventInfoLabel, changedAtLabel, creatorRowLabel, creatorLabel,
+      eventInfoLabel, changedAtLabel, creatorRowLabel, creatorLabel, historyLink, allowEditToggle,
     ).forEach {
       it.isVisible = false
       it.isManaged = false
@@ -594,7 +678,7 @@ class TransactionDetailController @Inject constructor(
       it.removeButton.isVisible = false
       it.removeButton.isManaged = false
       // plain isDisable - the "allow editing" checkbox path (FormDriver.setEditingEnabled)
-      // disables itemsEditorBox itself, which the combo boxes inherit regardless of what we
+      // disables operationContentPane itself, which the combo boxes inherit regardless of what we
       // set on them directly, so avoiding isDisable here would only fix this one code path.
       // transactionDetail.css overrides the default disabled dimming to stay readable either way.
       it.comboBox.isDisable = true
@@ -646,12 +730,6 @@ class TransactionDetailController @Inject constructor(
       row.amount.set(evaluateAmountFormula(e.newValue.orEmpty(), digitsOf(row.account.get())))
       syncItemsFromRows()
     }
-    itemBalanceColumn.setCellValueFactory {
-      val acc = it.value.account.get()
-      SimpleStringProperty(
-        acc?.let { a -> projectedRestByAccount[a.uuid]?.format(digitsOf(a)) } ?: ""
-      )
-    }
     itemDescriptionColumn.setCellValueFactory { it.value.description }
     itemDescriptionColumn.cellFactory = TextFieldTableCell.forTableColumn()
     itemFlagColumn.setCellValueFactory { it.value.flag as javafx.beans.value.ObservableValue<Boolean> }
@@ -678,7 +756,6 @@ class TransactionDetailController @Inject constructor(
     itemsProperty.addListener { _, _, value ->
       if (!syncingFromRows) rebuildRows(value ?: emptyList())
       updateBalanceLabel()
-      recomputeProjectedRests()
       // rows may have changed the operation type - move the bold header
       if (::formDriver.isInitialized) applyTabChrome(operationTabProperty.value)
     }
@@ -692,91 +769,75 @@ class TransactionDetailController @Inject constructor(
       incomeMoneyButton,
       incomeMoneyClearButton,
       { AccountKind.MONEY },
-      { incomeBudget.value?.content?.currency },
-      incomeMoneyBalanceLabel
+      { incomeBudget.value?.content?.currency }
     )
     incomeBudget = AccountField(
       incomeBudgetCombo,
       incomeBudgetButton,
       incomeBudgetClearButton,
       { AccountKind.BUDGET },
-      { incomeMoney.value?.content?.currency },
-      incomeBudgetBalanceLabel
+      { incomeMoney.value?.content?.currency }
     )
     expenseMoney = AccountField(
       expenseMoneyCombo,
       expenseMoneyButton,
       expenseMoneyClearButton,
       { AccountKind.MONEY },
-      { expenseBudget.value?.content?.currency },
-      expenseMoneyBalanceLabel
+      { expenseBudget.value?.content?.currency }
     )
     expenseBudget = AccountField(
       expenseBudgetCombo,
       expenseBudgetButton,
       expenseBudgetClearButton,
       { AccountKind.BUDGET },
-      { expenseMoney.value?.content?.currency },
-      expenseBudgetBalanceLabel
+      { expenseMoney.value?.content?.currency }
     )
     transferFrom = AccountField(
       transferFromCombo,
       transferFromButton,
       transferFromClearButton,
       { transferTo.value?.content?.kind },
-      { transferTo.value?.content?.currency },
-      transferFromBalanceLabel
+      { transferTo.value?.content?.currency }
     )
     transferTo = AccountField(
       transferToCombo,
       transferToButton,
       transferToClearButton,
       { transferFrom.value?.content?.kind },
-      { transferFrom.value?.content?.currency },
-      transferToBalanceLabel
+      { transferFrom.value?.content?.currency }
     )
     exchangeMoney1 = AccountField(
       exchangeMoney1Combo,
       exchangeMoney1Button,
       exchangeMoney1ClearButton,
       { AccountKind.MONEY },
-      { exchangeBudget1.value?.content?.currency },
-      exchangeMoney1BalanceLabel
+      { exchangeBudget1.value?.content?.currency }
     )
     exchangeBudget1 = AccountField(
       exchangeBudget1Combo,
       exchangeBudget1Button,
       exchangeBudget1ClearButton,
       { AccountKind.BUDGET },
-      { exchangeMoney1.value?.content?.currency },
-      exchangeBudget1BalanceLabel
+      { exchangeMoney1.value?.content?.currency }
     )
     exchangeMoney2 = AccountField(
       exchangeMoney2Combo,
       exchangeMoney2Button,
       exchangeMoney2ClearButton,
       { AccountKind.MONEY },
-      { exchangeBudget2.value?.content?.currency },
-      exchangeMoney2BalanceLabel
+      { exchangeBudget2.value?.content?.currency }
     )
     exchangeBudget2 = AccountField(
       exchangeBudget2Combo,
       exchangeBudget2Button,
       exchangeBudget2ClearButton,
       { AccountKind.BUDGET },
-      { exchangeMoney2.value?.content?.currency },
-      exchangeBudget2BalanceLabel
+      { exchangeMoney2.value?.content?.currency }
     )
     accountFields = listOf(
       incomeMoney, incomeBudget, expenseMoney, expenseBudget, transferFrom, transferTo,
       exchangeMoney1, exchangeBudget1, exchangeMoney2, exchangeBudget2,
     )
-
-    // grey header for tabs that do not match the current operation type
-    listOf(incomeTab, expenseTab, transferTab, exchangeTab).forEach { tab ->
-      tab.graphic = Label(tab.text)
-      tab.text = ""
-    }
 
     accountFields.forEach { it.account.addListener { _, _, _ -> onTabFieldChanged() } }
     listOf(
@@ -793,39 +854,142 @@ class TransactionDetailController @Inject constructor(
     operationTabProperty.addListener { _, _, tab ->
       tab ?: return@addListener
       syncingTab = true
-      operationTabPane.selectionModel.select(tabNode(tab))
+      selectButtonsFor(tab)
       syncingTab = false
       applyTabChrome(tab)
     }
-    operationTabPane.selectionModel.selectedItemProperty().addListener { _, old, new ->
-      if (syncingTab || new == null) return@addListener
-      val from = old?.let(::tabEnum)
-      val to = tabEnum(new)
+
+    // two independent segmented controls: view mode (Обычная операция / Проводки) and, only
+    // meaningful in the "Обычная операция" mode, the operation type. Both drive the same
+    // operationTabProperty as the old TabPane selection did.
+    viewModeGroup = ToggleGroup()
+    listOf(viewModeNormalButton, viewModeEntriesButton).forEach { it.toggleGroup = viewModeGroup }
+    preventDeselection(viewModeGroup)
+    viewModeGroup.selectedToggleProperty().addListener { _, old, new ->
+      if (syncingTab || new == null || new === old) return@addListener
+      val from = operationTabProperty.value
+      val to = if (new === viewModeEntriesButton) OperationTab.DETAILS else lastTypeTab
       operationTabProperty.value = to
       if (!populating) onUserTabSwitch(from, to)
     }
 
-    // the property starts on EXPENSE while the TabPane still shows its first tab - align them
+    typeGroup = ToggleGroup()
+    listOf(typeIncomeButton, typeExpenseButton, typeTransferButton, typeExchangeButton)
+      .forEach { it.toggleGroup = typeGroup }
+    preventDeselection(typeGroup)
+    typeGroup.selectedToggleProperty().addListener { _, old, new ->
+      if (syncingTab || new == null || new === old) return@addListener
+      val from = operationTabProperty.value
+      val to = typeEnum(new as ToggleButton)
+      operationTabProperty.value = to
+      if (!populating) onUserTabSwitch(from, to)
+    }
+
+    // the property starts on EXPENSE while the buttons still show their FXML-default selection -
+    // align them
     syncingTab = true
-    operationTabPane.selectionModel.select(tabNode(operationTabProperty.value))
+    selectButtonsFor(operationTabProperty.value)
     syncingTab = false
     applyTabChrome(operationTabProperty.value)
   }
 
-  private fun tabNode(tab: OperationTab): Tab = when (tab) {
-    OperationTab.INCOME -> incomeTab
-    OperationTab.EXPENSE -> expenseTab
-    OperationTab.TRANSFER -> transferTab
-    OperationTab.EXCHANGE -> exchangeTab
-    OperationTab.DETAILS -> detailsTab
+  // a ToggleGroup normally allows deselecting its only selected toggle by clicking it again,
+  // leaving selectedToggle null - not wanted here, one of the two/four buttons must stay active
+  private fun preventDeselection(group: ToggleGroup) {
+    group.selectedToggleProperty().addListener { _, old, new -> if (new == null) group.selectToggle(old) }
   }
 
-  private fun tabEnum(tab: Tab): OperationTab = when (tab) {
-    incomeTab -> OperationTab.INCOME
-    expenseTab -> OperationTab.EXPENSE
-    transferTab -> OperationTab.TRANSFER
-    exchangeTab -> OperationTab.EXCHANGE
-    else -> OperationTab.DETAILS
+  private fun selectButtonsFor(tab: OperationTab) {
+    if (tab == OperationTab.DETAILS) {
+      viewModeEntriesButton.isSelected = true
+    } else {
+      viewModeNormalButton.isSelected = true
+      lastTypeTab = tab
+      typeButtonFor(tab).isSelected = true
+    }
+    typeSwitchBox.isVisible = tab != OperationTab.DETAILS
+    typeSwitchBox.isManaged = tab != OperationTab.DETAILS
+    // the segmented type control should be a single Tab stop, not four - only the selected
+    // button stays reachable via Tab (clicking with the mouse still switches between them)
+    listOf(
+      OperationTab.INCOME to typeIncomeButton,
+      OperationTab.EXPENSE to typeExpenseButton,
+      OperationTab.TRANSFER to typeTransferButton,
+      OperationTab.EXCHANGE to typeExchangeButton,
+    ).forEach { (t, button) -> button.isFocusTraversable = t == tab }
+    listOf(
+      OperationTab.INCOME to incomePane,
+      OperationTab.EXPENSE to expensePane,
+      OperationTab.TRANSFER to transferPane,
+      OperationTab.EXCHANGE to exchangePane,
+      OperationTab.DETAILS to entriesPane,
+    ).forEach { (t, pane) ->
+      pane.isVisible = t == tab
+      pane.isManaged = t == tab
+    }
+    relocateSharedFields(tab)
+  }
+
+  // date / description / flag are single shared controls (one FormDriver binding each) but the
+  // mockup places them inside every operation-type panel and the entries panel too - since a
+  // Node can only have one parent, move the three controls into whichever panel is active instead
+  // of duplicating them.
+  private fun relocateSharedFields(tab: OperationTab) {
+    val datePane = if (tab == OperationTab.DETAILS) entriesDateGrid else paneFor(tab)
+    val footerPane = if (tab == OperationTab.DETAILS) entriesFooterGrid else paneFor(tab)
+    val (descriptionRow, flagRow) = when (tab) {
+      OperationTab.INCOME, OperationTab.EXPENSE, OperationTab.TRANSFER -> 4 to 5
+      OperationTab.EXCHANGE -> 10 to 11
+      OperationTab.DETAILS -> 0 to 1
+    }
+    // dateEditPicker goes first in Tab order (see relocate's "atStart") - descriptionEditField and
+    // flagCheckbox are always last, appended after every other field already declared in the pane
+    relocate(dateEditPicker, datePane, row = 0, column = 1, atStart = true)
+    relocate(descriptionEditField, footerPane, row = descriptionRow, column = 1)
+    relocate(flagCheckbox, footerPane, row = flagRow, column = 1)
+  }
+
+  private fun paneFor(tab: OperationTab): GridPane = when (tab) {
+    OperationTab.INCOME -> incomePane
+    OperationTab.EXPENSE -> expensePane
+    OperationTab.TRANSFER -> transferPane
+    OperationTab.EXCHANGE -> exchangePane
+    OperationTab.DETAILS -> throw IllegalArgumentException("DETAILS has no shared GridPane")
+  }
+
+  // atStart controls position in the pane's children list, which is what JavaFX's default Tab
+  // traversal follows (GridPane.rowIndex only affects visual position) - dateEditPicker needs to be
+  // first in the tab chain, so it is inserted at index 0 instead of appended
+  private fun relocate(
+    node: Node,
+    target: GridPane,
+    row: Int,
+    column: Int,
+    columnSpan: Int = 1,
+    atStart: Boolean = false,
+  ) {
+    (node.parent as? GridPane)?.children?.remove(node)
+    if (node !in target.children) {
+      if (atStart) target.children.add(0, node) else target.children.add(node)
+    }
+    GridPane.setRowIndex(node, row)
+    GridPane.setColumnIndex(node, column)
+    GridPane.setColumnSpan(node, columnSpan)
+  }
+
+  private fun typeButtonFor(tab: OperationTab): ToggleButton = when (tab) {
+    OperationTab.INCOME -> typeIncomeButton
+    OperationTab.EXPENSE -> typeExpenseButton
+    OperationTab.TRANSFER -> typeTransferButton
+    OperationTab.EXCHANGE -> typeExchangeButton
+    OperationTab.DETAILS -> throw IllegalArgumentException("DETAILS has no type button")
+  }
+
+  private fun typeEnum(button: ToggleButton): OperationTab = when (button) {
+    typeIncomeButton -> OperationTab.INCOME
+    typeExpenseButton -> OperationTab.EXPENSE
+    typeTransferButton -> OperationTab.TRANSFER
+    else -> OperationTab.EXCHANGE
   }
 
   private fun tabForType(type: OperationType): OperationTab = when (type) {
@@ -848,29 +1012,26 @@ class TransactionDetailController @Inject constructor(
     val highlightTab = tabForType(operationType(itemsProperty.get() ?: emptyList()))
       .takeIf { it != OperationTab.DETAILS } ?: activeTab
     listOf(
-      OperationTab.INCOME to incomeTab,
-      OperationTab.EXPENSE to expenseTab,
-      OperationTab.TRANSFER to transferTab,
-      OperationTab.EXCHANGE to exchangeTab,
-    ).forEach { (t, node) ->
-      val highlighted = t == highlightTab
-      (node.graphic as? Label)?.apply {
-        textFill = if (highlighted) Color.BLACK else Color.GRAY
-        style = if (highlighted) "-fx-font-weight: bold;" else ""
-      }
+      OperationTab.INCOME to typeIncomeButton,
+      OperationTab.EXPENSE to typeExpenseButton,
+      OperationTab.TRANSFER to typeTransferButton,
+      OperationTab.EXCHANGE to typeExchangeButton,
+    ).forEach { (t, button) ->
+      button.style = if (t == highlightTab) "-fx-font-weight: bold;" else ""
     }
     val typeTab = viewOnlyTypeTab
     if (viewOnly && typeTab != null) {
-      // history / read-only: keep only the tab matching the operation type plus DETAILS.
-      // the kept set depends on the operation type, not on which tab is currently open.
-      val keep = listOf(incomeTab, expenseTab, transferTab, exchangeTab, detailsTab)
-        .filter { it === detailsTab || it === tabNode(typeTab) }
-      if (operationTabPane.tabs != keep) {
-        syncingTab = true
-        val selected = operationTabPane.selectionModel.selectedItem
-        operationTabPane.tabs.setAll(keep)
-        operationTabPane.selectionModel.select(if (selected in keep) selected else tabNode(typeTab))
-        syncingTab = false
+      // history / read-only: keep only the type button matching the operation type visible,
+      // alongside the two view-mode buttons and the "Проводки" pane.
+      listOf(
+        OperationTab.INCOME to typeIncomeButton,
+        OperationTab.EXPENSE to typeExpenseButton,
+        OperationTab.TRANSFER to typeTransferButton,
+        OperationTab.EXCHANGE to typeExchangeButton,
+      ).forEach { (t, button) ->
+        val show = t == typeTab
+        button.isVisible = show
+        button.isManaged = show
       }
     }
   }
@@ -1078,33 +1239,6 @@ class TransactionDetailController @Inject constructor(
     exchangeRateLabel.text = "1 $c1 = $r1 $c2\n1 $c2 = $r2 $c1"
   }
 
-  private fun recomputeProjectedRests() {
-    if (!::formDriver.isInitialized || conflictMode) return
-    projectedRestByAccount.clear()
-    val accounts = itemRows.mapNotNull { it.account.get() }
-    val session = dbService.session
-    if (accounts.isNotEmpty() && session != null) {
-      val accountIds = accounts.map { AccountId(it.uuid) }.toSet()
-      val stored = runAndShowError { session.transactionDao.accountRest(accountIds) }.getOrDefault(emptyMap())
-      // money already reflected in stored rest by the last saved version of this transaction
-      val savedByAccount = mutableMapOf<Uuid, Long>()
-      formDriver.item?.content?.items?.forEach { savedByAccount.merge(it.account.uuid, it.money.value, Long::plus) }
-      // money currently entered in the rows (best-effort parse)
-      val currentByAccount = mutableMapOf<Uuid, Long>()
-      itemRows.forEach { row ->
-        val acc = row.account.get() ?: return@forEach
-        val value = row.amount.get().toRawMoneyOrNull(digitsOf(acc))?.value ?: 0L
-        currentByAccount.merge(acc.uuid, value, Long::plus)
-      }
-      accountIds.forEach { id ->
-        val base = stored[id]?.value ?: 0L
-        val delta = (currentByAccount[id.uuid] ?: 0L) - (savedByAccount[id.uuid] ?: 0L)
-        projectedRestByAccount[id.uuid] = RawMoney(base + delta)
-      }
-    }
-    itemsTable.refresh()
-  }
-
   private fun setupForm() {
     formDriver = FormDriver.builder(
       okButton,
@@ -1144,8 +1278,12 @@ class TransactionDetailController @Inject constructor(
         { deleted = it },
       )
       .field(
+        // bound to operationContentPane, not itemsEditorBox: the mode/type switch buttons are
+        // itemsEditorBox's siblings-in-spirit (viewModeBox/typeSwitchBox), and switching to
+        // "Проводки" doesn't change the operation - it must stay clickable even when this field
+        // is read-only (history view, or "Разрешить редактирование" off)
         "items",
-        itemsEditorBox,
+        operationContentPane,
         itemsProperty,
         { it?.content?.items ?: emptyList() },
         { items = it },
@@ -1383,14 +1521,6 @@ class TransactionDetailController @Inject constructor(
     return runCatching { value.toRawMoney(digits).format(digits) }.getOrDefault(text)
   }
 
-  private fun accountBalanceText(account: AccountObservable): String {
-    val session = dbService.session ?: return ""
-    val id = AccountId(account.uuid)
-    val rest = runAndShowError { session.transactionDao.accountRest(setOf(id)) }.getOrDefault(emptyMap())
-    val value = rest[id] ?: return ""
-    return "Остаток: ${value.format(digitsOf(account))}"
-  }
-
   private fun digitsOf(account: AccountObservable?): Int =
     account?.let { currencyService.currencies[it.content.currency.uuid]?.content?.digitsAfterPoint } ?: 2
 
@@ -1415,5 +1545,10 @@ class TransactionDetailController @Inject constructor(
     val creator = event?.creator ?: ""
     val place = event?.coords?.source?.code ?: ""
     creatorLabel.text = listOf(creator, place).filter { it.isNotBlank() }.joinToString(" · ")
+    // a NEW, unsaved operation has no history yet
+    historyLink.isDisable = tx == null
+    historyLink.setOnAction {
+      tx?.let { history.show(it.uuid, ObjectKind.TRANSACTION, "История операции") }
+    }
   }
 }

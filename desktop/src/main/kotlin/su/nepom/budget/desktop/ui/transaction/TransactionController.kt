@@ -5,11 +5,11 @@ import javafx.animation.PauseTransition
 import javafx.application.Platform
 import javafx.beans.property.SimpleStringProperty
 import javafx.collections.FXCollections
+import javafx.collections.ListChangeListener
 import javafx.event.ActionEvent
 import javafx.fxml.FXML
 import javafx.geometry.Pos
 import javafx.scene.control.Button
-import javafx.scene.control.CheckBox
 import javafx.scene.control.ComboBox
 import javafx.scene.control.DatePicker
 import javafx.scene.control.Hyperlink
@@ -21,9 +21,12 @@ import javafx.scene.control.TableView
 import javafx.scene.control.TextField
 import javafx.scene.control.ToggleButton
 import javafx.scene.control.ToggleGroup
+import javafx.scene.input.KeyCode
+import javafx.scene.input.KeyEvent
 import javafx.scene.layout.HBox
 import javafx.scene.paint.Color
 import javafx.stage.Stage
+import javafx.util.Callback
 import javafx.util.Duration
 import su.nepom.budget.db.Db
 import su.nepom.budget.db.dao.TransactionDao
@@ -31,7 +34,6 @@ import su.nepom.budget.desktop.model.TransactionObservable
 import su.nepom.budget.desktop.service.AccountService
 import su.nepom.budget.desktop.service.CurrencyService
 import su.nepom.budget.desktop.service.DbService
-import su.nepom.budget.desktop.ui.history.History
 import su.nepom.budget.desktop.util.formatDateTime
 import su.nepom.budget.desktop.util.fx.Controller
 import su.nepom.budget.desktop.util.fx.Disposable
@@ -49,7 +51,6 @@ import su.nepom.budget.event.TransactionContent
 import su.nepom.budget.event.TransactionContextItemAndTransaction
 import su.nepom.budget.model.AccountId
 import su.nepom.budget.model.CurrencyId
-import su.nepom.budget.model.ObjectKind
 import su.nepom.budget.model.OperationType
 import su.nepom.budget.model.RawMoney
 import su.nepom.budget.model.Uuid
@@ -68,7 +69,6 @@ class TransactionController @Inject constructor(
     private val accountService: AccountService,
     private val currencyService: CurrencyService,
     private val accountPicker: AccountPicker,
-    private val history: History,
 ) : Controller, StageAwareController, Disposable {
 
     private companion object {
@@ -78,10 +78,6 @@ class TransactionController @Inject constructor(
 
     /** Filter to apply once when the window opens (e.g. from the balances window). */
     class InitialFilter(val accounts: Set<AccountId>, val from: LocalDate?, val to: LocalDate?)
-
-    private class SortOption(val label: String, val ascending: Boolean) {
-        override fun toString() = label
-    }
 
     private enum class DateRangePreset(val label: String) {
         ALL("За все время"),
@@ -105,6 +101,9 @@ class TransactionController @Inject constructor(
     private var pageIndex = 0
     private var pageCount = 1
     private var totalCount = 0
+    // default matches the removed "Сначала новые" sort option; toggled by clicking dateColumn's
+    // header instead of a filter combo box now
+    private var sortByDateAsc = false
 
     private val refreshPause = PauseTransition(Duration.millis(200.0)).apply {
         setOnFinished { reload(resetPage = false) }
@@ -130,10 +129,7 @@ class TransactionController @Inject constructor(
     @FXML private lateinit var flagAllToggle: ToggleButton
     @FXML private lateinit var flagOnToggle: ToggleButton
     @FXML private lateinit var flagOffToggle: ToggleButton
-    @FXML private lateinit var sortComboBox: ComboBox<SortOption>
     @FXML private lateinit var resetFilterButton: Hyperlink
-    @FXML private lateinit var historyButton: Button
-    @FXML private lateinit var allowEditCheckbox: CheckBox
     @FXML private lateinit var newButton: Button
 
     // pager
@@ -158,6 +154,15 @@ class TransactionController @Inject constructor(
 
     override fun initialize(stage: Stage) {
         this.stage = stage
+
+        // Window-level filter (not scene-level) so it survives the scene being (re)assigned by
+        // WindowManager after this callback runs
+        stage.addEventFilter(KeyEvent.KEY_PRESSED) { e ->
+            if (e.code == KeyCode.N && e.isShortcutDown) {
+                newButton.fire()
+                e.consume()
+            }
+        }
 
         setupFilterPanel()
         setupListTable()
@@ -197,18 +202,6 @@ class TransactionController @Inject constructor(
             val single = selectedAccounts.singleOrNull()?.let { accountService.accounts[it.uuid] }
             transactionDetailController.onNewStarted(single)
         }
-
-        allowEditCheckbox.selectedProperty().addListener { _, _, on ->
-            transactionDetailController.setEditingAllowed(on)
-        }
-        transactionDetailController.setEditingAllowed(allowEditCheckbox.isSelected)
-
-        historyButton.disableProperty()
-            .bind(transactionsTable.selectionModel.selectedItemProperty().isNull)
-        historyButton.setOnAction {
-            val selected = transactionsTable.selectionModel.selectedItem ?: return@setOnAction
-            history.show(selected.transaction.id, ObjectKind.TRANSACTION, "История операции")
-        }
     }
 
     private fun setupFilterPanel() {
@@ -220,11 +213,6 @@ class TransactionController @Inject constructor(
         // a segmented tri-state control must not allow deselecting down to "nothing chosen" -
         // clicking the already-selected segment is a no-op instead of leaving the group empty
         flagGroup.selectedToggleProperty().addListener { _, old, new -> if (new == null) flagGroup.selectToggle(old) }
-        sortComboBox.items.setAll(
-            SortOption("Сначала новые", false),
-            SortOption("Сначала старые", true),
-        )
-        sortComboBox.selectionModel.select(0)
         dateRangeComboBox.items.setAll(*DateRangePreset.entries.toTypedArray())
         dateRangeComboBox.selectionModel.select(DateRangePreset.ALL)
         updateCustomDateVisibility()
@@ -239,7 +227,6 @@ class TransactionController @Inject constructor(
         toDatePicker.valueProperty().addListener { _, _, _ -> userReload(resetPage = true) }
         deletedToggle.selectedProperty().addListener { _, _, _ -> userReload(resetPage = true) }
         flagGroup.selectedToggleProperty().addListener { _, _, _ -> userReload(resetPage = true) }
-        sortComboBox.valueProperty().addListener { _, _, _ -> userReload(resetPage = true) }
         descriptionFilterField.textProperty().addListener { _, _, _ -> descriptionPause.playFromStart() }
 
         pickAccountsButton.setOnAction { pickFilterAccounts() }
@@ -260,12 +247,44 @@ class TransactionController @Inject constructor(
         pageField.text = (pageIndex + 1).toString()
     }
 
+    // clicking the "Дата" header toggles sort direction, showing the usual native triangle marker -
+    // the actual ordering happens server-side (see loadPage/sortByDateAsc), so the table itself
+    // must not reorder rows on its own; a no-op sort policy keeps just the header's arrow indicator
+    private fun setupDateSort() {
+        transactionsTable.sortPolicy = Callback { true }
+        dateColumn.isSortable = true
+        dateColumn.sortType = TableColumn.SortType.DESCENDING
+        transactionsTable.sortOrder.setAll(dateColumn)
+        // the header's native click handling only ever changes sortType between ASCENDING and
+        // DESCENDING - a third click instead removes the column from sortOrder outright, leaving
+        // sortType untouched, so that (not sortType turning null) is what "unsorted" looks like here
+        dateColumn.sortTypeProperty().addListener { _, _, sortType ->
+            when (sortType) {
+                TableColumn.SortType.ASCENDING -> { sortByDateAsc = true; userReload(resetPage = true) }
+                TableColumn.SortType.DESCENDING -> { sortByDateAsc = false; userReload(resetPage = true) }
+                null -> {}
+            }
+        }
+        // there are only two real options here, never "unsorted" - put the column right back with
+        // the direction flipped whenever a third click drops it out of sortOrder. Deferred: mutating
+        // sortOrder from inside its own change notification is asking for trouble.
+        transactionsTable.sortOrder.addListener(ListChangeListener<TableColumn<*, *>> {
+            if (dateColumn !in transactionsTable.sortOrder) {
+                Platform.runLater {
+                    dateColumn.sortType = if (sortByDateAsc) TableColumn.SortType.DESCENDING else TableColumn.SortType.ASCENDING
+                    if (dateColumn !in transactionsTable.sortOrder) transactionsTable.sortOrder.add(dateColumn)
+                }
+            }
+        })
+    }
+
     private fun setupListTable() {
         transactionsTable.items = rows
         transactionsTable.selectionModel.selectionMode = SelectionMode.MULTIPLE
         transactionsTable.enableCopySelectionToClipboard()
-        listOf(markerColumn, dateColumn, typeColumn, accountColumn, amountColumn, currencyColumn, descriptionColumn, flagColumn)
+        listOf(markerColumn, typeColumn, accountColumn, amountColumn, currencyColumn, descriptionColumn, flagColumn)
             .forEach { it.isSortable = false }
+        setupDateSort()
         currencyColumn.text = "Валюта"
         // colored stripe showing the operation type of the whole row's transaction - applies to
         // every leg of a multi-row operation, not just the first
@@ -481,7 +500,6 @@ class TransactionController @Inject constructor(
             selectedAccounts.isNotEmpty() ||
             deletedToggle.isSelected ||
             !flagAllToggle.isSelected ||
-            sortComboBox.selectionModel.selectedIndex != 0 ||
             descriptionFilterField.text.isNotBlank()
 
     private fun goToPage(index: Int) {
@@ -503,7 +521,7 @@ class TransactionController @Inject constructor(
             filter = filter,
             offset = pageIndex * PAGE_SIZE,
             limit = PAGE_SIZE,
-            sortByDateAsc = sortComboBox.value?.ascending ?: false,
+            sortByDateAsc = sortByDateAsc,
         )
         val loaded = runAndShowError { session.transactionDao.getItemsByQuery(query) }.getOrDefault(emptyList())
         rows.setAll(loaded)
@@ -559,7 +577,8 @@ class TransactionController @Inject constructor(
         updateAccountsSummary()
         deletedToggle.isSelected = false
         flagAllToggle.isSelected = true
-        sortComboBox.selectionModel.select(0)
+        sortByDateAsc = false
+        dateColumn.sortType = TableColumn.SortType.DESCENDING
         descriptionFilterField.clear()
         reload(resetPage = true)
     }

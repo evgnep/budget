@@ -4,50 +4,332 @@
 <?import javafx.geometry.*?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
+<?import javafx.scene.shape.Rectangle?>
 <?import org.controlsfx.control.SearchableComboBox?>
 
-<VBox fx:id="root" spacing="5.0" xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1" fx:controller="su.nepom.budget.desktop.ui.transaction.TransactionDetailController">
+<!-- StackPane so focusRingOverlay can be drawn free-floating on top of the form, positioned by
+     TransactionDetailController to match whatever field currently has focus - AtlantaFX's own
+     :focused styling for SearchableComboBox/CheckBox does not repaint immediately on Tab, only
+     later once the control is interacted with, so this draws an independent ring instead. -->
+<StackPane fx:id="root" styleClass="transaction-detail-root" xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1" fx:controller="su.nepom.budget.desktop.ui.transaction.TransactionDetailController">
    <stylesheets>
       <URL value="@transactionDetail.css" />
    </stylesheets>
+   <children>
+      <VBox spacing="5.0">
    <padding>
       <Insets bottom="5.0" left="5.0" right="5.0" top="5.0" />
    </padding>
    <children>
-      <GridPane hgap="5.0" vgap="5.0">
-         <columnConstraints>
-            <ColumnConstraints halignment="RIGHT" hgrow="NEVER" minWidth="80.0" />
-            <ColumnConstraints hgrow="SOMETIMES" minWidth="150.0" />
-         </columnConstraints>
-         <rowConstraints>
-            <RowConstraints vgrow="NEVER" />
-            <RowConstraints vgrow="NEVER" />
-         </rowConstraints>
-         <children>
-            <Label text="Дата" />
-            <HBox alignment="CENTER_LEFT" spacing="15.0" GridPane.columnIndex="1">
-               <children>
-                  <DatePicker fx:id="dateEditPicker" prefWidth="180.0" />
-                  <CheckBox fx:id="flagCheckbox" mnemonicParsing="false" text="Флаг" />
-                  <!-- no visible checkbox - the footer "Удалить операцию" / "Восстановить операцию"
-                       button drives this field instead; the node stays for FormDriver's field wiring -->
-                  <CheckBox fx:id="deletedCheckbox" mnemonicParsing="false" text="Удалена" visible="false" managed="false" />
-               </children>
-            </HBox>
-            <Label text="Описание" GridPane.rowIndex="1" />
-            <TextField fx:id="descriptionEditField" GridPane.columnIndex="1" GridPane.rowIndex="1" />
-         </children>
-      </GridPane>
+      <!-- no visible checkbox - the footer "Удалить операцию" / "Восстановить операцию" button
+           drives this field instead; the node stays detached for FormDriver's field wiring -->
+      <CheckBox fx:id="deletedCheckbox" mnemonicParsing="false" text="Удалена" visible="false" managed="false" />
       <VBox fx:id="itemsEditorBox" spacing="5.0" VBox.vgrow="ALWAYS">
          <children>
-            <TabPane fx:id="operationTabPane" tabClosingPolicy="UNAVAILABLE" VBox.vgrow="ALWAYS">
-               <tabs>
-                  <Tab fx:id="incomeTab" text="Приход">
-                     <content>
-                        <GridPane hgap="5.0" vgap="5.0">
-                           <padding>
-                              <Insets bottom="10.0" left="10.0" right="10.0" top="10.0" />
-                           </padding>
+            <HBox fx:id="viewModeBox" alignment="CENTER_LEFT" spacing="0.0">
+               <children>
+                  <ToggleButton fx:id="viewModeNormalButton" mnemonicParsing="false" selected="true" styleClass="left-pill" text="Обычная операция" />
+                  <ToggleButton fx:id="viewModeEntriesButton" mnemonicParsing="false" styleClass="right-pill" text="Проводки" />
+                  <ToggleButton fx:id="allowEditToggle" mnemonicParsing="false" styleClass="allow-edit-toggle" text="Редактирование запрещено, разрешить">
+                     <HBox.margin>
+                        <Insets left="32.0" />
+                     </HBox.margin>
+                  </ToggleButton>
+               </children>
+            </HBox>
+            <Separator>
+               <VBox.margin>
+                  <Insets bottom="8.0" top="8.0" />
+               </VBox.margin>
+            </Separator>
+            <HBox fx:id="typeSwitchBox" spacing="0.0">
+               <children>
+                  <ToggleButton fx:id="typeIncomeButton" mnemonicParsing="false" styleClass="left-pill" text="Приход" />
+                  <ToggleButton fx:id="typeExpenseButton" mnemonicParsing="false" selected="true" styleClass="center-pill" text="Расход" />
+                  <ToggleButton fx:id="typeTransferButton" mnemonicParsing="false" styleClass="center-pill" text="Перевод" />
+                  <ToggleButton fx:id="typeExchangeButton" mnemonicParsing="false" styleClass="right-pill" text="Обмен" />
+               </children>
+            </HBox>
+            <StackPane fx:id="operationContentPane" VBox.vgrow="ALWAYS">
+               <children>
+                  <GridPane fx:id="incomePane" hgap="5.0" vgap="5.0">
+                     <padding>
+                        <Insets bottom="10.0" left="10.0" right="10.0" top="10.0" />
+                     </padding>
+                     <columnConstraints>
+                        <ColumnConstraints halignment="RIGHT" hgrow="NEVER" minWidth="80.0" />
+                        <ColumnConstraints hgrow="SOMETIMES" minWidth="150.0" />
+                     </columnConstraints>
+                     <rowConstraints>
+                        <RowConstraints vgrow="NEVER" />
+                        <RowConstraints vgrow="NEVER" />
+                        <RowConstraints vgrow="NEVER" />
+                        <RowConstraints vgrow="NEVER" />
+                        <RowConstraints vgrow="NEVER" />
+                        <RowConstraints vgrow="NEVER" />
+                     </rowConstraints>
+                     <children>
+                        <!-- row 0: dateEditPicker is relocated here in Kotlin when this tab is active -->
+                        <Label text="Дата" />
+                        <Label text="Деньги" GridPane.rowIndex="1" />
+                        <HBox alignment="CENTER_LEFT" spacing="5.0" GridPane.columnIndex="1" GridPane.rowIndex="1">
+                           <children>
+                              <SearchableComboBox fx:id="incomeMoneyCombo" prefWidth="220.0" visibleRowCount="20" />
+                              <Button fx:id="incomeMoneyButton" mnemonicParsing="false" text="..." />
+                              <Button fx:id="incomeMoneyClearButton" mnemonicParsing="false" text="✕" />
+                           </children>
+                        </HBox>
+                        <Label text="Бюджет" GridPane.rowIndex="2" />
+                        <HBox alignment="CENTER_LEFT" spacing="5.0" GridPane.columnIndex="1" GridPane.rowIndex="2">
+                           <children>
+                              <SearchableComboBox fx:id="incomeBudgetCombo" prefWidth="220.0" visibleRowCount="20" />
+                              <Button fx:id="incomeBudgetButton" mnemonicParsing="false" text="..." />
+                              <Button fx:id="incomeBudgetClearButton" mnemonicParsing="false" text="✕" />
+                           </children>
+                        </HBox>
+                        <Label text="Сумма" GridPane.rowIndex="3" />
+                        <HBox alignment="CENTER_LEFT" spacing="5.0" GridPane.columnIndex="1" GridPane.rowIndex="3">
+                           <children>
+                              <TextField fx:id="incomeAmountField" prefWidth="150.0" />
+                              <Label fx:id="incomeCurrencyLabel" />
+                           </children>
+                        </HBox>
+                        <!-- row 4: descriptionEditField is relocated here in Kotlin when this tab is active -->
+                        <Label text="Описание" GridPane.rowIndex="4" />
+                        <!-- row 5: flagCheckbox is relocated here (value column) in Kotlin -->
+                     </children>
+                  </GridPane>
+                  <GridPane fx:id="expensePane" hgap="5.0" vgap="5.0">
+                     <padding>
+                        <Insets bottom="10.0" left="10.0" right="10.0" top="10.0" />
+                     </padding>
+                     <columnConstraints>
+                        <ColumnConstraints halignment="RIGHT" hgrow="NEVER" minWidth="80.0" />
+                        <ColumnConstraints hgrow="SOMETIMES" minWidth="150.0" />
+                     </columnConstraints>
+                     <rowConstraints>
+                        <RowConstraints vgrow="NEVER" />
+                        <RowConstraints vgrow="NEVER" />
+                        <RowConstraints vgrow="NEVER" />
+                        <RowConstraints vgrow="NEVER" />
+                        <RowConstraints vgrow="NEVER" />
+                        <RowConstraints vgrow="NEVER" />
+                     </rowConstraints>
+                     <children>
+                        <!-- dateEditPicker/descriptionEditField/flagCheckbox live here in the FXML
+                             (EXPENSE is the initial tab) - TransactionDetailController relocates them
+                             into whichever pane becomes active, since a Node has a single parent -->
+                        <Label text="Дата" />
+                        <DatePicker fx:id="dateEditPicker" prefWidth="180.0" GridPane.columnIndex="1" />
+                        <Label text="Деньги" GridPane.rowIndex="1" />
+                        <HBox alignment="CENTER_LEFT" spacing="5.0" GridPane.columnIndex="1" GridPane.rowIndex="1">
+                           <children>
+                              <SearchableComboBox fx:id="expenseMoneyCombo" prefWidth="220.0" visibleRowCount="20" />
+                              <Button fx:id="expenseMoneyButton" mnemonicParsing="false" text="..." />
+                              <Button fx:id="expenseMoneyClearButton" mnemonicParsing="false" text="✕" />
+                           </children>
+                        </HBox>
+                        <Label text="Бюджет" GridPane.rowIndex="2" />
+                        <HBox alignment="CENTER_LEFT" spacing="5.0" GridPane.columnIndex="1" GridPane.rowIndex="2">
+                           <children>
+                              <SearchableComboBox fx:id="expenseBudgetCombo" prefWidth="220.0" visibleRowCount="20" />
+                              <Button fx:id="expenseBudgetButton" mnemonicParsing="false" text="..." />
+                              <Button fx:id="expenseBudgetClearButton" mnemonicParsing="false" text="✕" />
+                           </children>
+                        </HBox>
+                        <Label text="Сумма" GridPane.rowIndex="3" />
+                        <HBox alignment="CENTER_LEFT" spacing="5.0" GridPane.columnIndex="1" GridPane.rowIndex="3">
+                           <children>
+                              <TextField fx:id="expenseAmountField" prefWidth="150.0" />
+                              <Label fx:id="expenseCurrencyLabel" />
+                           </children>
+                        </HBox>
+                        <Label text="Описание" GridPane.rowIndex="4" />
+                        <TextArea fx:id="descriptionEditField" prefRowCount="4" wrapText="true" GridPane.columnIndex="1" GridPane.rowIndex="4" />
+                        <CheckBox fx:id="flagCheckbox" mnemonicParsing="false" text="Отметить флагом" GridPane.columnIndex="1" GridPane.rowIndex="5" />
+                     </children>
+                  </GridPane>
+                  <GridPane fx:id="transferPane" hgap="5.0" vgap="5.0">
+                     <padding>
+                        <Insets bottom="10.0" left="10.0" right="10.0" top="10.0" />
+                     </padding>
+                     <columnConstraints>
+                        <ColumnConstraints halignment="RIGHT" hgrow="NEVER" minWidth="80.0" />
+                        <ColumnConstraints hgrow="SOMETIMES" minWidth="150.0" />
+                     </columnConstraints>
+                     <rowConstraints>
+                        <RowConstraints vgrow="NEVER" />
+                        <RowConstraints vgrow="NEVER" />
+                        <RowConstraints vgrow="NEVER" />
+                        <RowConstraints vgrow="NEVER" />
+                        <RowConstraints vgrow="NEVER" />
+                        <RowConstraints vgrow="NEVER" />
+                     </rowConstraints>
+                     <children>
+                        <!-- row 0: dateEditPicker is relocated here in Kotlin when this tab is active -->
+                        <Label text="Дата" />
+                        <Label text="Со счёта" GridPane.rowIndex="1" />
+                        <HBox alignment="CENTER_LEFT" spacing="5.0" GridPane.columnIndex="1" GridPane.rowIndex="1">
+                           <children>
+                              <SearchableComboBox fx:id="transferFromCombo" prefWidth="220.0" visibleRowCount="20" />
+                              <Button fx:id="transferFromButton" mnemonicParsing="false" text="..." />
+                              <Button fx:id="transferFromClearButton" mnemonicParsing="false" text="✕" />
+                           </children>
+                        </HBox>
+                        <Label text="На счёт" GridPane.rowIndex="2" />
+                        <HBox alignment="CENTER_LEFT" spacing="5.0" GridPane.columnIndex="1" GridPane.rowIndex="2">
+                           <children>
+                              <SearchableComboBox fx:id="transferToCombo" prefWidth="220.0" visibleRowCount="20" />
+                              <Button fx:id="transferToButton" mnemonicParsing="false" text="..." />
+                              <Button fx:id="transferToClearButton" mnemonicParsing="false" text="✕" />
+                           </children>
+                        </HBox>
+                        <Label text="Сумма" GridPane.rowIndex="3" />
+                        <HBox alignment="CENTER_LEFT" spacing="5.0" GridPane.columnIndex="1" GridPane.rowIndex="3">
+                           <children>
+                              <TextField fx:id="transferAmountField" prefWidth="150.0" />
+                              <Label fx:id="transferCurrencyLabel" />
+                           </children>
+                        </HBox>
+                        <!-- row 4: descriptionEditField is relocated here in Kotlin when this tab is active -->
+                        <Label text="Описание" GridPane.rowIndex="4" />
+                        <!-- row 5: flagCheckbox is relocated here (value column) in Kotlin -->
+                     </children>
+                  </GridPane>
+                  <GridPane fx:id="exchangePane" hgap="5.0" vgap="5.0">
+                     <padding>
+                        <Insets bottom="10.0" left="10.0" right="10.0" top="10.0" />
+                     </padding>
+                     <columnConstraints>
+                        <ColumnConstraints halignment="RIGHT" hgrow="NEVER" minWidth="80.0" />
+                        <ColumnConstraints hgrow="SOMETIMES" minWidth="150.0" />
+                     </columnConstraints>
+                     <rowConstraints>
+                        <RowConstraints vgrow="NEVER" />
+                        <RowConstraints vgrow="NEVER" />
+                        <RowConstraints vgrow="NEVER" />
+                        <RowConstraints vgrow="NEVER" />
+                        <RowConstraints vgrow="NEVER" />
+                        <RowConstraints vgrow="NEVER" />
+                        <RowConstraints vgrow="NEVER" />
+                        <RowConstraints vgrow="NEVER" />
+                        <RowConstraints vgrow="NEVER" />
+                        <RowConstraints vgrow="NEVER" />
+                        <RowConstraints vgrow="NEVER" />
+                        <RowConstraints vgrow="NEVER" />
+                     </rowConstraints>
+                     <children>
+                        <!-- row 0: dateEditPicker is relocated here in Kotlin when this tab is active -->
+                        <Label text="Дата" />
+                        <!-- the rule starts mid-label: Separator.HBox.hgrow=ALWAYS fills from right
+                             after the label text, both centered on the same row -->
+                        <HBox alignment="CENTER_LEFT" maxWidth="1.7976931348623157E308" spacing="8.0" GridPane.columnSpan="2" GridPane.halignment="LEFT" GridPane.hgrow="ALWAYS" GridPane.rowIndex="1">
+                           <children>
+                              <Label styleClass="exchange-section-label, exchange-section-label-out" text="Отдаём" />
+                              <Separator HBox.hgrow="ALWAYS" />
+                           </children>
+                        </HBox>
+                        <Label text="Деньги" GridPane.rowIndex="2" />
+                        <HBox alignment="CENTER_LEFT" spacing="5.0" GridPane.columnIndex="1" GridPane.rowIndex="2">
+                           <children>
+                              <SearchableComboBox fx:id="exchangeMoney1Combo" prefWidth="220.0" visibleRowCount="20" />
+                              <Button fx:id="exchangeMoney1Button" mnemonicParsing="false" text="..." />
+                              <Button fx:id="exchangeMoney1ClearButton" mnemonicParsing="false" text="✕" />
+                           </children>
+                        </HBox>
+                        <Label text="Бюджет" GridPane.rowIndex="3" />
+                        <HBox alignment="CENTER_LEFT" spacing="5.0" GridPane.columnIndex="1" GridPane.rowIndex="3">
+                           <children>
+                              <SearchableComboBox fx:id="exchangeBudget1Combo" prefWidth="220.0" visibleRowCount="20" />
+                              <Button fx:id="exchangeBudget1Button" mnemonicParsing="false" text="..." />
+                              <Button fx:id="exchangeBudget1ClearButton" mnemonicParsing="false" text="✕" />
+                           </children>
+                        </HBox>
+                        <Label text="Сумма" GridPane.rowIndex="4" />
+                        <HBox alignment="CENTER_LEFT" spacing="5.0" GridPane.columnIndex="1" GridPane.rowIndex="4">
+                           <children>
+                              <TextField fx:id="exchangeAmount1Field" prefWidth="150.0" />
+                              <Label fx:id="exchangeCurrency1Label" />
+                           </children>
+                        </HBox>
+                        <HBox alignment="CENTER_LEFT" maxWidth="1.7976931348623157E308" spacing="8.0" GridPane.columnSpan="2" GridPane.halignment="LEFT" GridPane.hgrow="ALWAYS" GridPane.rowIndex="5">
+                           <children>
+                              <Label styleClass="exchange-section-label, exchange-section-label-in" text="Получаем" />
+                              <Separator HBox.hgrow="ALWAYS" />
+                           </children>
+                        </HBox>
+                        <Label text="Деньги" GridPane.rowIndex="6" />
+                        <HBox alignment="CENTER_LEFT" spacing="5.0" GridPane.columnIndex="1" GridPane.rowIndex="6">
+                           <children>
+                              <SearchableComboBox fx:id="exchangeMoney2Combo" prefWidth="220.0" visibleRowCount="20" />
+                              <Button fx:id="exchangeMoney2Button" mnemonicParsing="false" text="..." />
+                              <Button fx:id="exchangeMoney2ClearButton" mnemonicParsing="false" text="✕" />
+                           </children>
+                        </HBox>
+                        <Label text="Бюджет" GridPane.rowIndex="7" />
+                        <HBox alignment="CENTER_LEFT" spacing="5.0" GridPane.columnIndex="1" GridPane.rowIndex="7">
+                           <children>
+                              <SearchableComboBox fx:id="exchangeBudget2Combo" prefWidth="220.0" visibleRowCount="20" />
+                              <Button fx:id="exchangeBudget2Button" mnemonicParsing="false" text="..." />
+                              <Button fx:id="exchangeBudget2ClearButton" mnemonicParsing="false" text="✕" />
+                           </children>
+                        </HBox>
+                        <Label text="Сумма" GridPane.rowIndex="8" />
+                        <HBox alignment="CENTER_LEFT" spacing="5.0" GridPane.columnIndex="1" GridPane.rowIndex="8">
+                           <children>
+                              <TextField fx:id="exchangeAmount2Field" prefWidth="150.0" />
+                              <Label fx:id="exchangeCurrency2Label" />
+                           </children>
+                        </HBox>
+                        <Label fx:id="exchangeRateLabel" wrapText="true" GridPane.columnIndex="1" GridPane.rowIndex="9" />
+                        <!-- row 10: descriptionEditField is relocated here in Kotlin when this tab is active -->
+                        <Label text="Описание" GridPane.rowIndex="10" />
+                        <!-- row 11: flagCheckbox is relocated here (value column) in Kotlin -->
+                     </children>
+                  </GridPane>
+                  <VBox fx:id="entriesPane" spacing="5.0">
+                     <padding>
+                        <Insets bottom="5.0" left="5.0" right="5.0" top="5.0" />
+                     </padding>
+                     <children>
+                        <!-- dateEditPicker is relocated into this single-row grid in Kotlin when
+                             "Проводки" is active -->
+                        <GridPane fx:id="entriesDateGrid" hgap="5.0" vgap="5.0">
+                           <columnConstraints>
+                              <ColumnConstraints halignment="RIGHT" hgrow="NEVER" minWidth="80.0" />
+                              <ColumnConstraints hgrow="SOMETIMES" minWidth="150.0" />
+                           </columnConstraints>
+                           <rowConstraints>
+                              <RowConstraints vgrow="NEVER" />
+                           </rowConstraints>
+                           <children>
+                              <Label text="Дата" />
+                           </children>
+                        </GridPane>
+                        <Label text="Строки (двойной клик по счёту - выбор)" />
+                        <TableView fx:id="itemsTable" VBox.vgrow="ALWAYS">
+                          <columns>
+                            <TableColumn fx:id="itemAccountColumn" prefWidth="160.0" text="Счёт" />
+                            <TableColumn fx:id="itemCurrencyColumn" editable="false" prefWidth="70.0" text="Валюта" />
+                            <TableColumn fx:id="itemKindColumn" editable="false" prefWidth="70.0" text="Тип" />
+                            <TableColumn fx:id="itemAmountColumn" prefWidth="110.0" text="Сумма" />
+                            <TableColumn fx:id="itemDescriptionColumn" prefWidth="200.0" text="Описание" />
+                            <TableColumn fx:id="itemFlagColumn" prefWidth="60.0" text="Флаг" />
+                            <TableColumn fx:id="itemReservedUntilColumn" prefWidth="110.0" text="Резерв до" />
+                          </columns>
+                           <columnResizePolicy>
+                              <TableView fx:constant="CONSTRAINED_RESIZE_POLICY" />
+                           </columnResizePolicy>
+                        </TableView>
+                        <HBox spacing="5.0">
+                           <children>
+                              <Button fx:id="addItemButton" mnemonicParsing="false" text="Добавить строку" />
+                              <Button fx:id="removeItemButton" mnemonicParsing="false" text="Удалить строку" />
+                           </children>
+                        </HBox>
+                        <!-- descriptionEditField/flagCheckbox are relocated into this grid in Kotlin
+                             when "Проводки" is active -->
+                        <GridPane fx:id="entriesFooterGrid" hgap="5.0" vgap="5.0">
                            <columnConstraints>
                               <ColumnConstraints halignment="RIGHT" hgrow="NEVER" minWidth="80.0" />
                               <ColumnConstraints hgrow="SOMETIMES" minWidth="150.0" />
@@ -55,242 +337,16 @@
                            <rowConstraints>
                               <RowConstraints vgrow="NEVER" />
                               <RowConstraints vgrow="NEVER" />
-                              <RowConstraints vgrow="NEVER" />
                            </rowConstraints>
                            <children>
-                              <Label text="Деньги" />
-                              <HBox alignment="CENTER_LEFT" spacing="5.0" GridPane.columnIndex="1">
-                                 <children>
-                                    <SearchableComboBox fx:id="incomeMoneyCombo" prefWidth="220.0" visibleRowCount="20" />
-                                    <Button fx:id="incomeMoneyButton" mnemonicParsing="false" text="..." />
-                                    <Button fx:id="incomeMoneyClearButton" mnemonicParsing="false" text="✕" />
-                                    <Label fx:id="incomeMoneyBalanceLabel" />
-                                 </children>
-                              </HBox>
-                              <Label text="Бюджет" GridPane.rowIndex="1" />
-                              <HBox alignment="CENTER_LEFT" spacing="5.0" GridPane.columnIndex="1" GridPane.rowIndex="1">
-                                 <children>
-                                    <SearchableComboBox fx:id="incomeBudgetCombo" prefWidth="220.0" visibleRowCount="20" />
-                                    <Button fx:id="incomeBudgetButton" mnemonicParsing="false" text="..." />
-                                    <Button fx:id="incomeBudgetClearButton" mnemonicParsing="false" text="✕" />
-                                    <Label fx:id="incomeBudgetBalanceLabel" />
-                                 </children>
-                              </HBox>
-                              <Label text="Сумма" GridPane.rowIndex="2" />
-                              <HBox alignment="CENTER_LEFT" spacing="5.0" GridPane.columnIndex="1" GridPane.rowIndex="2">
-                                 <children>
-                                    <TextField fx:id="incomeAmountField" prefWidth="150.0" />
-                                    <Label fx:id="incomeCurrencyLabel" />
-                                 </children>
-                              </HBox>
+                              <Label text="Описание" />
                            </children>
                         </GridPane>
-                     </content>
-                  </Tab>
-                  <Tab fx:id="expenseTab" text="Расход">
-                     <content>
-                        <GridPane hgap="5.0" vgap="5.0">
-                           <padding>
-                              <Insets bottom="10.0" left="10.0" right="10.0" top="10.0" />
-                           </padding>
-                           <columnConstraints>
-                              <ColumnConstraints halignment="RIGHT" hgrow="NEVER" minWidth="80.0" />
-                              <ColumnConstraints hgrow="SOMETIMES" minWidth="150.0" />
-                           </columnConstraints>
-                           <rowConstraints>
-                              <RowConstraints vgrow="NEVER" />
-                              <RowConstraints vgrow="NEVER" />
-                              <RowConstraints vgrow="NEVER" />
-                           </rowConstraints>
-                           <children>
-                              <Label text="Деньги" />
-                              <HBox alignment="CENTER_LEFT" spacing="5.0" GridPane.columnIndex="1">
-                                 <children>
-                                    <SearchableComboBox fx:id="expenseMoneyCombo" prefWidth="220.0" visibleRowCount="20" />
-                                    <Button fx:id="expenseMoneyButton" mnemonicParsing="false" text="..." />
-                                    <Button fx:id="expenseMoneyClearButton" mnemonicParsing="false" text="✕" />
-                                    <Label fx:id="expenseMoneyBalanceLabel" />
-                                 </children>
-                              </HBox>
-                              <Label text="Бюджет" GridPane.rowIndex="1" />
-                              <HBox alignment="CENTER_LEFT" spacing="5.0" GridPane.columnIndex="1" GridPane.rowIndex="1">
-                                 <children>
-                                    <SearchableComboBox fx:id="expenseBudgetCombo" prefWidth="220.0" visibleRowCount="20" />
-                                    <Button fx:id="expenseBudgetButton" mnemonicParsing="false" text="..." />
-                                    <Button fx:id="expenseBudgetClearButton" mnemonicParsing="false" text="✕" />
-                                    <Label fx:id="expenseBudgetBalanceLabel" />
-                                 </children>
-                              </HBox>
-                              <Label text="Сумма" GridPane.rowIndex="2" />
-                              <HBox alignment="CENTER_LEFT" spacing="5.0" GridPane.columnIndex="1" GridPane.rowIndex="2">
-                                 <children>
-                                    <TextField fx:id="expenseAmountField" prefWidth="150.0" />
-                                    <Label fx:id="expenseCurrencyLabel" />
-                                 </children>
-                              </HBox>
-                           </children>
-                        </GridPane>
-                     </content>
-                  </Tab>
-                  <Tab fx:id="transferTab" text="Перевод">
-                     <content>
-                        <GridPane hgap="5.0" vgap="5.0">
-                           <padding>
-                              <Insets bottom="10.0" left="10.0" right="10.0" top="10.0" />
-                           </padding>
-                           <columnConstraints>
-                              <ColumnConstraints halignment="RIGHT" hgrow="NEVER" minWidth="80.0" />
-                              <ColumnConstraints hgrow="SOMETIMES" minWidth="150.0" />
-                           </columnConstraints>
-                           <rowConstraints>
-                              <RowConstraints vgrow="NEVER" />
-                              <RowConstraints vgrow="NEVER" />
-                              <RowConstraints vgrow="NEVER" />
-                           </rowConstraints>
-                           <children>
-                              <Label text="Со счёта" />
-                              <HBox alignment="CENTER_LEFT" spacing="5.0" GridPane.columnIndex="1">
-                                 <children>
-                                    <SearchableComboBox fx:id="transferFromCombo" prefWidth="220.0" visibleRowCount="20" />
-                                    <Button fx:id="transferFromButton" mnemonicParsing="false" text="..." />
-                                    <Button fx:id="transferFromClearButton" mnemonicParsing="false" text="✕" />
-                                    <Label fx:id="transferFromBalanceLabel" />
-                                 </children>
-                              </HBox>
-                              <Label text="На счёт" GridPane.rowIndex="1" />
-                              <HBox alignment="CENTER_LEFT" spacing="5.0" GridPane.columnIndex="1" GridPane.rowIndex="1">
-                                 <children>
-                                    <SearchableComboBox fx:id="transferToCombo" prefWidth="220.0" visibleRowCount="20" />
-                                    <Button fx:id="transferToButton" mnemonicParsing="false" text="..." />
-                                    <Button fx:id="transferToClearButton" mnemonicParsing="false" text="✕" />
-                                    <Label fx:id="transferToBalanceLabel" />
-                                 </children>
-                              </HBox>
-                              <Label text="Сумма" GridPane.rowIndex="2" />
-                              <HBox alignment="CENTER_LEFT" spacing="5.0" GridPane.columnIndex="1" GridPane.rowIndex="2">
-                                 <children>
-                                    <TextField fx:id="transferAmountField" prefWidth="150.0" />
-                                    <Label fx:id="transferCurrencyLabel" />
-                                 </children>
-                              </HBox>
-                           </children>
-                        </GridPane>
-                     </content>
-                  </Tab>
-                  <Tab fx:id="exchangeTab" text="Обмен валюты">
-                     <content>
-                        <GridPane hgap="5.0" vgap="5.0">
-                           <padding>
-                              <Insets bottom="10.0" left="10.0" right="10.0" top="10.0" />
-                           </padding>
-                           <columnConstraints>
-                              <ColumnConstraints halignment="RIGHT" hgrow="NEVER" minWidth="80.0" />
-                              <ColumnConstraints hgrow="SOMETIMES" minWidth="150.0" />
-                           </columnConstraints>
-                           <rowConstraints>
-                              <RowConstraints vgrow="NEVER" />
-                              <RowConstraints vgrow="NEVER" />
-                              <RowConstraints vgrow="NEVER" />
-                              <RowConstraints vgrow="NEVER" />
-                              <RowConstraints vgrow="NEVER" />
-                              <RowConstraints vgrow="NEVER" />
-                              <RowConstraints vgrow="NEVER" />
-                              <RowConstraints vgrow="NEVER" />
-                           </rowConstraints>
-                           <children>
-                              <Label text="Отдаём" style="-fx-font-weight: bold;" GridPane.columnIndex="1" />
-                              <Label text="Деньги" GridPane.rowIndex="1" />
-                              <HBox alignment="CENTER_LEFT" spacing="5.0" GridPane.columnIndex="1" GridPane.rowIndex="1">
-                                 <children>
-                                    <SearchableComboBox fx:id="exchangeMoney1Combo" prefWidth="220.0" visibleRowCount="20" />
-                                    <Button fx:id="exchangeMoney1Button" mnemonicParsing="false" text="..." />
-                                    <Button fx:id="exchangeMoney1ClearButton" mnemonicParsing="false" text="✕" />
-                                    <Label fx:id="exchangeMoney1BalanceLabel" />
-                                 </children>
-                              </HBox>
-                              <Label text="Бюджет" GridPane.rowIndex="2" />
-                              <HBox alignment="CENTER_LEFT" spacing="5.0" GridPane.columnIndex="1" GridPane.rowIndex="2">
-                                 <children>
-                                    <SearchableComboBox fx:id="exchangeBudget1Combo" prefWidth="220.0" visibleRowCount="20" />
-                                    <Button fx:id="exchangeBudget1Button" mnemonicParsing="false" text="..." />
-                                    <Button fx:id="exchangeBudget1ClearButton" mnemonicParsing="false" text="✕" />
-                                    <Label fx:id="exchangeBudget1BalanceLabel" />
-                                 </children>
-                              </HBox>
-                              <Label text="Сумма" GridPane.rowIndex="3" />
-                              <HBox alignment="CENTER_LEFT" spacing="5.0" GridPane.columnIndex="1" GridPane.rowIndex="3">
-                                 <children>
-                                    <TextField fx:id="exchangeAmount1Field" prefWidth="150.0" />
-                                    <Label fx:id="exchangeCurrency1Label" />
-                                 </children>
-                              </HBox>
-                              <Label text="Получаем" style="-fx-font-weight: bold;" GridPane.columnIndex="1" GridPane.rowIndex="4" />
-                              <Label text="Деньги" GridPane.rowIndex="5" />
-                              <HBox alignment="CENTER_LEFT" spacing="5.0" GridPane.columnIndex="1" GridPane.rowIndex="5">
-                                 <children>
-                                    <SearchableComboBox fx:id="exchangeMoney2Combo" prefWidth="220.0" visibleRowCount="20" />
-                                    <Button fx:id="exchangeMoney2Button" mnemonicParsing="false" text="..." />
-                                    <Button fx:id="exchangeMoney2ClearButton" mnemonicParsing="false" text="✕" />
-                                    <Label fx:id="exchangeMoney2BalanceLabel" />
-                                 </children>
-                              </HBox>
-                              <Label text="Бюджет" GridPane.rowIndex="6" />
-                              <HBox alignment="CENTER_LEFT" spacing="5.0" GridPane.columnIndex="1" GridPane.rowIndex="6">
-                                 <children>
-                                    <SearchableComboBox fx:id="exchangeBudget2Combo" prefWidth="220.0" visibleRowCount="20" />
-                                    <Button fx:id="exchangeBudget2Button" mnemonicParsing="false" text="..." />
-                                    <Button fx:id="exchangeBudget2ClearButton" mnemonicParsing="false" text="✕" />
-                                    <Label fx:id="exchangeBudget2BalanceLabel" />
-                                 </children>
-                              </HBox>
-                              <Label text="Сумма" GridPane.rowIndex="7" />
-                              <HBox alignment="CENTER_LEFT" spacing="5.0" GridPane.columnIndex="1" GridPane.rowIndex="7">
-                                 <children>
-                                    <TextField fx:id="exchangeAmount2Field" prefWidth="150.0" />
-                                    <Label fx:id="exchangeCurrency2Label" />
-                                 </children>
-                              </HBox>
-                              <Label fx:id="exchangeRateLabel" wrapText="true" GridPane.columnIndex="1" GridPane.rowIndex="8" />
-                           </children>
-                        </GridPane>
-                     </content>
-                  </Tab>
-                  <Tab fx:id="detailsTab" text="Детали">
-                     <content>
-                        <VBox spacing="5.0">
-                           <padding>
-                              <Insets bottom="5.0" left="5.0" right="5.0" top="5.0" />
-                           </padding>
-                           <children>
-                              <Label text="Строки (двойной клик по счёту - выбор)" />
-                              <TableView fx:id="itemsTable" VBox.vgrow="ALWAYS">
-                                <columns>
-                                  <TableColumn fx:id="itemAccountColumn" prefWidth="160.0" text="Счёт" />
-                                  <TableColumn fx:id="itemCurrencyColumn" editable="false" prefWidth="70.0" text="Валюта" />
-                                  <TableColumn fx:id="itemKindColumn" editable="false" prefWidth="70.0" text="Тип" />
-                                  <TableColumn fx:id="itemAmountColumn" prefWidth="110.0" text="Сумма" />
-                                  <TableColumn fx:id="itemBalanceColumn" editable="false" prefWidth="110.0" text="Остаток счёта" />
-                                  <TableColumn fx:id="itemDescriptionColumn" prefWidth="200.0" text="Описание" />
-                                  <TableColumn fx:id="itemFlagColumn" prefWidth="60.0" text="Флаг" />
-                                  <TableColumn fx:id="itemReservedUntilColumn" prefWidth="110.0" text="Резерв до" />
-                                </columns>
-                                 <columnResizePolicy>
-                                    <TableView fx:constant="CONSTRAINED_RESIZE_POLICY" />
-                                 </columnResizePolicy>
-                              </TableView>
-                              <HBox spacing="5.0">
-                                 <children>
-                                    <Button fx:id="addItemButton" mnemonicParsing="false" text="Добавить строку" />
-                                    <Button fx:id="removeItemButton" mnemonicParsing="false" text="Удалить строку" />
-                                 </children>
-                              </HBox>
-                              <Label fx:id="balanceLabel" wrapText="true" />
-                           </children>
-                        </VBox>
-                     </content>
-                  </Tab>
-               </tabs>
-            </TabPane>
+                        <Label fx:id="balanceLabel" wrapText="true" />
+                     </children>
+                  </VBox>
+               </children>
+            </StackPane>
          </children>
       </VBox>
       <Label fx:id="metaToggleLabel" style="-fx-cursor: hand; -fx-font-size: 11px; -fx-text-fill: #6b7480;" text="▸ Служебные данные" />
@@ -303,21 +359,16 @@
             <RowConstraints vgrow="NEVER" />
             <RowConstraints vgrow="NEVER" />
             <RowConstraints vgrow="NEVER" />
+            <RowConstraints vgrow="NEVER" />
          </rowConstraints>
          <children>
             <Label text="id" />
-            <HBox alignment="CENTER_LEFT" spacing="4.0" GridPane.columnIndex="1">
-               <children>
-                  <TextField fx:id="idTextField" editable="false" styleClass="id-field" HBox.hgrow="ALWAYS" />
-                  <Button fx:id="copyIdButton" mnemonicParsing="false" style="-fx-padding: 1 6 1 6; -fx-font-size: 12px;" text="📋">
-                     <tooltip><Tooltip text="Скопировать id в буфер обмена" /></tooltip>
-                  </Button>
-               </children>
-            </HBox>
+            <TextField fx:id="idTextField" editable="false" styleClass="id-field" GridPane.columnIndex="1" />
             <Label fx:id="eventInfoLabel" text="Изменено" GridPane.rowIndex="1" />
             <Label fx:id="changedAtLabel" style="-fx-font-family: monospace; -fx-text-fill: #7c8593;" GridPane.columnIndex="1" GridPane.rowIndex="1" />
             <Label fx:id="creatorRowLabel" text="Автор" GridPane.rowIndex="2" />
             <Label fx:id="creatorLabel" style="-fx-text-fill: #7c8593;" GridPane.columnIndex="1" GridPane.rowIndex="2" />
+            <Hyperlink fx:id="historyLink" text="История операции" GridPane.columnIndex="1" GridPane.rowIndex="3" />
          </children>
       </GridPane>
       <HBox alignment="CENTER_LEFT" spacing="8.0">
@@ -336,4 +387,7 @@
          </children>
       </HBox>
    </children>
-</VBox>
+      </VBox>
+      <Rectangle fx:id="focusRingOverlay" arcHeight="6.0" arcWidth="6.0" fill="TRANSPARENT" managed="false" mouseTransparent="true" strokeWidth="2.0" styleClass="focus-ring-overlay" visible="false" />
+   </children>
+</StackPane>

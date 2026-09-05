@@ -180,10 +180,13 @@ class MainAccountsController @Inject constructor(
         return card
     }
 
+    // -fx-control-inner-background / -fx-box-border / -fx-accent are Modena-only variables -
+    // AtlantaFX (PrimerLight) leaves them unresolved, which threw a ClassCastException on every
+    // style pass. Use AtlantaFX's own tokens instead, which always resolve to a real Paint.
     private fun applyCardStyle(card: VBox, hover: Boolean) {
-        val border = if (hover) "-fx-accent" else "-fx-box-border"
+        val border = if (hover) "-color-accent-emphasis" else "-color-border-default"
         card.style = """
-            -fx-background-color: -fx-control-inner-background;
+            -fx-background-color: -color-bg-default;
             -fx-border-color: $border;
             -fx-border-radius: 8; -fx-background-radius: 8;
             -fx-padding: 18;

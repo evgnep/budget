@@ -23,3 +23,10 @@
     -fx-border-color: #c9821e;
     -fx-text-fill: #8a5a12;
 }
+
+/* AtlantaFX turns a Hyperlink black (":visited") the first time it is clicked, mimicking a
+   browser's visited-link color - "Сбросить все" is clicked repeatedly, not "visited" once, so
+   keep it the normal link color regardless */
+.hyperlink:visited {
+    -fx-text-fill: -color-link-fg;
+}

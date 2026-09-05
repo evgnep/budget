@@ -37,21 +37,11 @@ class WindowManager @Inject constructor(
     fun openTransactions(initialFilter: TransactionController.InitialFilter? = null) {
         open("Операции", "transactions") { stage, collect ->
             stage.setIcon("operations")
-            val content = fxmlService.load<Parent>("transaction/transactions.fxml", stage, null) { controller ->
+            fxmlService.load<Parent>("transaction/transactions.fxml", stage, null) { controller ->
                 collect(controller)
                 if (initialFilter != null && controller is TransactionController) {
                     controller.setInitialFilter(initialFilter)
                 }
-            }
-            BorderPane().apply {
-                top = MenuBar(
-                    Menu(
-                        "Окно", null,
-                        MenuItem("Новое окно").apply { setOnAction { openTransactions() } },
-                        MenuItem("Закрыть").apply { setOnAction { stage.close() } },
-                    )
-                )
-                center = content
             }
         }
     }
