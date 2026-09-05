@@ -48,6 +48,7 @@ interface TransactionDao : CrudDao<TransactionContent> {
         val deleted: Boolean? = false,
         val descriptionLike: String? = null,
         val flag: Boolean? = null,
+        val currency: CurrencyId? = null,
     )
 
     data class AmountFilter (

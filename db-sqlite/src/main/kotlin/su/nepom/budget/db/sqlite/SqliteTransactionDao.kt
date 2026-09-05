@@ -335,7 +335,16 @@ internal class SqliteTransactionDao(override val session: SqliteSession) : Trans
       filter.deleted?.let { conditions.add(TransactionItems.transactionDeleted eq it) }
       filter.descriptionLike?.let { conditions.add(Transactions.description like it) }
       filter.flag?.let { conditions.add(Transactions.flag eq it) }
+      filter.currency?.let { conditions.add(TransactionItems.accountUuid inList accountUuidsByCurrency(it)) }
     }
+
+  // a plain select on Accounts alone (no join into the transactions query) - keeps the currency
+  // filter from forcing every transaction query to carry an extra join
+  private fun accountUuidsByCurrency(currency: CurrencyId): List<String> =
+    from(Accounts)
+      .select(Accounts.uuid)
+      .where { Accounts.currencyUuid eq currency.uuidCode() }
+      .map { it.getString(1)!! }
 
   private fun Query.orderBy(query: TransactionDao.Query) =
     orderBy(query.orderByDateExpr())

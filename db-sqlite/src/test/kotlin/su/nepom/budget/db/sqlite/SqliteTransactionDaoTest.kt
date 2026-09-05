@@ -493,6 +493,12 @@ internal class SqliteTransactionDaoTest : AbstractDbTest() {
                 testGetAndCountTr(Query(Filter(deleted = null, amount = TransactionDao.AmountFilter(11.rawMoney, 11.rawMoney))),
                     1, 13)
             },
+            dynamicTest("currency1") {
+                testGetAndCountTr(Query(Filter(currency = currency1.id)), 4, 14, 12, 11, 10)
+            },
+            dynamicTest("currency2") {
+                testGetAndCountTr(Query(Filter(currency = currency2.id)), 0)
+            },
             dynamicTest("sort asc") {
                 testGetAndCountTr(Query(sortByDateAsc = true), 4, 10, 11, 12, 14)
             },
@@ -571,6 +577,16 @@ internal class SqliteTransactionDaoTest : AbstractDbTest() {
                     Query(Filter(deleted = null, amount = TransactionDao.AmountFilter(11.rawMoney, 11.rawMoney))), 2,
                     13 to accountC1Money, 13 to account2C1Budget,
                 )
+            },
+            dynamicTest("currency1") {
+                testGetAndCountItem(Query(Filter(currency = currency1.id)), 8,
+                    14 to accountC1Money, 14 to account2C1Budget,
+                    12 to accountC1Money, 12 to account2C1Budget,
+                    11 to accountC1Money, 11 to accountC1Budget,
+                    10 to accountC1Money, 10 to account2C1Budget)
+            },
+            dynamicTest("currency2") {
+                testGetAndCountItem(Query(Filter(currency = currency2.id)), 0)
             },
             dynamicTest("page1") {
                 testGetAndCountItem(Query(limit = 2), 8,
