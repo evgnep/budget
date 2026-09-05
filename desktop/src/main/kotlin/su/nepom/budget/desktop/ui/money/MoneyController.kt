@@ -109,7 +109,10 @@ class MoneyController @Inject constructor(
         byYearsCheckBox.selectedProperty().addListener { _, _, _ -> reload() }
 
         excludeTagsCheckComboBox.items.setAll(accountService.tags)
-        accountService.tags.addListener(ListChangeListener { excludeTagsCheckComboBox.items.setAll(accountService.tags) })
+        // accountService.tags outlives this controller (it's a singleton-scoped list) - a plain
+        // listener here would keep this whole window reachable forever after it closes, so route
+        // it through weakListeners like the DB subscription below
+        accountService.tags.addListener(weakListeners(ListChangeListener { excludeTagsCheckComboBox.items.setAll(accountService.tags) }))
         excludeTagsCheckComboBox.checkModel.checkedItems.addListener(ListChangeListener { reload() })
 
         table.items = rowsList

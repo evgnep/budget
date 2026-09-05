@@ -151,6 +151,12 @@ class BalanceController @Inject constructor(
     override fun dispose() {
         weakListeners.dispose()
         refreshPause.stop()
+        // currencyService.currencies is singleton-scoped, so visibleCurrencies (a FilteredList
+        // over it) stays permanently registered even after this window closes - JavaFX's
+        // FilteredList has no detach of its own. setupFilterPanel() replaces its predicate with
+        // one that captures showHiddenCheckbox, which would otherwise keep this whole window's
+        // scene graph reachable forever - drop it back to one that captures nothing.
+        visibleCurrencies.setPredicate { !it.content.hidden }
     }
 
     private fun setupPeriodPanel() {
