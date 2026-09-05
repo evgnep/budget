@@ -12,21 +12,14 @@ import javafx.geometry.Pos
 import javafx.scene.control.Button
 import javafx.scene.control.CheckBox
 import javafx.scene.control.ComboBox
-import javafx.scene.control.ContextMenu
 import javafx.scene.control.DatePicker
 import javafx.scene.control.Label
-import javafx.scene.control.MenuItem
 import javafx.scene.control.SelectionMode
 import javafx.scene.control.TableCell
 import javafx.scene.control.TableColumn
 import javafx.scene.control.TableView
 import javafx.scene.control.TextField
 import javafx.scene.control.cell.CheckBoxTableCell
-import javafx.scene.input.Clipboard
-import javafx.scene.input.ClipboardContent
-import javafx.scene.input.KeyCode
-import javafx.scene.input.KeyCodeCombination
-import javafx.scene.input.KeyCombination
 import javafx.scene.layout.HBox
 import javafx.stage.Stage
 import javafx.util.Duration
@@ -44,7 +37,9 @@ import su.nepom.budget.desktop.util.fx.FormState
 import su.nepom.budget.desktop.util.fx.MasterDetailFormDriver
 import su.nepom.budget.desktop.util.fx.StageAwareController
 import su.nepom.budget.desktop.util.fx.WeakListeners
+import su.nepom.budget.desktop.util.fx.enableCopySelectionToClipboard
 import su.nepom.budget.desktop.util.fx.runAndShowError
+import su.nepom.budget.desktop.util.fx.setClipboardValue
 import su.nepom.budget.desktop.util.toEndOfDayInstant
 import su.nepom.budget.desktop.util.toStartOfDayInstant
 import su.nepom.budget.event.TransactionContent
@@ -263,9 +258,10 @@ class TransactionController @Inject constructor(
     private fun setupListTable() {
         transactionsTable.items = rows
         transactionsTable.selectionModel.selectionMode = SelectionMode.MULTIPLE
-        setupCopyToClipboard()
+        transactionsTable.enableCopySelectionToClipboard()
         listOf(dateColumn, typeColumn, accountColumn, amountColumn, currencyColumn, descriptionColumn, flagColumn, deletedColumn)
             .forEach { it.isSortable = false }
+        currencyColumn.text = "Валюта"
         // date / type / description are transaction-level - shown only on the first row of a group,
         // so a multi-leg operation doesn't repeat them on every row
         dateColumn.setCellValueFactory {
@@ -300,6 +296,9 @@ class TransactionController @Inject constructor(
                 }
             }
         }
+        amountColumn.setClipboardValue { row ->
+            formatMoneyForClipboard(row.item.money, accountService.accounts[row.item.account.uuid]?.content?.currency)
+        }
         currencyColumn.setCellValueFactory {
             SimpleStringProperty(currencyValue(accountService.accounts[it.value.item.account.uuid]?.content?.currency))
         }
@@ -308,51 +307,11 @@ class TransactionController @Inject constructor(
         }
         flagColumn.setCellValueFactory { SimpleBooleanProperty(it.value.transaction.flag) }
         flagColumn.cellFactory = CheckBoxTableCell.forTableColumn(flagColumn)
+        flagColumn.setClipboardValue { row -> if (row.transaction.flag) "Да" else "Нет" }
         deletedColumn.setCellValueFactory { SimpleBooleanProperty(it.value.transaction.deleted) }
         deletedColumn.cellFactory = CheckBoxTableCell.forTableColumn(deletedColumn)
+        deletedColumn.setClipboardValue { row -> if (row.transaction.deleted) "Да" else "Нет" }
     }
-
-    private fun setupCopyToClipboard() {
-        val copyCombination = KeyCodeCombination(KeyCode.C, KeyCombination.CONTROL_DOWN)
-        transactionsTable.setOnKeyPressed { event ->
-            if (copyCombination.match(event)) {
-                copySelectedRowsToClipboard()
-                event.consume()
-            }
-        }
-        val copyMenuItem = MenuItem("Копировать").apply {
-            accelerator = copyCombination
-            setOnAction { copySelectedRowsToClipboard() }
-        }
-        transactionsTable.contextMenu = ContextMenu(copyMenuItem)
-    }
-
-    // copies the selected rows as tab-separated text, so it pastes into Excel / Google Sheets as
-    // a regular table (one row per line, one column per cell)
-    private fun copySelectedRowsToClipboard() {
-        val selected = transactionsTable.selectionModel.selectedIndices.sorted()
-            .mapNotNull { rows.getOrNull(it) }
-        if (selected.isEmpty()) return
-        val header = listOf("Дата", "Тип", "Счета", "Сумма", "Валюта", "Описание", "Флаг", "Удалена")
-            .joinToString("\t")
-        val body = selected.joinToString("\n") { row ->
-            val currency = accountService.accounts[row.item.account.uuid]?.content?.currency
-            listOf(
-                row.transaction.date.formatDateTime(),
-                operationTypeLabel(operationType(row.transaction)),
-                accountValue(row),
-                formatMoneyForClipboard(row.item.money, currency),
-                currencyValue(currency),
-                descriptionValue(row),
-                if (row.transaction.flag) "Да" else "Нет",
-                if (row.transaction.deleted) "Да" else "Нет",
-            ).joinToString("\t") { it.forClipboardCell() }
-        }
-        val text = "$header\n$body"
-        Clipboard.getSystemClipboard().setContent(ClipboardContent().apply { putString(text) })
-    }
-
-    private fun String.forClipboardCell() = replace('\t', ' ').replace("\r\n", " ").replace('\n', ' ')
 
     // no grouping separator and the system decimal separator, so Excel / Google Sheets parse the
     // pasted value as a number instead of text

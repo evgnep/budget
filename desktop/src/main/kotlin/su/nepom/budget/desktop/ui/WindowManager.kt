@@ -73,6 +73,23 @@ class WindowManager @Inject constructor(
         }
     }
 
+    fun openMoney() {
+        open("Деньги", "money") { stage, collect ->
+            stage.setIcon("accounts")
+            val content = fxmlService.load<Parent>("money/money.fxml", stage, null, collect)
+            BorderPane().apply {
+                top = MenuBar(
+                    Menu(
+                        "Окно", null,
+                        MenuItem("Новое окно").apply { setOnAction { openMoney() } },
+                        MenuItem("Закрыть").apply { setOnAction { stage.close() } },
+                    )
+                )
+                center = content
+            }
+        }
+    }
+
     fun openSubaccounts(accountId: AccountId, accountName: String) {
         open("Субсчета: $accountName", null) { stage, collect ->
             stage.setIcon("accounts")

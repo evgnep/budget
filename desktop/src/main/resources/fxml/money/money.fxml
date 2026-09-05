@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.*?>
+<?import javafx.scene.chart.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import org.controlsfx.control.CheckComboBox?>
+<?import org.controlsfx.control.MaskerPane?>
+
+<VBox prefHeight="640.0" prefWidth="1000.0" spacing="5.0" xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1" fx:controller="su.nepom.budget.desktop.ui.money.MoneyController">
+   <padding>
+      <Insets bottom="5.0" left="5.0" right="5.0" top="5.0" />
+   </padding>
+   <children>
+      <HBox alignment="CENTER_LEFT" spacing="5.0">
+         <children>
+            <Label text="Год" />
+            <ComboBox fx:id="fromYearCombo" prefWidth="90.0" />
+            <Label text="по" />
+            <ComboBox fx:id="toYearCombo" prefWidth="90.0" />
+            <CheckBox fx:id="byYearsCheckBox" mnemonicParsing="false" text="По годам" />
+            <Label text="Исключить теги" />
+            <CheckComboBox fx:id="excludeTagsCheckComboBox" prefWidth="160.0" />
+         </children>
+      </HBox>
+      <StackPane VBox.vgrow="ALWAYS">
+         <children>
+            <SplitPane dividerPositions="0.55" orientation="VERTICAL">
+              <items>
+                <TableView fx:id="table" />
+                <LineChart fx:id="chart" animated="false" createSymbols="false">
+                  <xAxis>
+                    <CategoryAxis label="Дата" side="BOTTOM" />
+                  </xAxis>
+                  <yAxis>
+                    <NumberAxis label="\$" side="LEFT" />
+                  </yAxis>
+                </LineChart>
+              </items>
+            </SplitPane>
+            <MaskerPane fx:id="maskerPane" text="Вычисление..." visible="false" />
+         </children>
+      </StackPane>
+   </children>
+</VBox>
