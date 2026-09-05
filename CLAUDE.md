@@ -43,7 +43,8 @@ folder of JSON files. SQLite is a materialized projection of the events.
 
 ### Modules (dependency order)
 
-- **common** - domain model and DB-facing interfaces, no implementation. Key types:
+- **common** - domain model, DB-facing interfaces, and cross-platform (desktop/Android) implementations
+  that need no platform-specific API (no JavaFX, no Android SDK). Key types:
   - `event/` - `Event<T>` (immutable, with `EventCoords` = `Place` + sequence `no`, `EventType.NEW/UPDATE`,
     `basedOn`/`conflictResolve` links), `StorableContent` / `ActualVersionContent` sealed hierarchies,
     per-kind content (`CurrencyContent`, `AccountContent`, `TransactionContent`).
@@ -52,6 +53,10 @@ folder of JSON files. SQLite is a materialized projection of the events.
     `RawMoney`/`RawTurnover` (integer minor units), `AccountKind`.
   - `Global` - process-wide mutable `currentUser` and `currentPlace`. Must be set before DB/event work
     (`Global.setCurrentPlace(...)`); tests and `main` set it explicitly.
+  - `currenciesexchangerates/` - `CurrenciesExchangeRatesProvider` interface plus its cross-platform
+    HTTP implementation (`Fawazahmed0CurrenciesExchangeRatesProvider`, using Ktor's OkHttp engine - works on
+    both desktop and Android), and `CurrenciesExchangeRatesService`, which keeps daily rates saved
+    through a `Db` session, retrying on failure.
 
 - **db-sqlite** - the only `Db` implementation. `createSqliteDatabase(path)` -> `SqliteDatabase`.
   - Flyway migrations in `src/main/resources/db/migration/` (`FlywayShouldRunFirst` base class runs them

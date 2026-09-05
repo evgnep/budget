@@ -49,6 +49,7 @@ class BudgetApplication : Application() {
 
     override fun stop() {
         budgetComponent.eventStoreService().onStop()
+        budgetComponent.currenciesExchangeRatesAppService().onStop()
     }
 
     private fun buildRoot(): BorderPane {
@@ -141,6 +142,7 @@ class BudgetApplication : Application() {
         budgetComponent.dbService()
         budgetComponent.eventStoreService()
         budgetComponent.settingsService()
+        budgetComponent.currenciesExchangeRatesAppService()
     }
 }
 

@@ -20,7 +20,7 @@ internal abstract class AbstractSqliteCrudDao<
         Content : ActualVersionContent,
         EntityType : Entity<EntityType>,
         EntityTable : Table<EntityType>>(
-    protected val session: SqliteSession,
+    override val session: SqliteSession,
     protected val sequenceGetter: DatabaseHolder.() -> EntitySequence<EntityType, EntityTable>,
     private val toContent: EntityType.() -> Content,
     private val toEntity: Content.() -> EntityType,

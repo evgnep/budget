@@ -72,9 +72,8 @@ import su.nepom.budget.model.plus
 import su.nepom.budget.model.rawMoney
 import su.nepom.budget.model.uuidCode
 import su.nepom.budget.utils.SecondsClock
-import java.util.UUID
 
-internal class SqliteTransactionDao(private val session: SqliteSession) : TransactionDao, DatabaseHolder {
+internal class SqliteTransactionDao(override val session: SqliteSession) : TransactionDao, DatabaseHolder {
   override fun getDb(): Database = session.db.database
 
   override fun getById(id: Uuid): TransactionContent? = session.doReadOp {

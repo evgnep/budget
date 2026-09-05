@@ -21,7 +21,7 @@ import kotlin.math.min
 
 class EventStoreWriter(
     private val rootPath: Path,
-    private val source: Place   ,
+    private val source: Place,
     private val maxEventsPerFile: Int = 999,
     private val dateProvider: () -> LocalDate =
         { Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date }

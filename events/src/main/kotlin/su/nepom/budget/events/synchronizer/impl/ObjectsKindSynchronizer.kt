@@ -44,6 +44,10 @@ internal class ObjectsKindSynchronizer(
         }
 
         private suspend fun resolveConflict(heads: List<ActualEvent>): ActualEvent {
+            if (objectKind.autoResolve) {
+                // any variant is fine here, so just keep the freshest one - no need to ask the user
+                return createResolveConflictEvent(heads, heads.maxBy { it.created }.content)
+            }
             val result = conflictResolver.resolve(objectKind, heads)
             return when (result.action) {
                 ConflictResolver.Action.RESOLVE -> {

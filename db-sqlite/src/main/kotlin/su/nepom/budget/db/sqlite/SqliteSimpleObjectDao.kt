@@ -23,7 +23,7 @@ import su.nepom.budget.model.Uuid
  * kind needs no new DAO, only a new StorableContent subtype and an ObjectKind entry.
  */
 internal class SqliteSimpleObjectDao<T : ActualVersionContent>(
-    private val session: SqliteSession,
+    override val session: SqliteSession,
     private val kind: ObjectKind,
 ) : SimpleObjectDao<T>, DatabaseHolder {
     private val cache get() = session.db.simpleObjectCache

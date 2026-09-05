@@ -4,6 +4,7 @@ import dagger.BindsInstance
 import dagger.Component
 import jakarta.inject.Singleton
 import javafx.stage.Stage
+import su.nepom.budget.desktop.service.CurrenciesExchangeRatesAppService
 import su.nepom.budget.desktop.service.DbService
 import su.nepom.budget.desktop.service.EventStoreService
 import su.nepom.budget.desktop.service.SettingsService
@@ -35,6 +36,8 @@ interface BudgetComponent {
     fun dbService(): DbService
 
     fun eventStoreService(): EventStoreService
+
+    fun currenciesExchangeRatesAppService(): CurrenciesExchangeRatesAppService
 
     fun settingsService(): SettingsService
 
