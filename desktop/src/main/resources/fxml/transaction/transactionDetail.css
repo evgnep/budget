@@ -88,6 +88,32 @@
     -fx-text-fill: -color-link-fg;
 }
 
+/* "Обычная операция" / "Проводки" switch: unlike the type switch (Приход/Расход/...), the active
+   button here should not turn accent-blue - just bold black text on the normal pill background. */
+.view-mode-toggle:selected,
+.view-mode-toggle:selected:focused {
+    -fx-background-color: -color-button-border, -color-button-bg;
+    -fx-text-fill: black;
+    -fx-font-weight: bold;
+}
+.view-mode-toggle.left-pill:selected,
+.view-mode-toggle.left-pill:selected:focused {
+    -fx-background-insets: 0, 1px 0 1px 1px;
+}
+.view-mode-toggle.right-pill:selected,
+.view-mode-toggle.right-pill:selected:focused {
+    -fx-background-insets: 0, 1px 1px 1px 0;
+}
+
+/* "Поменять счета местами": same small rounded-pill shape as allow-edit-toggle, but with the
+   ordinary button colors - it's a plain action, not a state switch. */
+.swap-accounts-button {
+    -fx-background-radius: 12px;
+    -fx-border-radius: 12px;
+    -fx-font-size: 11px;
+    -fx-padding: 3px 10px 3px 10px;
+}
+
 /* id field in "Служебные данные" reads as plain text, not an input box - it's always disabled
    (never edited by the user, see FormDriver.idField) */
 .id-field, .id-field:disabled {

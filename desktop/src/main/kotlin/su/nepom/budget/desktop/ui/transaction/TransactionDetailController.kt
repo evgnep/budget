@@ -366,6 +366,8 @@ class TransactionDetailController @Inject constructor(
   private lateinit var transferAmountField: TextField
   @FXML
   private lateinit var transferCurrencyLabel: Label
+  @FXML
+  private lateinit var swapAccountsButton: Button
 
   @FXML
   private lateinit var exchangeMoney1Combo: SearchableComboBox<AccountObservable>
@@ -458,8 +460,19 @@ class TransactionDetailController @Inject constructor(
     setupDescriptionTabTraversal()
     setupFocusRingRefresh()
     setupAllowEditToggle()
+    setupSwapAccountsButton()
     updateEventInfo(null)
     updateCopyButton()
+  }
+
+  // swaps "Со счёта" / "На счёт" without touching the amount - only meaningful on the Перевод tab
+  private fun setupSwapAccountsButton() {
+    swapAccountsButton.setOnAction {
+      val from = transferFrom.value
+      val to = transferTo.value
+      transferFrom.set(to)
+      transferTo.set(from)
+    }
   }
 
   // "Разрешить редактирование" used to be a checkbox next to the master list, now a toggle right
@@ -666,7 +679,7 @@ class TransactionDetailController @Inject constructor(
     // last event, which would be misleading for a past version shown here - keep them hidden
     // regardless of the meta toggle. The toggle itself (and the id row) stays usable, same as edit.
     listOf(
-      addItemButton, removeItemButton, copyButton, deleteButton,
+      addItemButton, removeItemButton, copyButton, deleteButton, swapAccountsButton,
       eventInfoLabel, changedAtLabel, creatorRowLabel, creatorLabel, historyLink, allowEditToggle,
     ).forEach {
       it.isVisible = false
@@ -938,7 +951,8 @@ class TransactionDetailController @Inject constructor(
     val datePane = if (tab == OperationTab.DETAILS) entriesDateGrid else paneFor(tab)
     val footerPane = if (tab == OperationTab.DETAILS) entriesFooterGrid else paneFor(tab)
     val (descriptionRow, flagRow) = when (tab) {
-      OperationTab.INCOME, OperationTab.EXPENSE, OperationTab.TRANSFER -> 4 to 5
+      OperationTab.INCOME, OperationTab.EXPENSE -> 4 to 5
+      OperationTab.TRANSFER -> 5 to 6
       OperationTab.EXCHANGE -> 10 to 11
       OperationTab.DETAILS -> 0 to 1
     }

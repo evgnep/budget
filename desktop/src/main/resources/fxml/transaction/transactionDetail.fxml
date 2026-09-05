@@ -28,8 +28,8 @@
          <children>
             <HBox fx:id="viewModeBox" alignment="CENTER_LEFT" spacing="0.0">
                <children>
-                  <ToggleButton fx:id="viewModeNormalButton" mnemonicParsing="false" selected="true" styleClass="left-pill" text="Обычная операция" />
-                  <ToggleButton fx:id="viewModeEntriesButton" mnemonicParsing="false" styleClass="right-pill" text="Проводки" />
+                  <ToggleButton fx:id="viewModeNormalButton" mnemonicParsing="false" selected="true" styleClass="left-pill, view-mode-toggle" text="Обычная операция" />
+                  <ToggleButton fx:id="viewModeEntriesButton" mnemonicParsing="false" styleClass="right-pill, view-mode-toggle" text="Проводки" />
                   <ToggleButton fx:id="allowEditToggle" mnemonicParsing="false" styleClass="allow-edit-toggle" text="Редактирование запрещено, разрешить">
                      <HBox.margin>
                         <Insets left="32.0" />
@@ -164,6 +164,7 @@
                         <RowConstraints vgrow="NEVER" />
                         <RowConstraints vgrow="NEVER" />
                         <RowConstraints vgrow="NEVER" />
+                        <RowConstraints vgrow="NEVER" />
                      </rowConstraints>
                      <children>
                         <!-- row 0: dateEditPicker is relocated here in Kotlin when this tab is active -->
@@ -176,24 +177,25 @@
                               <Button fx:id="transferFromClearButton" mnemonicParsing="false" text="✕" />
                            </children>
                         </HBox>
-                        <Label text="На счёт" GridPane.rowIndex="2" />
-                        <HBox alignment="CENTER_LEFT" spacing="5.0" GridPane.columnIndex="1" GridPane.rowIndex="2">
+                        <Button fx:id="swapAccountsButton" mnemonicParsing="false" styleClass="swap-accounts-button" text="⇄ Поменять счета местами" GridPane.columnIndex="1" GridPane.rowIndex="2" />
+                        <Label text="На счёт" GridPane.rowIndex="3" />
+                        <HBox alignment="CENTER_LEFT" spacing="5.0" GridPane.columnIndex="1" GridPane.rowIndex="3">
                            <children>
                               <SearchableComboBox fx:id="transferToCombo" prefWidth="220.0" visibleRowCount="20" />
                               <Button fx:id="transferToButton" mnemonicParsing="false" text="..." />
                               <Button fx:id="transferToClearButton" mnemonicParsing="false" text="✕" />
                            </children>
                         </HBox>
-                        <Label text="Сумма" GridPane.rowIndex="3" />
-                        <HBox alignment="CENTER_LEFT" spacing="5.0" GridPane.columnIndex="1" GridPane.rowIndex="3">
+                        <Label text="Сумма" GridPane.rowIndex="4" />
+                        <HBox alignment="CENTER_LEFT" spacing="5.0" GridPane.columnIndex="1" GridPane.rowIndex="4">
                            <children>
                               <TextField fx:id="transferAmountField" prefWidth="150.0" />
                               <Label fx:id="transferCurrencyLabel" />
                            </children>
                         </HBox>
-                        <!-- row 4: descriptionEditField is relocated here in Kotlin when this tab is active -->
-                        <Label text="Описание" GridPane.rowIndex="4" />
-                        <!-- row 5: flagCheckbox is relocated here (value column) in Kotlin -->
+                        <!-- row 5: descriptionEditField is relocated here in Kotlin when this tab is active -->
+                        <Label text="Описание" GridPane.rowIndex="5" />
+                        <!-- row 6: flagCheckbox is relocated here (value column) in Kotlin -->
                      </children>
                   </GridPane>
                   <GridPane fx:id="exchangePane" hgap="5.0" vgap="5.0">
