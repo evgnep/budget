@@ -48,14 +48,6 @@ class SubaccountsController @Inject constructor(
     private val weakListeners = WeakListeners()
     private val refreshPause = PauseTransition(Duration.millis(200.0)).apply { setOnFinished { refreshRest() } }
 
-    // subaccountService.subaccounts is a singleton-scoped list, so this FilteredList (and the
-    // wrapping SortedList built on top of it in initialize()) stays permanently registered on it
-    // even after this window closes - JavaFX's FilteredList has no detach/dispose of its own. Its
-    // predicate is what actually matters: initialize() replaces it with one that captures
-    // showHiddenCheckbox, which would otherwise keep this whole window's scene graph reachable
-    // forever - dispose() drops that back to a predicate that captures nothing.
-    private var visible: FilteredList<SubaccountObservable>? = null
-
     @FXML
     private lateinit var accountNameLabel: Label
 
@@ -103,7 +95,6 @@ class SubaccountsController @Inject constructor(
 
         val allForAccount = FilteredList(subaccountService.subaccounts) { it.content.accountId == accountId }
         val visible = FilteredList(allForAccount) { showHiddenCheckbox.isSelected || !it.content.isHidden }
-        this.visible = visible
         val sorted = SortedList(visible, compareBy { it.content.name.lowercase() })
         subaccountsTableView.items = sorted
 
@@ -123,9 +114,8 @@ class SubaccountsController @Inject constructor(
             createNewButton
         )
 
-        // any change to a subaccount's rest/hidden affects the difference shown in the header -
-        // routed through weakListeners for the same reason as visible's predicate (see the field)
-        allForAccount.addListener(weakListeners(ListChangeListener { updateDifference(accountId, digitsAfterPoint) }))
+        // any change to a subaccount's rest/hidden affects the difference shown in the header
+        allForAccount.addListener(ListChangeListener { updateDifference(accountId, digitsAfterPoint) })
         weakListeners.addListenerAndCallNow(dbService.sessionProperty) { _, _, session ->
             if (session != null) {
                 weakListeners.subscribe(session.db, Db.SubscribeKind.TRANSACTION, Db.SubscribeKind.ACCOUNT) {
@@ -139,7 +129,6 @@ class SubaccountsController @Inject constructor(
     override fun dispose() {
         weakListeners.dispose()
         refreshPause.stop()
-        visible?.setPredicate { !it.content.isHidden }
     }
 
     private var lastAccountRest = RawMoney.ZERO
