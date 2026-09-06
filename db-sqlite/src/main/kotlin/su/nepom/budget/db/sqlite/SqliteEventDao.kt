@@ -8,7 +8,9 @@ import org.ktorm.dsl.eq
 import org.ktorm.dsl.gte
 import org.ktorm.dsl.like
 import org.ktorm.dsl.lte
+import org.ktorm.entity.EntitySequence
 import org.ktorm.entity.add
+import org.ktorm.entity.count
 import org.ktorm.entity.drop
 import org.ktorm.entity.filter
 import org.ktorm.entity.find
@@ -18,6 +20,8 @@ import org.ktorm.entity.take
 import su.nepom.budget.Global
 import su.nepom.budget.db.Db
 import su.nepom.budget.db.dao.EventDao
+import su.nepom.budget.db.sqlite.mapping.EventEntity
+import su.nepom.budget.db.sqlite.mapping.Events
 import su.nepom.budget.db.sqlite.mapping.events
 import su.nepom.budget.db.sqlite.mapping.toEntity
 import su.nepom.budget.db.sqlite.utils.DatabaseHolder
@@ -60,8 +64,7 @@ internal class SqliteEventDao(
             .map { it.toEvent() }
     }
 
-    override fun getByQuery(query: EventDao.Query): List<ActualEvent> = session.doReadOp {
-        val filter = query.filter
+    private fun filteredSequence(filter: EventDao.Filter): EntitySequence<EventEntity, Events> {
         var seq = events
         filter.place?.let { place -> seq = seq.filter { it.source eq place.code } }
         filter.no?.let { range -> seq = seq.filter { (it.no gte range.start) and (it.no lte range.endInclusive) } }
@@ -70,12 +73,22 @@ internal class SqliteEventDao(
         }
         filter.creator?.let { creator -> seq = seq.filter { it.creator eq creator } }
         filter.objectKind?.let { kind -> seq = seq.filter { it.objectKind eq kind.name } }
+        filter.objectUuid?.let { uuid -> seq = seq.filter { it.objectUuid eq uuid.id } }
         // type isn't a column, so match it inside the serialized json
         filter.type?.let { type -> seq = seq.filter { it.serialized like "%\"type\":\"${type.name}\"%" } }
         filter.contentPart?.let { part -> seq = seq.filter { it.serialized like "%$part%" } }
+        return seq
+    }
+
+    override fun getByQuery(query: EventDao.Query): List<ActualEvent> = session.doReadOp {
+        var seq = filteredSequence(query.filter)
         seq = if (query.sortByDateAsc) seq.sortedBy({ it.created.asc() }, { it.id.asc() })
         else seq.sortedBy({ it.created.desc() }, { it.id.desc() })
         seq.drop(query.offset).take(query.limit).map { it.toEvent() }
+    }
+
+    override fun countByFilter(filter: EventDao.Filter): Int = session.doReadOp {
+        filteredSequence(filter).count()
     }
 
     override fun getDb(): Database = session.db.database

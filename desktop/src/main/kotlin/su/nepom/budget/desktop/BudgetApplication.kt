@@ -84,11 +84,16 @@ class BudgetApplication : Application() {
             setOnAction { budgetComponent.windowManager().openMoney() }
         }
 
+        val eventsButton = Button("События").apply {
+            maxWidth = Double.MAX_VALUE
+            setOnAction { budgetComponent.windowManager().openEvents() }
+        }
+
         rootPane = BorderPane().apply {
             top = buildMenuBar()
             left = ToolBar(
                 mainAccountsButton, Separator(),
-                transactionsButton, balancesButton, moneyButton, Separator(),
+                transactionsButton, balancesButton, moneyButton, eventsButton, Separator(),
                 syncButton, Separator(),
                 accountsButton, currenciesButton, Separator(),
             ).apply {
@@ -125,7 +130,10 @@ class BudgetApplication : Application() {
         val openMoneyItem = MenuItem("Деньги").apply {
             setOnAction { budgetComponent.windowManager().openMoney() }
         }
-        val windowsMenu = Menu("Окна", null, openTransactionsItem, openBalancesItem, openMoneyItem)
+        val openEventsItem = MenuItem("События").apply {
+            setOnAction { budgetComponent.windowManager().openEvents() }
+        }
+        val windowsMenu = Menu("Окна", null, openTransactionsItem, openBalancesItem, openMoneyItem, openEventsItem)
 
         val aboutItem = MenuItem("О программе").apply {
             setOnAction { budgetComponent.aboutDialog().show() }

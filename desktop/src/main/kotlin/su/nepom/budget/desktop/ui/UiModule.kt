@@ -7,6 +7,7 @@ import su.nepom.budget.desktop.ui.common.CommonModule
 import su.nepom.budget.desktop.ui.configuration.ConfigurationModule
 import su.nepom.budget.desktop.ui.conflict.ConflictModule
 import su.nepom.budget.desktop.ui.currency.CurrencyModule
+import su.nepom.budget.desktop.ui.event.EventModule
 import su.nepom.budget.desktop.ui.history.HistoryModule
 import su.nepom.budget.desktop.ui.main.MainAccountsModule
 import su.nepom.budget.desktop.ui.money.MoneyModule
@@ -26,6 +27,7 @@ import su.nepom.budget.desktop.ui.transaction.TransactionModule
         MoneyModule::class,
         TransactionModule::class,
         HistoryModule::class,
+        EventModule::class,
         SyncModule::class,
         SubaccountsModule::class,
     ]

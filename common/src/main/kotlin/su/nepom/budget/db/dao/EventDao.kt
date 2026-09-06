@@ -29,6 +29,7 @@ interface EventDao {
         val type: EventType? = null,
         val contentPart: String? = null,
         val objectKind: ObjectKind? = null,
+        val objectUuid: Uuid? = null,
     )
 
     data class Query(
@@ -39,4 +40,6 @@ interface EventDao {
     )
 
     fun getByQuery(query: Query): List<ActualEvent>
+
+    fun countByFilter(filter: Filter): Int
 }

@@ -86,6 +86,23 @@ class WindowManager @Inject constructor(
         }
     }
 
+    fun openEvents() {
+        open("События", "events") { stage, collect ->
+            stage.setIcon("history")
+            val content = fxmlService.load<Parent>("event/events.fxml", stage, null, collect)
+            BorderPane().apply {
+                top = MenuBar(
+                    Menu(
+                        "Окно", null,
+                        MenuItem("Новое окно").apply { setOnAction { openEvents() } },
+                        MenuItem("Закрыть").apply { setOnAction { stage.close() } },
+                    )
+                )
+                center = content
+            }
+        }
+    }
+
     fun openSubaccounts(accountId: AccountId, accountName: String) {
         open("Субсчета: $accountName", null) { stage, collect ->
             stage.setIcon("accounts")
