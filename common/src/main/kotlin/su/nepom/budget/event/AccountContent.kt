@@ -28,6 +28,12 @@ data class AccountContentV1(
     val restMark: RestMark = RestMark.IF_NEGATIVE,
     // credit limit in minor units; 0 means "no credit limit"
     val creditLimit: RawMoney = RawMoney.ZERO,
+    /**
+     * If set, then this account and another account with b.currency = this.pairCurrency
+     * and b.pairCurrency = this.currency are considered as a pair of currency exchange accounts.
+     * this.kind and b.kind must be BUDGET. Exactly one b should exist
+     */
+    val pairCurrency: CurrencyId? = null,
 ): StorableContent, ActualVersionContent {
     override val objectKind: ObjectKind get() = ObjectKind.ACCOUNT
 

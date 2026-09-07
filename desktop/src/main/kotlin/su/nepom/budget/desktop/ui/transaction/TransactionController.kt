@@ -945,6 +945,7 @@ class TransactionController @Inject constructor(
         OperationType.INCOME -> "Приход"
         OperationType.EXPENSE -> "Расход"
         OperationType.TRANSFER -> "Перевод"
+        OperationType.CURRENCY_TRANSFER -> "Перевод валюты"
         OperationType.CURRENCY_EXCHANGE -> "Обмен"
         OperationType.MIXED -> "Сложная"
     }
@@ -955,6 +956,7 @@ class TransactionController @Inject constructor(
         OperationType.INCOME -> "#8fcfa8"
         OperationType.EXPENSE -> "#eab3ad"
         OperationType.TRANSFER -> "#c7ccd4"
+        OperationType.CURRENCY_TRANSFER -> "#b8cde6"
         OperationType.CURRENCY_EXCHANGE -> "#cdb8e6"
         OperationType.MIXED -> "#c7ccd4"
     }
@@ -963,6 +965,7 @@ class TransactionController @Inject constructor(
         OperationType.INCOME -> Color.web("#2e7d46")
         OperationType.EXPENSE -> Color.web("#c23b32")
         OperationType.TRANSFER -> Color.web("#5b6472")
+        OperationType.CURRENCY_TRANSFER -> Color.web("#2e5aac")
         OperationType.CURRENCY_EXCHANGE -> Color.web("#7a4fae")
         OperationType.MIXED -> Color.web("#5b6472")
     }

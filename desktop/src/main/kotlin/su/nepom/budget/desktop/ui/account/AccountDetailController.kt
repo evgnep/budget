@@ -18,6 +18,7 @@ import javafx.scene.control.TableColumn
 import javafx.scene.control.TableView
 import javafx.scene.control.TextField
 import javafx.scene.control.cell.TextFieldTableCell
+import javafx.scene.layout.HBox
 import javafx.scene.layout.VBox
 import javafx.util.StringConverter
 import kotlinx.datetime.toJavaLocalDate
@@ -29,6 +30,7 @@ import su.nepom.budget.desktop.service.CurrencyService
 import su.nepom.budget.desktop.service.DbService
 import su.nepom.budget.desktop.util.fx.Controller
 import su.nepom.budget.desktop.util.fx.FormDriver
+import su.nepom.budget.db.dao.AccountDao
 import su.nepom.budget.event.AccountBudget
 import su.nepom.budget.event.AccountContent
 import su.nepom.budget.event.DailyAllowance
@@ -74,6 +76,21 @@ class AccountDetailController @Inject constructor(
 
     @FXML
     private lateinit var kindComboBox: ComboBox<AccountKind>
+
+    @FXML
+    private lateinit var pairCurrencyLabel: Label
+
+    @FXML
+    private lateinit var pairCurrencyBox: HBox
+
+    @FXML
+    private lateinit var pairCurrencyComboBox: ComboBox<CurrencyObservable>
+
+    @FXML
+    private lateinit var clearPairCurrencyButton: Button
+
+    @FXML
+    private lateinit var pairStatusLabel: Label
 
     @FXML
     private lateinit var hiddenCheckbox: CheckBox
@@ -159,6 +176,9 @@ class AccountDetailController @Inject constructor(
         val to = SimpleObjectProperty(this, "to", to)
     }
 
+    // pairCurrency candidates: visible currencies minus the account's own currency
+    private lateinit var pairCurrencyCandidates: FilteredList<CurrencyObservable>
+
     private val tagsProperty = SimpleObjectProperty<Set<String>>(this, "tags", emptySet())
 
     private val budgetProperty = SimpleObjectProperty(this, "budget", AccountBudget.EMPTY)
@@ -196,6 +216,7 @@ class AccountDetailController @Inject constructor(
 
         setupTagsEditor()
         setupBudgetEditor()
+        setupPairCurrencyEditor()
 
         formDriver = FormDriver.builder(
             okButton,
@@ -237,6 +258,12 @@ class AccountDetailController @Inject constructor(
                 { it?.content?.kind ?: AccountKind.MONEY },
                 { kind = it },
                 disabledInEditMode = true)
+            .field(
+                "pairCurrency",
+                pairCurrencyComboBox,
+                pairCurrencyComboBox.valueProperty() as Property<CurrencyObservable?>,
+                { account -> account?.content?.pairCurrency?.let { currencyService.currencies[it.uuid] } },
+                { pairCurrency = it?.content?.id })
             .field(
                 "hidden",
                 hiddenCheckbox,
@@ -367,6 +394,53 @@ class AccountDetailController @Inject constructor(
         }
         kindComboBox.valueProperty().addListener { _, _, kind -> updateBudgetSectionVisibility(kind) }
         updateBudgetSectionVisibility(kindComboBox.value)
+    }
+
+    // --- pair currency editor (currency exchange accounts pairing, see budget.md) ---
+
+    private fun setupPairCurrencyEditor() {
+        pairCurrencyComboBox.converter = currencyConverter
+        pairCurrencyCandidates = FilteredList(visibleCurrencies) { it != currencyComboBox.value }
+        pairCurrencyComboBox.items = pairCurrencyCandidates
+        currencyComboBox.valueProperty().addListener { _, _, cur ->
+            pairCurrencyCandidates.setPredicate { it != cur }
+        }
+        clearPairCurrencyButton.setOnAction { pairCurrencyComboBox.value = null }
+        // pairCurrency only makes sense for BUDGET accounts - clear it when the kind changes away
+        kindComboBox.valueProperty().addListener { _, _, kind ->
+            updatePairCurrencyVisibility(kind)
+            if (kind != AccountKind.BUDGET) pairCurrencyComboBox.value = null
+        }
+        updatePairCurrencyVisibility(kindComboBox.value)
+        listOf(currencyComboBox.valueProperty(), pairCurrencyComboBox.valueProperty())
+            .forEach { it.addListener { _, _, _ -> refreshPairStatus() } }
+        refreshPairStatus()
+    }
+
+    private fun updatePairCurrencyVisibility(kind: AccountKind?) {
+        val show = kind == AccountKind.BUDGET
+        listOf(pairCurrencyLabel, pairCurrencyBox).forEach {
+            it.isVisible = show
+            it.isManaged = show
+        }
+    }
+
+    // shows the resolved pair account (or an error) for the currently selected currency / pairCurrency,
+    // even before saving - a live preview of what getCurrencyExchangeAccounts would return
+    private fun refreshPairStatus() {
+        val currency = currencyComboBox.value?.content?.id
+        val pairCurrency = pairCurrencyComboBox.value?.content?.id
+        val session = dbService.sessionProperty.value
+        if (currency == null || pairCurrency == null || session == null) {
+            pairStatusLabel.text = ""
+            return
+        }
+        pairStatusLabel.text = when (val result = session.accountDao.getCurrencyExchangeAccounts(currency, pairCurrency)) {
+            is AccountDao.CurrencyExchangeAccount.Success -> "Парный счёт: ${result.two.name}"
+            AccountDao.CurrencyExchangeAccount.NotFound -> ""
+            AccountDao.CurrencyExchangeAccount.Failure.NO_PAIR -> "Нет парного счёта с обратной настройкой"
+            AccountDao.CurrencyExchangeAccount.Failure.TOO_MANY_PAIRS -> "Настроено больше одной пары для этих валют"
+        }
     }
 
     private fun setupPeriodColumns(

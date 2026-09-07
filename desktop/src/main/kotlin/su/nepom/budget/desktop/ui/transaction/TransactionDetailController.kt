@@ -60,6 +60,7 @@ import su.nepom.budget.utils.format
 import su.nepom.budget.utils.toBigDecimal
 import su.nepom.budget.utils.toRawMoney
 import su.nepom.budget.utils.toRawMoneyOrNull
+import su.nepom.budget.db.dao.AccountDao
 import su.nepom.budget.event.AccountContent
 import su.nepom.budget.event.TransactionContent
 import su.nepom.budget.event.TransactionContentItem
@@ -101,7 +102,7 @@ class TransactionDetailController @Inject constructor(
   }
 
   // which operation tab is active; DETAILS is the raw item list, always available
-  private enum class OperationTab { INCOME, EXPENSE, TRANSFER, EXCHANGE, DETAILS }
+  private enum class OperationTab { INCOME, EXPENSE, TRANSFER, EXCHANGE, CURRENCY_TRANSFER, DETAILS }
 
   // a "pick account" control: SearchableComboBox ("name, currency", filters as you type in its
   // own popup search field - see ControlsFX SearchableComboBoxSkin) + "..." button that opens the
@@ -257,7 +258,13 @@ class TransactionDetailController @Inject constructor(
   private lateinit var exchangeBudget1: AccountField
   private lateinit var exchangeMoney2: AccountField
   private lateinit var exchangeBudget2: AccountField
+  private lateinit var currencyTransferFrom: AccountField
+  private lateinit var currencyTransferTo: AccountField
   private lateinit var accountFields: List<AccountField>
+
+  // guards recomputeCurrencyTransferAmount against re-entering itself while it writes the
+  // counterpart amount field
+  private var updatingCurrencyTransferAmounts = false
 
   lateinit var formDriver: FormDriver<*, TransactionObservable>
     private set
@@ -300,6 +307,8 @@ class TransactionDetailController @Inject constructor(
   @FXML
   private lateinit var typeExchangeButton: ToggleButton
   @FXML
+  private lateinit var typeCurrencyTransferButton: ToggleButton
+  @FXML
   private lateinit var operationContentPane: StackPane
   @FXML
   private lateinit var incomePane: GridPane
@@ -309,6 +318,8 @@ class TransactionDetailController @Inject constructor(
   private lateinit var transferPane: GridPane
   @FXML
   private lateinit var exchangePane: GridPane
+  @FXML
+  private lateinit var currencyTransferPane: GridPane
   @FXML
   private lateinit var entriesPane: VBox
   @FXML
@@ -403,6 +414,33 @@ class TransactionDetailController @Inject constructor(
   private lateinit var exchangeCurrency2Label: Label
   @FXML
   private lateinit var exchangeRateLabel: Label
+  @FXML
+  private lateinit var useExchangeAccountsCheckbox: CheckBox
+
+  @FXML
+  private lateinit var currencyTransferFromCombo: SearchableComboBox<AccountObservable>
+  @FXML
+  private lateinit var currencyTransferFromButton: Button
+  @FXML
+  private lateinit var currencyTransferFromClearButton: Button
+  @FXML
+  private lateinit var currencyTransferAmount1Field: TextField
+  @FXML
+  private lateinit var currencyTransferCurrency1Label: Label
+  @FXML
+  private lateinit var currencyTransferToCombo: SearchableComboBox<AccountObservable>
+  @FXML
+  private lateinit var currencyTransferToButton: Button
+  @FXML
+  private lateinit var currencyTransferToClearButton: Button
+  @FXML
+  private lateinit var currencyTransferAmount2Field: TextField
+  @FXML
+  private lateinit var currencyTransferCurrency2Label: Label
+  @FXML
+  private lateinit var currencyTransferRateLabel: Label
+  @FXML
+  private lateinit var swapCurrencyTransferAccountsButton: Button
 
   @FXML
   private lateinit var itemsTable: TableView<ItemRow>
@@ -461,6 +499,7 @@ class TransactionDetailController @Inject constructor(
     setupFocusRingRefresh()
     setupAllowEditToggle()
     setupSwapAccountsButton()
+    setupSwapCurrencyTransferAccountsButton()
     updateEventInfo(null)
     updateCopyButton()
   }
@@ -472,6 +511,21 @@ class TransactionDetailController @Inject constructor(
       val to = transferTo.value
       transferFrom.set(to)
       transferTo.set(from)
+    }
+  }
+
+  // same idea for the currency transfer tab, but the two amounts (one per currency) swap along
+  // with the accounts
+  private fun setupSwapCurrencyTransferAccountsButton() {
+    swapCurrencyTransferAccountsButton.setOnAction {
+      val from = currencyTransferFrom.value
+      val to = currencyTransferTo.value
+      val amount1 = currencyTransferAmount1Field.text
+      val amount2 = currencyTransferAmount2Field.text
+      currencyTransferFrom.set(to)
+      currencyTransferTo.set(from)
+      currencyTransferAmount1Field.text = amount2
+      currencyTransferAmount2Field.text = amount1
     }
   }
 
@@ -536,6 +590,7 @@ class TransactionDetailController @Inject constructor(
     OperationTab.EXPENSE -> expenseAmountField
     OperationTab.TRANSFER -> transferAmountField
     OperationTab.EXCHANGE -> exchangeAmount2Field
+    OperationTab.CURRENCY_TRANSFER -> currencyTransferAmount2Field
     OperationTab.DETAILS -> addItemButton
   }
 
@@ -680,7 +735,9 @@ class TransactionDetailController @Inject constructor(
     // regardless of the meta toggle. The toggle itself (and the id row) stays usable, same as edit.
     listOf(
       addItemButton, removeItemButton, copyButton, deleteButton, swapAccountsButton,
+      swapCurrencyTransferAccountsButton,
       eventInfoLabel, changedAtLabel, creatorRowLabel, creatorLabel, historyLink, allowEditToggle,
+      useExchangeAccountsCheckbox,
     ).forEach {
       it.isVisible = false
       it.isManaged = false
@@ -699,6 +756,7 @@ class TransactionDetailController @Inject constructor(
     listOf(
       incomeAmountField, expenseAmountField, transferAmountField,
       exchangeAmount1Field, exchangeAmount2Field,
+      currencyTransferAmount1Field, currencyTransferAmount2Field,
     ).forEach {
       it.isEditable = false
       it.isFocusTraversable = false
@@ -847,9 +905,24 @@ class TransactionDetailController @Inject constructor(
       { AccountKind.BUDGET },
       { exchangeMoney2.value?.content?.currency }
     )
+    currencyTransferFrom = AccountField(
+      currencyTransferFromCombo,
+      currencyTransferFromButton,
+      currencyTransferFromClearButton,
+      { AccountKind.BUDGET },
+      { null }
+    )
+    currencyTransferTo = AccountField(
+      currencyTransferToCombo,
+      currencyTransferToButton,
+      currencyTransferToClearButton,
+      { AccountKind.BUDGET },
+      { null }
+    )
     accountFields = listOf(
       incomeMoney, incomeBudget, expenseMoney, expenseBudget, transferFrom, transferTo,
       exchangeMoney1, exchangeBudget1, exchangeMoney2, exchangeBudget2,
+      currencyTransferFrom, currencyTransferTo,
     )
 
     accountFields.forEach { it.account.addListener { _, _, _ -> onTabFieldChanged() } }
@@ -858,11 +931,46 @@ class TransactionDetailController @Inject constructor(
       exchangeAmount1Field, exchangeAmount2Field,
     ).forEach { it.textProperty().addListener { _, _, _ -> onTabFieldChanged() } }
 
+    // "Использовать счета обмена" - auto-fill the budget accounts from the currency pair instead
+    // of manual selection, and lock them read-only while the checkbox is on
+    useExchangeAccountsCheckbox.selectedProperty().addListener { _, _, selected ->
+      listOf(exchangeBudget1, exchangeBudget2).forEach {
+        it.comboBox.isDisable = selected
+        it.pickButton.isDisable = selected
+        // removeButton's disableProperty is bound to account.isNull (see AccountField.init) -
+        // setting isDisable directly on a bound property throws, so unbind/rebind instead
+        if (selected) {
+          it.removeButton.disableProperty().unbind()
+          it.removeButton.isDisable = true
+        } else {
+          it.removeButton.disableProperty().bind(it.account.isNull)
+        }
+      }
+      if (selected) updateExchangeAccountsFromPair()
+      updateRateLabel()
+    }
+    listOf(exchangeMoney1.account, exchangeMoney2.account).forEach { prop ->
+      prop.addListener { _, _, _ -> if (useExchangeAccountsCheckbox.isSelected) updateExchangeAccountsFromPair() }
+    }
+
+    // currency transfer: typing an amount on one side recomputes the other from the exchange
+    // accounts' rest ratio
+    currencyTransferAmount1Field.textProperty().addListener { _, _, _ ->
+      if (!updatingCurrencyTransferAmounts) recomputeCurrencyTransferAmount(editedFirst = true)
+      onTabFieldChanged()
+    }
+    currencyTransferAmount2Field.textProperty().addListener { _, _, _ ->
+      if (!updatingCurrencyTransferAmounts) recomputeCurrencyTransferAmount(editedFirst = false)
+      onTabFieldChanged()
+    }
+
     installFormulaEvaluation(incomeAmountField) { digitsOf(incomeMoney.value) }
     installFormulaEvaluation(expenseAmountField) { digitsOf(expenseMoney.value) }
     installFormulaEvaluation(transferAmountField) { digitsOf(transferFrom.value) }
     installFormulaEvaluation(exchangeAmount1Field) { digitsOf(exchangeMoney1.value) }
     installFormulaEvaluation(exchangeAmount2Field) { digitsOf(exchangeMoney2.value) }
+    installFormulaEvaluation(currencyTransferAmount1Field) { digitsOf(currencyTransferFrom.value) }
+    installFormulaEvaluation(currencyTransferAmount2Field) { digitsOf(currencyTransferTo.value) }
 
     operationTabProperty.addListener { _, _, tab ->
       tab ?: return@addListener
@@ -887,7 +995,7 @@ class TransactionDetailController @Inject constructor(
     }
 
     typeGroup = ToggleGroup()
-    listOf(typeIncomeButton, typeExpenseButton, typeTransferButton, typeExchangeButton)
+    listOf(typeIncomeButton, typeExpenseButton, typeTransferButton, typeExchangeButton, typeCurrencyTransferButton)
       .forEach { it.toggleGroup = typeGroup }
     preventDeselection(typeGroup)
     typeGroup.selectedToggleProperty().addListener { _, old, new ->
@@ -929,12 +1037,14 @@ class TransactionDetailController @Inject constructor(
       OperationTab.EXPENSE to typeExpenseButton,
       OperationTab.TRANSFER to typeTransferButton,
       OperationTab.EXCHANGE to typeExchangeButton,
+      OperationTab.CURRENCY_TRANSFER to typeCurrencyTransferButton,
     ).forEach { (t, button) -> button.isFocusTraversable = t == tab }
     listOf(
       OperationTab.INCOME to incomePane,
       OperationTab.EXPENSE to expensePane,
       OperationTab.TRANSFER to transferPane,
       OperationTab.EXCHANGE to exchangePane,
+      OperationTab.CURRENCY_TRANSFER to currencyTransferPane,
       OperationTab.DETAILS to entriesPane,
     ).forEach { (t, pane) ->
       pane.isVisible = t == tab
@@ -953,7 +1063,8 @@ class TransactionDetailController @Inject constructor(
     val (descriptionRow, flagRow) = when (tab) {
       OperationTab.INCOME, OperationTab.EXPENSE -> 4 to 5
       OperationTab.TRANSFER -> 5 to 6
-      OperationTab.EXCHANGE -> 10 to 11
+      OperationTab.EXCHANGE -> 11 to 12
+      OperationTab.CURRENCY_TRANSFER -> 7 to 8
       OperationTab.DETAILS -> 0 to 1
     }
     // dateEditPicker goes first in Tab order (see relocate's "atStart") - descriptionEditField and
@@ -968,6 +1079,7 @@ class TransactionDetailController @Inject constructor(
     OperationTab.EXPENSE -> expensePane
     OperationTab.TRANSFER -> transferPane
     OperationTab.EXCHANGE -> exchangePane
+    OperationTab.CURRENCY_TRANSFER -> currencyTransferPane
     OperationTab.DETAILS -> throw IllegalArgumentException("DETAILS has no shared GridPane")
   }
 
@@ -996,6 +1108,7 @@ class TransactionDetailController @Inject constructor(
     OperationTab.EXPENSE -> typeExpenseButton
     OperationTab.TRANSFER -> typeTransferButton
     OperationTab.EXCHANGE -> typeExchangeButton
+    OperationTab.CURRENCY_TRANSFER -> typeCurrencyTransferButton
     OperationTab.DETAILS -> throw IllegalArgumentException("DETAILS has no type button")
   }
 
@@ -1003,6 +1116,7 @@ class TransactionDetailController @Inject constructor(
     typeIncomeButton -> OperationTab.INCOME
     typeExpenseButton -> OperationTab.EXPENSE
     typeTransferButton -> OperationTab.TRANSFER
+    typeCurrencyTransferButton -> OperationTab.CURRENCY_TRANSFER
     else -> OperationTab.EXCHANGE
   }
 
@@ -1010,6 +1124,7 @@ class TransactionDetailController @Inject constructor(
     OperationType.INCOME -> OperationTab.INCOME
     OperationType.EXPENSE -> OperationTab.EXPENSE
     OperationType.TRANSFER -> OperationTab.TRANSFER
+    OperationType.CURRENCY_TRANSFER -> OperationTab.CURRENCY_TRANSFER
     OperationType.CURRENCY_EXCHANGE -> OperationTab.EXCHANGE
     OperationType.MIXED -> OperationTab.DETAILS
   }
@@ -1030,6 +1145,7 @@ class TransactionDetailController @Inject constructor(
       OperationTab.EXPENSE to typeExpenseButton,
       OperationTab.TRANSFER to typeTransferButton,
       OperationTab.EXCHANGE to typeExchangeButton,
+      OperationTab.CURRENCY_TRANSFER to typeCurrencyTransferButton,
     ).forEach { (t, button) ->
       button.style = if (t == highlightTab) "-fx-font-weight: bold;" else ""
     }
@@ -1042,6 +1158,7 @@ class TransactionDetailController @Inject constructor(
         OperationTab.EXPENSE to typeExpenseButton,
         OperationTab.TRANSFER to typeTransferButton,
         OperationTab.EXCHANGE to typeExchangeButton,
+        OperationTab.CURRENCY_TRANSFER to typeCurrencyTransferButton,
       ).forEach { (t, button) ->
         val show = t == typeTab
         button.isVisible = show
@@ -1065,6 +1182,10 @@ class TransactionDetailController @Inject constructor(
       // and carry it back when leaving the currency exchange form
       from == OperationTab.EXCHANGE ->
         simpleTabFields(to)?.first?.set(exchangeMoney1.value)
+      // same carry-over for the currency transfer form
+      src != null && to == OperationTab.CURRENCY_TRANSFER -> currencyTransferFrom.set(src.first.value)
+      from == OperationTab.CURRENCY_TRANSFER ->
+        simpleTabFields(to)?.first?.set(currencyTransferFrom.value)
     }
     updateCurrencyLabels()
     updateRateLabel()
@@ -1095,6 +1216,7 @@ class TransactionDetailController @Inject constructor(
   private fun onTabFieldChanged() {
     updateCurrencyLabels()
     updateRateLabel()
+    updateCurrencyTransferRateLabel()
     if (populating || syncingTab) return
     val tab = operationTabProperty.value
     if (tab != OperationTab.DETAILS) writeItemsFromTab(tab)
@@ -1145,6 +1267,15 @@ class TransactionDetailController @Inject constructor(
         listOf(item(m1, -s1), item(b1, -s1), item(m2, s2), item(b2, s2))
       }
 
+      OperationTab.CURRENCY_TRANSFER -> {
+        val from = currencyTransferFrom.value ?: return null
+        val to = currencyTransferTo.value ?: return null
+        val pair = resolveExchangePair(from.content.currency, to.content.currency) ?: return null
+        val amount1 = positive(currencyTransferAmount1Field, digitsOf(from)) ?: return null
+        val amount2 = positive(currencyTransferAmount2Field, digitsOf(to)) ?: return null
+        listOf(item(from, -amount1), item(pair.first, amount1), item(to, amount2), item(pair.second, -amount2))
+      }
+
       OperationTab.DETAILS -> null
     }
   }
@@ -1185,6 +1316,22 @@ class TransactionDetailController @Inject constructor(
           fillExchangeSide(target, exchangeMoney2, exchangeBudget2, exchangeAmount2Field)
         }
 
+        OperationType.CURRENCY_TRANSFER -> {
+          // in each currency group the exchange-pair account is the one with pairCurrency set -
+          // the other item is the actual "from"/"to" account being transferred
+          val groups = items.groupBy { accountOf(it)?.content?.currency }.entries.filter { it.key != null }
+          fun mainItem(group: Map.Entry<CurrencyId?, List<TransactionContentItem>>?) =
+            group?.value?.firstOrNull { accountOf(it)?.content?.pairCurrency == null }
+          val fromGroup = groups.firstOrNull { g -> mainItem(g)?.money?.value?.let { it < 0 } == true }
+          val toGroup = groups.firstOrNull { it !== fromGroup }
+          val fromItem = mainItem(fromGroup)
+          val toItem = mainItem(toGroup)
+          currencyTransferFrom.set(accountOf(fromItem))
+          currencyTransferTo.set(accountOf(toItem))
+          currencyTransferAmount1Field.text = amountText(fromItem)
+          currencyTransferAmount2Field.text = amountText(toItem)
+        }
+
         OperationType.MIXED -> {
           // no structured form fits - the DETAILS tab shows the raw rows
         }
@@ -1221,6 +1368,7 @@ class TransactionDetailController @Inject constructor(
       listOf(
         incomeAmountField, expenseAmountField, transferAmountField,
         exchangeAmount1Field, exchangeAmount2Field,
+        currencyTransferAmount1Field, currencyTransferAmount2Field,
       ).forEach { it.text = "" }
     } finally {
       populating = wasPopulating
@@ -1233,6 +1381,8 @@ class TransactionDetailController @Inject constructor(
     transferCurrencyLabel.text = transferFrom.value?.let { currencyName(it) } ?: ""
     exchangeCurrency1Label.text = exchangeMoney1.value?.let { currencyName(it) } ?: ""
     exchangeCurrency2Label.text = exchangeMoney2.value?.let { currencyName(it) } ?: ""
+    currencyTransferCurrency1Label.text = currencyTransferFrom.value?.let { currencyName(it) } ?: ""
+    currencyTransferCurrency2Label.text = currencyTransferTo.value?.let { currencyName(it) } ?: ""
   }
 
   private fun updateRateLabel() {
@@ -1242,15 +1392,92 @@ class TransactionDetailController @Inject constructor(
     val d2 = digitsOf(a2)
     val s1 = exchangeAmount1Field.text.toRawMoneyOrNull(d1)?.takeIf { it.value > 0 }?.toBigDecimal(d1)
     val s2 = exchangeAmount2Field.text.toRawMoneyOrNull(d2)?.takeIf { it.value > 0 }?.toBigDecimal(d2)
-    if (a1 == null || a2 == null || s1 == null || s2 == null) {
-      exchangeRateLabel.text = ""
+    val amountRateText = if (a1 == null || a2 == null || s1 == null || s2 == null) null else {
+      val c1 = currencyName(a1)
+      val c2 = currencyName(a2)
+      val r1 = s2.divide(s1, 6, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString()
+      val r2 = s1.divide(s2, 6, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString()
+      "1 $c1 = $r1 $c2\n1 $c2 = $r2 $c1"
+    }
+    val exchangeAccountsRateText =
+      if (useExchangeAccountsCheckbox.isSelected) exchangeRateText(exchangeBudget1.value, exchangeBudget2.value) else null
+    exchangeRateLabel.text = listOfNotNull(amountRateText, exchangeAccountsRateText).joinToString("\n")
+  }
+
+  // --- currency exchange accounts (see docs/budget.md, AccountContent.pairCurrency) ---
+
+  private fun resolveExchangePair(currencyOne: CurrencyId, currencyTwo: CurrencyId): Pair<AccountObservable, AccountObservable>? {
+    val session = dbService.sessionProperty.value ?: return null
+    val result = session.accountDao.getCurrencyExchangeAccounts(currencyOne, currencyTwo)
+    val success = result as? AccountDao.CurrencyExchangeAccount.Success ?: return null
+    val one = accountService.accounts[success.one.uuid] ?: return null
+    val two = accountService.accounts[success.two.uuid] ?: return null
+    return one to two
+  }
+
+  private fun updateExchangeAccountsFromPair() {
+    val m1 = exchangeMoney1.value
+    val m2 = exchangeMoney2.value
+    val pair = if (m1 != null && m2 != null) resolveExchangePair(m1.content.currency, m2.content.currency) else null
+    exchangeBudget1.set(pair?.first)
+    exchangeBudget2.set(pair?.second)
+  }
+
+  // rest-implied rate between a pair of currency exchange accounts, or an explanatory message
+  // when the pair is not configured / has no rest to compute a rate from
+  private fun exchangeRateText(one: AccountObservable?, two: AccountObservable?): String {
+    if (one == null || two == null) return "Нет счетов обмена для этой пары валют"
+    val d1 = digitsOf(one)
+    val d2 = digitsOf(two)
+    val restOne = one.restProperty.get().toBigDecimal(d1)
+    val restTwo = two.restProperty.get().toBigDecimal(d2)
+    if (restOne.signum() == 0 || restTwo.signum() == 0) return "Курс счетов обмена: нет остатка"
+    val c1 = currencyName(one)
+    val c2 = currencyName(two)
+    // one account of the pair always has a negative rest, the other positive - negate to get a
+    // positive rate
+    val r1 = restTwo.divide(restOne, 6, RoundingMode.HALF_UP).negate().stripTrailingZeros().toPlainString()
+    val r2 = restOne.divide(restTwo, 6, RoundingMode.HALF_UP).negate().stripTrailingZeros().toPlainString()
+    return "Курс счетов обмена: 1 $c1 = $r1 $c2, 1 $c2 = $r2 $c1"
+  }
+
+  private fun updateCurrencyTransferRateLabel() {
+    val from = currencyTransferFrom.value
+    val to = currencyTransferTo.value
+    if (from == null || to == null) {
+      currencyTransferRateLabel.text = ""
       return
     }
-    val c1 = currencyName(a1)
-    val c2 = currencyName(a2)
-    val r1 = s2.divide(s1, 6, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString()
-    val r2 = s1.divide(s2, 6, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString()
-    exchangeRateLabel.text = "1 $c1 = $r1 $c2\n1 $c2 = $r2 $c1"
+    val pair = resolveExchangePair(from.content.currency, to.content.currency)
+    currencyTransferRateLabel.text = exchangeRateText(pair?.first, pair?.second)
+  }
+
+  // auto-fills the counterpart currency transfer amount from the exchange accounts' rest ratio
+  private fun recomputeCurrencyTransferAmount(editedFirst: Boolean) {
+    val from = currencyTransferFrom.value ?: return
+    val to = currencyTransferTo.value ?: return
+    val pair = resolveExchangePair(from.content.currency, to.content.currency) ?: return
+    val d1 = digitsOf(from)
+    val d2 = digitsOf(to)
+    val restOne = pair.first.restProperty.get().toBigDecimal(d1)
+    val restTwo = pair.second.restProperty.get().toBigDecimal(d2)
+    if (restOne.signum() == 0 || restTwo.signum() == 0) return
+    updatingCurrencyTransferAmounts = true
+    try {
+      // one account of the pair always has a negative rest, the other positive - negate to get a
+      // positive amount
+      if (editedFirst) {
+        val amount1 = currencyTransferAmount1Field.text.toRawMoneyOrNull(d1)?.takeIf { it.value > 0 } ?: return
+        val amount2 = amount1.toBigDecimal(d1).multiply(restTwo).divide(restOne, 10, RoundingMode.HALF_UP).negate()
+        currencyTransferAmount2Field.text = amount2.toRawMoney(d2).format(d2)
+      } else {
+        val amount2 = currencyTransferAmount2Field.text.toRawMoneyOrNull(d2)?.takeIf { it.value > 0 } ?: return
+        val amount1 = amount2.toBigDecimal(d2).multiply(restOne).divide(restTwo, 10, RoundingMode.HALF_UP).negate()
+        currencyTransferAmount1Field.text = amount1.toRawMoney(d1).format(d1)
+      }
+    } finally {
+      updatingCurrencyTransferAmounts = false
+    }
   }
 
   private fun setupForm() {
@@ -1461,6 +1688,13 @@ class TransactionDetailController @Inject constructor(
   }
 
   private fun validateItems(): List<String> {
+    // check this first: on the CURRENCY_TRANSFER tab an unresolved pair / unknown rate is why
+    // itemRows stays empty in the first place - report the actual reason instead of the generic
+    // "add a row" message below
+    if (operationTabProperty.value == OperationTab.CURRENCY_TRANSFER) {
+      val rateProblems = validateCurrencyTransferRate()
+      if (rateProblems.isNotEmpty()) return rateProblems
+    }
     val problems = mutableListOf<String>()
     if (itemRows.isEmpty()) {
       problems.add("Добавьте хотя бы одну строку")
@@ -1481,6 +1715,21 @@ class TransactionDetailController @Inject constructor(
       }
     }
     return problems
+  }
+
+  // the exchange accounts' rest ratio must be known (both non-zero) to compute the transferred
+  // amount - a zero rest on either account is an error here, not just "rate unknown"
+  private fun validateCurrencyTransferRate(): List<String> {
+    val from = currencyTransferFrom.value ?: return emptyList()
+    val to = currencyTransferTo.value ?: return emptyList()
+    val pair = resolveExchangePair(from.content.currency, to.content.currency)
+      ?: return listOf("Нет счетов обмена для валют ${currencyName(from)} / ${currencyName(to)}")
+    val restOne = pair.first.restProperty.get().toBigDecimal(digitsOf(from))
+    val restTwo = pair.second.restProperty.get().toBigDecimal(digitsOf(to))
+    if (restOne.signum() == 0 || restTwo.signum() == 0) {
+      return listOf("Курс обмена неизвестен: нулевой остаток на счёте обмена")
+    }
+    return emptyList()
   }
 
   private fun computeBalance(): Map<CurrencyId, Pair<Long, Long>> {

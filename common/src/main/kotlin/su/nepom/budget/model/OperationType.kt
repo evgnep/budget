@@ -9,6 +9,7 @@ enum class OperationType {
   INCOME,
   EXPENSE,
   TRANSFER,
+  CURRENCY_TRANSFER,
   CURRENCY_EXCHANGE,
   MIXED,
   ;
@@ -38,15 +39,25 @@ enum class OperationType {
         if (currencies.size != 2) return MIXED
         val itemsWithCurrencyOne = items.filter { accounts[it.account.uuid]?.content?.currency == currencies.first() }
         val itemsWithCurrencyTwo = items.filter { accounts[it.account.uuid]?.content?.currency == currencies.last() }
-        if (itemsWithCurrencyOne.isTransferPart() && itemsWithCurrencyTwo.isTransferPart() &&
+        if (itemsWithCurrencyOne.isExchangePart(accounts) && itemsWithCurrencyTwo.isExchangePart(accounts) &&
           itemsWithCurrencyOne.first().money.value.sign != itemsWithCurrencyTwo.first().money.value.sign
         ) CURRENCY_EXCHANGE
+        else if (itemsWithCurrencyOne.isCurrencyTransferPart(accounts)
+          && itemsWithCurrencyTwo.isCurrencyTransferPart(accounts)
+        ) CURRENCY_TRANSFER
         else MIXED
       }
 
       else -> MIXED
     }
 
-    private fun List<TransactionContentItem>.isTransferPart() = size == 2 && first().money.value == last().money.value
+    private fun List<TransactionContentItem>.isExchangePart(accounts: Map<Uuid, ContentHolder<AccountContent>>) =
+      size == 2 && first().money.value == last().money.value
+              && accounts[first().account.uuid]?.content?.kind != accounts[last().account.uuid]?.content?.kind
+
+    private fun List<TransactionContentItem>.isCurrencyTransferPart(accounts: Map<Uuid, ContentHolder<AccountContent>>) =
+      size == 2 && first().money.value == -last().money.value
+              && accounts[first().account.uuid]?.content?.kind == AccountKind.BUDGET
+              && accounts[last().account.uuid]?.content?.kind == AccountKind.BUDGET
   }
 }

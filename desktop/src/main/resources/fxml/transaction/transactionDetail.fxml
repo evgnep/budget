@@ -47,7 +47,8 @@
                   <ToggleButton fx:id="typeIncomeButton" mnemonicParsing="false" styleClass="left-pill" text="Приход" />
                   <ToggleButton fx:id="typeExpenseButton" mnemonicParsing="false" selected="true" styleClass="center-pill" text="Расход" />
                   <ToggleButton fx:id="typeTransferButton" mnemonicParsing="false" styleClass="center-pill" text="Перевод" />
-                  <ToggleButton fx:id="typeExchangeButton" mnemonicParsing="false" styleClass="right-pill" text="Обмен" />
+                  <ToggleButton fx:id="typeExchangeButton" mnemonicParsing="false" styleClass="center-pill" text="Обмен" />
+                  <ToggleButton fx:id="typeCurrencyTransferButton" mnemonicParsing="false" styleClass="right-pill" text="Перевод валюты" />
                </children>
             </HBox>
             <StackPane fx:id="operationContentPane" VBox.vgrow="ALWAYS">
@@ -219,74 +220,136 @@
                         <RowConstraints vgrow="NEVER" />
                         <RowConstraints vgrow="NEVER" />
                         <RowConstraints vgrow="NEVER" />
+                        <RowConstraints vgrow="NEVER" />
                      </rowConstraints>
                      <children>
                         <!-- row 0: dateEditPicker is relocated here in Kotlin when this tab is active -->
                         <Label text="Дата" />
+                        <CheckBox fx:id="useExchangeAccountsCheckbox" mnemonicParsing="false" text="Использовать счета обмена" GridPane.columnIndex="1" GridPane.rowIndex="1" />
                         <!-- the rule starts mid-label: Separator.HBox.hgrow=ALWAYS fills from right
                              after the label text, both centered on the same row -->
-                        <HBox alignment="CENTER_LEFT" maxWidth="1.7976931348623157E308" spacing="8.0" GridPane.columnSpan="2" GridPane.halignment="LEFT" GridPane.hgrow="ALWAYS" GridPane.rowIndex="1">
+                        <HBox alignment="CENTER_LEFT" maxWidth="1.7976931348623157E308" spacing="8.0" GridPane.columnSpan="2" GridPane.halignment="LEFT" GridPane.hgrow="ALWAYS" GridPane.rowIndex="2">
                            <children>
                               <Label styleClass="exchange-section-label, exchange-section-label-out" text="Отдаём" />
                               <Separator HBox.hgrow="ALWAYS" />
                            </children>
                         </HBox>
-                        <Label text="Деньги" GridPane.rowIndex="2" />
-                        <HBox alignment="CENTER_LEFT" spacing="5.0" GridPane.columnIndex="1" GridPane.rowIndex="2">
+                        <Label text="Деньги" GridPane.rowIndex="3" />
+                        <HBox alignment="CENTER_LEFT" spacing="5.0" GridPane.columnIndex="1" GridPane.rowIndex="3">
                            <children>
                               <SearchableComboBox fx:id="exchangeMoney1Combo" prefWidth="220.0" visibleRowCount="20" />
                               <Button fx:id="exchangeMoney1Button" mnemonicParsing="false" text="..." />
                               <Button fx:id="exchangeMoney1ClearButton" mnemonicParsing="false" text="✕" />
                            </children>
                         </HBox>
-                        <Label text="Бюджет" GridPane.rowIndex="3" />
-                        <HBox alignment="CENTER_LEFT" spacing="5.0" GridPane.columnIndex="1" GridPane.rowIndex="3">
+                        <Label text="Бюджет" GridPane.rowIndex="4" />
+                        <HBox alignment="CENTER_LEFT" spacing="5.0" GridPane.columnIndex="1" GridPane.rowIndex="4">
                            <children>
                               <SearchableComboBox fx:id="exchangeBudget1Combo" prefWidth="220.0" visibleRowCount="20" />
                               <Button fx:id="exchangeBudget1Button" mnemonicParsing="false" text="..." />
                               <Button fx:id="exchangeBudget1ClearButton" mnemonicParsing="false" text="✕" />
                            </children>
                         </HBox>
-                        <Label text="Сумма" GridPane.rowIndex="4" />
-                        <HBox alignment="CENTER_LEFT" spacing="5.0" GridPane.columnIndex="1" GridPane.rowIndex="4">
+                        <Label text="Сумма" GridPane.rowIndex="5" />
+                        <HBox alignment="CENTER_LEFT" spacing="5.0" GridPane.columnIndex="1" GridPane.rowIndex="5">
                            <children>
                               <TextField fx:id="exchangeAmount1Field" prefWidth="150.0" />
                               <Label fx:id="exchangeCurrency1Label" />
                            </children>
                         </HBox>
-                        <HBox alignment="CENTER_LEFT" maxWidth="1.7976931348623157E308" spacing="8.0" GridPane.columnSpan="2" GridPane.halignment="LEFT" GridPane.hgrow="ALWAYS" GridPane.rowIndex="5">
+                        <HBox alignment="CENTER_LEFT" maxWidth="1.7976931348623157E308" spacing="8.0" GridPane.columnSpan="2" GridPane.halignment="LEFT" GridPane.hgrow="ALWAYS" GridPane.rowIndex="6">
                            <children>
                               <Label styleClass="exchange-section-label, exchange-section-label-in" text="Получаем" />
                               <Separator HBox.hgrow="ALWAYS" />
                            </children>
                         </HBox>
-                        <Label text="Деньги" GridPane.rowIndex="6" />
-                        <HBox alignment="CENTER_LEFT" spacing="5.0" GridPane.columnIndex="1" GridPane.rowIndex="6">
+                        <Label text="Деньги" GridPane.rowIndex="7" />
+                        <HBox alignment="CENTER_LEFT" spacing="5.0" GridPane.columnIndex="1" GridPane.rowIndex="7">
                            <children>
                               <SearchableComboBox fx:id="exchangeMoney2Combo" prefWidth="220.0" visibleRowCount="20" />
                               <Button fx:id="exchangeMoney2Button" mnemonicParsing="false" text="..." />
                               <Button fx:id="exchangeMoney2ClearButton" mnemonicParsing="false" text="✕" />
                            </children>
                         </HBox>
-                        <Label text="Бюджет" GridPane.rowIndex="7" />
-                        <HBox alignment="CENTER_LEFT" spacing="5.0" GridPane.columnIndex="1" GridPane.rowIndex="7">
+                        <Label text="Бюджет" GridPane.rowIndex="8" />
+                        <HBox alignment="CENTER_LEFT" spacing="5.0" GridPane.columnIndex="1" GridPane.rowIndex="8">
                            <children>
                               <SearchableComboBox fx:id="exchangeBudget2Combo" prefWidth="220.0" visibleRowCount="20" />
                               <Button fx:id="exchangeBudget2Button" mnemonicParsing="false" text="..." />
                               <Button fx:id="exchangeBudget2ClearButton" mnemonicParsing="false" text="✕" />
                            </children>
                         </HBox>
-                        <Label text="Сумма" GridPane.rowIndex="8" />
-                        <HBox alignment="CENTER_LEFT" spacing="5.0" GridPane.columnIndex="1" GridPane.rowIndex="8">
+                        <Label text="Сумма" GridPane.rowIndex="9" />
+                        <HBox alignment="CENTER_LEFT" spacing="5.0" GridPane.columnIndex="1" GridPane.rowIndex="9">
                            <children>
                               <TextField fx:id="exchangeAmount2Field" prefWidth="150.0" />
                               <Label fx:id="exchangeCurrency2Label" />
                            </children>
                         </HBox>
-                        <Label fx:id="exchangeRateLabel" wrapText="true" GridPane.columnIndex="1" GridPane.rowIndex="9" />
-                        <!-- row 10: descriptionEditField is relocated here in Kotlin when this tab is active -->
-                        <Label text="Описание" GridPane.rowIndex="10" />
-                        <!-- row 11: flagCheckbox is relocated here (value column) in Kotlin -->
+                        <Label fx:id="exchangeRateLabel" wrapText="true" GridPane.columnIndex="1" GridPane.rowIndex="10" />
+                        <!-- row 11: descriptionEditField is relocated here in Kotlin when this tab is active -->
+                        <Label text="Описание" GridPane.rowIndex="11" />
+                        <!-- row 12: flagCheckbox is relocated here (value column) in Kotlin -->
+                     </children>
+                  </GridPane>
+                  <GridPane fx:id="currencyTransferPane" hgap="5.0" vgap="5.0">
+                     <padding>
+                        <Insets bottom="10.0" left="10.0" right="10.0" top="10.0" />
+                     </padding>
+                     <columnConstraints>
+                        <ColumnConstraints halignment="RIGHT" hgrow="NEVER" minWidth="80.0" />
+                        <ColumnConstraints hgrow="SOMETIMES" minWidth="150.0" />
+                     </columnConstraints>
+                     <rowConstraints>
+                        <RowConstraints vgrow="NEVER" />
+                        <RowConstraints vgrow="NEVER" />
+                        <RowConstraints vgrow="NEVER" />
+                        <RowConstraints vgrow="NEVER" />
+                        <RowConstraints vgrow="NEVER" />
+                        <RowConstraints vgrow="NEVER" />
+                        <RowConstraints vgrow="NEVER" />
+                        <RowConstraints vgrow="NEVER" />
+                        <RowConstraints vgrow="NEVER" />
+                        <RowConstraints vgrow="NEVER" />
+                     </rowConstraints>
+                     <children>
+                        <!-- row 0: dateEditPicker is relocated here in Kotlin when this tab is active -->
+                        <Label text="Дата" />
+                        <Label text="Со счёта" GridPane.rowIndex="1" />
+                        <HBox alignment="CENTER_LEFT" spacing="5.0" GridPane.columnIndex="1" GridPane.rowIndex="1">
+                           <children>
+                              <SearchableComboBox fx:id="currencyTransferFromCombo" prefWidth="220.0" visibleRowCount="20" />
+                              <Button fx:id="currencyTransferFromButton" mnemonicParsing="false" text="..." />
+                              <Button fx:id="currencyTransferFromClearButton" mnemonicParsing="false" text="✕" />
+                           </children>
+                        </HBox>
+                        <Label text="Сумма 1" GridPane.rowIndex="2" />
+                        <HBox alignment="CENTER_LEFT" spacing="5.0" GridPane.columnIndex="1" GridPane.rowIndex="2">
+                           <children>
+                              <TextField fx:id="currencyTransferAmount1Field" prefWidth="150.0" />
+                              <Label fx:id="currencyTransferCurrency1Label" />
+                           </children>
+                        </HBox>
+                        <Button fx:id="swapCurrencyTransferAccountsButton" mnemonicParsing="false" styleClass="swap-accounts-button" text="⇄ Поменять счета местами" GridPane.columnIndex="1" GridPane.rowIndex="3" />
+                        <Label text="На счёт" GridPane.rowIndex="4" />
+                        <HBox alignment="CENTER_LEFT" spacing="5.0" GridPane.columnIndex="1" GridPane.rowIndex="4">
+                           <children>
+                              <SearchableComboBox fx:id="currencyTransferToCombo" prefWidth="220.0" visibleRowCount="20" />
+                              <Button fx:id="currencyTransferToButton" mnemonicParsing="false" text="..." />
+                              <Button fx:id="currencyTransferToClearButton" mnemonicParsing="false" text="✕" />
+                           </children>
+                        </HBox>
+                        <Label text="Сумма 2" GridPane.rowIndex="5" />
+                        <HBox alignment="CENTER_LEFT" spacing="5.0" GridPane.columnIndex="1" GridPane.rowIndex="5">
+                           <children>
+                              <TextField fx:id="currencyTransferAmount2Field" prefWidth="150.0" />
+                              <Label fx:id="currencyTransferCurrency2Label" />
+                           </children>
+                        </HBox>
+                        <Label fx:id="currencyTransferRateLabel" wrapText="true" GridPane.columnIndex="1" GridPane.rowIndex="6" />
+                        <!-- row 7: descriptionEditField is relocated here in Kotlin when this tab is active -->
+                        <Label text="Описание" GridPane.rowIndex="7" />
+                        <!-- row 8: flagCheckbox is relocated here (value column) in Kotlin -->
                      </children>
                   </GridPane>
                   <VBox fx:id="entriesPane" spacing="5.0">

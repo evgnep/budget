@@ -1,10 +1,12 @@
 package su.nepom.budget.db.sqlite
 
 import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import kotlinx.datetime.LocalDate
 import su.nepom.budget.Global
+import su.nepom.budget.db.dao.AccountDao
 import su.nepom.budget.event.AccountBudget
 import su.nepom.budget.event.CurrencyContent
 import su.nepom.budget.event.DailyAllowance
@@ -103,5 +105,76 @@ internal class SqliteAccountsDaoTest : AbstractDbTest() {
             .usingRecursiveComparison()
             .ignoringFields("id.readable", "currency.readable")
             .isEqualTo(account)
+    }
+
+    @Test
+    fun `getCurrencyExchangeAccounts finds a configured pair`() {
+        val currency2 = createCurrency("kzt", "tenge")
+        session.currencyDao.save(currency2)
+        val one = createAccount("rub for kzt", currency1, AccountKind.BUDGET).copy(pairCurrency = currency2.id)
+        val two = createAccount("kzt for rub", currency2, AccountKind.BUDGET).copy(pairCurrency = currency1.id)
+        session.accountDao.save(one)
+        session.accountDao.save(two)
+        session.commit()
+        // then
+        assertThat(session.accountDao.getCurrencyExchangeAccounts(currency1.id, currency2.id))
+            .isEqualTo(AccountDao.CurrencyExchangeAccount.Success(one, two))
+        // order of the arguments does not matter
+        assertThat(session.accountDao.getCurrencyExchangeAccounts(currency2.id, currency1.id))
+            .isEqualTo(AccountDao.CurrencyExchangeAccount.Success(two, one))
+    }
+
+    @Test
+    fun `getCurrencyExchangeAccounts returns NotFound for an unrelated currency`() {
+        val currency2 = createCurrency("kzt", "tenge")
+        val currency3 = createCurrency("usd", "dollars")
+        session.currencyDao.save(currency2)
+        session.currencyDao.save(currency3)
+        session.commit()
+        // then
+        assertThat(session.accountDao.getCurrencyExchangeAccounts(currency1.id, currency3.id))
+            .isEqualTo(AccountDao.CurrencyExchangeAccount.NotFound)
+    }
+
+    @Test
+    fun `getCurrencyExchangeAccounts returns NO_PAIR when only one side is configured`() {
+        val currency2 = createCurrency("kzt", "tenge")
+        session.currencyDao.save(currency2)
+        val one = createAccount("rub for kzt", currency1, AccountKind.BUDGET).copy(pairCurrency = currency2.id)
+        session.accountDao.save(one)
+        session.commit()
+        // then
+        assertThat(session.accountDao.getCurrencyExchangeAccounts(currency1.id, currency2.id))
+            .isEqualTo(AccountDao.CurrencyExchangeAccount.Failure.NO_PAIR)
+    }
+
+    @Test
+    fun `getCurrencyExchangeAccounts returns TOO_MANY_PAIRS when a currency has several candidates`() {
+        val currency2 = createCurrency("kzt", "tenge")
+        session.currencyDao.save(currency2)
+        val one1 = createAccount("rub for kzt 1", currency1, AccountKind.BUDGET).copy(pairCurrency = currency2.id)
+        val one2 = createAccount("rub for kzt 2", currency1, AccountKind.BUDGET).copy(pairCurrency = currency2.id)
+        val two = createAccount("kzt for rub", currency2, AccountKind.BUDGET).copy(pairCurrency = currency1.id)
+        session.accountDao.save(one1)
+        session.accountDao.save(one2)
+        session.accountDao.save(two)
+        session.commit()
+        // then
+        assertThat(session.accountDao.getCurrencyExchangeAccounts(currency1.id, currency2.id))
+            .isEqualTo(AccountDao.CurrencyExchangeAccount.Failure.TOO_MANY_PAIRS)
+    }
+
+    @Test
+    fun `save rejects pairCurrency on a non-BUDGET account`() {
+        val currency2 = createCurrency("kzt", "tenge")
+        session.currencyDao.save(currency2)
+        val account = createAccount("money", currency1).copy(pairCurrency = currency2.id)
+        assertThatThrownBy { session.accountDao.save(account) }.isInstanceOf(IllegalArgumentException::class.java)
+    }
+
+    @Test
+    fun `save rejects pairCurrency equal to the account's own currency`() {
+        val account = createAccount("budget", currency1, AccountKind.BUDGET).copy(pairCurrency = currency1.id)
+        assertThatThrownBy { session.accountDao.save(account) }.isInstanceOf(IllegalArgumentException::class.java)
     }
 }

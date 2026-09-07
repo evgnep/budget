@@ -37,6 +37,7 @@ internal object Accounts : Table<AccountEntity>("account") {
     val groupPath = varchar("group_path").bindTo { it.groupPath }
     val restMark = varchar("rest_mark").bindTo { it.restMark }
     val creditLimit = long("credit_limit").bindTo { it.creditLimit }
+    val pairCurrency = varchar("pair_currency").bindTo { it.pairCurrency }
 }
 
 internal interface AccountEntity : Entity<AccountEntity> {
@@ -53,6 +54,7 @@ internal interface AccountEntity : Entity<AccountEntity> {
     var groupPath: String
     var restMark: String
     var creditLimit: Long
+    var pairCurrency: String?
 
     companion object : Entity.Factory<AccountEntity>()
 
@@ -69,7 +71,8 @@ internal interface AccountEntity : Entity<AccountEntity> {
         showOnMain,
         Json.decodeFromString<List<String>>(groupPath),
         RestMark.valueOf(restMark),
-        RawMoney(creditLimit)
+        RawMoney(creditLimit),
+        pairCurrency?.let { CurrencyId(Uuid(it)) },
     )
 }
 
@@ -88,6 +91,7 @@ internal fun AccountContent.toEntity() = AccountEntity {
     groupPath = Json.encodeToString(s.groupPath)
     restMark = s.restMark.name
     creditLimit = s.creditLimit.value
+    pairCurrency = s.pairCurrency?.uuidCode()
 }
 
 internal val Database.accounts get() = this.sequenceOf(Accounts)
