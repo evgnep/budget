@@ -103,6 +103,12 @@ class AccountDetailController @Inject constructor(
     private lateinit var groupPathField: TextField
 
     @FXML
+    private lateinit var orderNoField: TextField
+
+    @FXML
+    private lateinit var creditLimitField: TextField
+
+    @FXML
     private lateinit var budgetSectionLabel: Label
 
     @FXML
@@ -256,6 +262,31 @@ class AccountDetailController @Inject constructor(
                 { it?.content?.groupPath?.joinToString("/") ?: "" },
                 { groupPath = parseGroupPath(it) })
             .field(
+                "orderNo",
+                orderNoField,
+                orderNoField.textProperty(),
+                { (it?.content?.orderNo ?: 0).toString() },
+                { orderNo = it.trim().toIntOrNull() ?: 0 }) {
+                withMethod {
+                    if (orderNoField.text.trim().toIntOrNull() == null) {
+                        it.error("Номер по порядку должен быть целым числом")
+                    }
+                }.immediateClear()
+            }
+            .field(
+                "creditLimit",
+                creditLimitField,
+                creditLimitField.textProperty(),
+                { formatCreditLimit(it?.content?.creditLimit) },
+                { creditLimit = it.trim().toRawMoneyOrNull(currencyDigits()) ?: RawMoney.ZERO }) {
+                withMethod {
+                    val text = creditLimitField.text.trim()
+                    if (text.isNotEmpty() && text.toRawMoneyOrNull(currencyDigits()) == null) {
+                        it.error("Некорректный кредитный лимит")
+                    }
+                }.immediateClear()
+            }
+            .field(
                 "tags",
                 tagsEditorBox,
                 tagsProperty,
@@ -366,6 +397,9 @@ class AccountDetailController @Inject constructor(
     }
 
     private fun currencyDigits(): Int = currencyComboBox.value?.content?.digitsAfterPoint ?: 2
+
+    private fun formatCreditLimit(value: RawMoney?): String =
+        if (value == null || value.value == 0L) "" else value.format(currencyDigits())
 
     private fun rebuildBudget() {
         if (populatingBudget) return

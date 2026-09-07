@@ -43,6 +43,7 @@ class AccountObservable(
   val showOnMain = contentProperty.map { it.showOnMain }
   val groupPath = contentProperty.map { it.groupPath }
   val restMark = contentProperty.map { it.restMark }
+  val creditLimit = contentProperty.map { it.creditLimit }
   val rest = Bindings.createObjectBinding(
     { restProperty.get().toBigDecimal(currency.get()) },
     restProperty, currency
@@ -50,7 +51,7 @@ class AccountObservable(
 
   override fun properties(): Array<Observable> =
     arrayOf(uuidObservable, name, description, currency, currencyName, kind, tags, orderNo, hidden, budget, showOnMain,
-      groupPath, restMark, rest)
+      groupPath, restMark, creditLimit, rest)
 
   class Builder(source: AccountObservable) : ObservableEntityBuilder<AccountObservable> {
     private val id = source.content.id
@@ -65,10 +66,11 @@ class AccountObservable(
     var showOnMain: Boolean = source.content.showOnMain
     var groupPath: List<String> = source.content.groupPath
     var restMark: RestMark = source.content.restMark
+    var creditLimit: RawMoney = source.content.creditLimit
 
     override fun buildContent() =
       AccountContent(id, name, description, currency, kind, tags, orderNo, hidden, budget, showOnMain, groupPath,
-        restMark)
+        restMark, creditLimit)
 
     override fun saveAndUpdate(session: Session, target: AccountObservable) {
       val content = buildContent()

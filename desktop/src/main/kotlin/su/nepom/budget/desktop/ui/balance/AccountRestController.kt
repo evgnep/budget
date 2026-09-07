@@ -4,10 +4,12 @@ import jakarta.inject.Inject
 import javafx.css.PseudoClass
 import javafx.fxml.FXML
 import javafx.scene.control.Label
+import javafx.scene.layout.VBox
 import su.nepom.budget.desktop.model.AccountObservable
 import su.nepom.budget.desktop.util.fx.Controller
 import su.nepom.budget.desktop.util.fx.Disposable
 import su.nepom.budget.desktop.util.fx.WeakListeners
+import su.nepom.budget.model.RawMoney
 import su.nepom.budget.utils.format
 
 /**
@@ -24,6 +26,9 @@ class AccountRestController @Inject constructor() : Controller, Disposable {
     @FXML private lateinit var nameLabel: Label
     @FXML private lateinit var restLabel: Label
     @FXML private lateinit var currencyLabel: Label
+    @FXML private lateinit var creditLimitRestBox: VBox
+    @FXML private lateinit var creditLimitRestLabel: Label
+    @FXML private lateinit var creditLimitRestCurrencyLabel: Label
 
     private val weakListeners = WeakListeners()
     private lateinit var account: AccountObservable
@@ -37,6 +42,7 @@ class AccountRestController @Inject constructor() : Controller, Disposable {
         weakListeners.addListenerAndCallNow(account.name) { _, _, name -> nameLabel.text = name }
         weakListeners.addListenerAndCallNow(account.currency) { _, _, _ -> updateRestAndCurrency() }
         weakListeners.addListenerAndCallNow(account.restProperty) { _, _, _ -> updateRestAndCurrency() }
+        weakListeners.addListenerAndCallNow(account.creditLimit) { _, _, _ -> updateRestAndCurrency() }
     }
 
     override fun dispose() {
@@ -45,9 +51,23 @@ class AccountRestController @Inject constructor() : Controller, Disposable {
 
     private fun updateRestAndCurrency() {
         val currency = account.currency.get()?.content
-        currencyLabel.text = currency?.symbol?.takeIf { it.isNotEmpty() } ?: currency?.name ?: ""
-        restLabel.text = account.restProperty.get().format(currency?.digitsAfterPoint ?: 2)
-        restLabel.pseudoClassStateChanged(NEGATIVE, account.restProperty.get().value < 0)
+        val digits = currency?.digitsAfterPoint ?: 2
+        val currencyText = currency?.symbol?.takeIf { it.isNotEmpty() } ?: currency?.name ?: ""
+        val rest = account.restProperty.get()
+        currencyLabel.text = currencyText
+        restLabel.text = rest.format(digits)
+        restLabel.pseudoClassStateChanged(NEGATIVE, rest.value < 0)
+
+        val creditLimit = account.content.creditLimit
+        val showCreditLimit = creditLimit.value != 0L
+        creditLimitRestBox.isVisible = showCreditLimit
+        creditLimitRestBox.isManaged = showCreditLimit
+        if (showCreditLimit) {
+            val creditLimitRest = RawMoney(creditLimit.value + rest.value)
+            creditLimitRestLabel.text = creditLimitRest.format(digits)
+            creditLimitRestLabel.pseudoClassStateChanged(NEGATIVE, creditLimitRest.value < 0)
+            creditLimitRestCurrencyLabel.text = currencyText
+        }
     }
 
     private companion object {

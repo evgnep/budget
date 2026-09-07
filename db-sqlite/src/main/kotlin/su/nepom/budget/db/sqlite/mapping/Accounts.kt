@@ -18,6 +18,7 @@ import su.nepom.budget.model.AccountId
 import su.nepom.budget.model.AccountKind
 import su.nepom.budget.model.CurrencyCode
 import su.nepom.budget.model.CurrencyId
+import su.nepom.budget.model.RawMoney
 import su.nepom.budget.model.RestMark
 import su.nepom.budget.model.Uuid
 import su.nepom.budget.model.uuidCode
@@ -35,6 +36,7 @@ internal object Accounts : Table<AccountEntity>("account") {
     val showOnMain = boolean("show_on_main").bindTo { it.showOnMain }
     val groupPath = varchar("group_path").bindTo { it.groupPath }
     val restMark = varchar("rest_mark").bindTo { it.restMark }
+    val creditLimit = long("credit_limit").bindTo { it.creditLimit }
 }
 
 internal interface AccountEntity : Entity<AccountEntity> {
@@ -50,6 +52,7 @@ internal interface AccountEntity : Entity<AccountEntity> {
     var showOnMain: Boolean
     var groupPath: String
     var restMark: String
+    var creditLimit: Long
 
     companion object : Entity.Factory<AccountEntity>()
 
@@ -65,7 +68,8 @@ internal interface AccountEntity : Entity<AccountEntity> {
         Json.decodeFromString<AccountBudget>(budget),
         showOnMain,
         Json.decodeFromString<List<String>>(groupPath),
-        RestMark.valueOf(restMark)
+        RestMark.valueOf(restMark),
+        RawMoney(creditLimit)
     )
 }
 
@@ -83,6 +87,7 @@ internal fun AccountContent.toEntity() = AccountEntity {
     showOnMain = s.showOnMain
     groupPath = Json.encodeToString(s.groupPath)
     restMark = s.restMark.name
+    creditLimit = s.creditLimit.value
 }
 
 internal val Database.accounts get() = this.sequenceOf(Accounts)

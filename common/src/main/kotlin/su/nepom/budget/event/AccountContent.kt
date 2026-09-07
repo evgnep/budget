@@ -7,6 +7,7 @@ import su.nepom.budget.model.AccountId
 import su.nepom.budget.model.AccountKind
 import su.nepom.budget.model.CurrencyId
 import su.nepom.budget.model.ObjectKind
+import su.nepom.budget.model.RawMoney
 import su.nepom.budget.model.RestMark
 
 @Serializable
@@ -25,6 +26,8 @@ data class AccountContentV1(
     // group chain from root, e.g. ["A", "B", "C"]; empty means "no group"
     val groupPath: List<String> = emptyList(),
     val restMark: RestMark = RestMark.IF_NEGATIVE,
+    // credit limit in minor units; 0 means "no credit limit"
+    val creditLimit: RawMoney = RawMoney.ZERO,
 ): StorableContent, ActualVersionContent {
     override val objectKind: ObjectKind get() = ObjectKind.ACCOUNT
 

@@ -92,6 +92,8 @@ class BalanceController @Inject constructor(
         val moneyAccount: AccountId? = null,
         // set when the account's rest doesn't match the sum of its non-hidden subaccounts
         val subaccountsMismatch: String = "",
+        // "credit limit + rest", only for accounts that have a credit limit set
+        val creditLimitRest: String = "",
     )
 
     private val weakListeners = WeakListeners()
@@ -122,6 +124,7 @@ class BalanceController @Inject constructor(
     @FXML private lateinit var incomeColumn: TreeTableColumn<BalanceRow, String>
     @FXML private lateinit var expenseColumn: TreeTableColumn<BalanceRow, String>
     @FXML private lateinit var endColumn: TreeTableColumn<BalanceRow, String>
+    @FXML private lateinit var creditLimitRestColumn: TreeTableColumn<BalanceRow, String>
     @FXML private lateinit var dailyBalanceColumn: TreeTableColumn<BalanceRow, String>
     @FXML private lateinit var subaccountsMismatchColumn: TreeTableColumn<BalanceRow, String>
 
@@ -189,7 +192,7 @@ class BalanceController @Inject constructor(
         balancesTable.isShowRoot = false
         balancesTable.root = TreeItem(groupRow("", emptySet()))
         listOf(nameColumn, kindColumn, currencyColumn, startColumn, incomeColumn, expenseColumn, endColumn,
-            dailyBalanceColumn, subaccountsMismatchColumn)
+            creditLimitRestColumn, dailyBalanceColumn, subaccountsMismatchColumn)
             .forEach { it.isSortable = false }
         nameColumn.setCellValueFactory { SimpleStringProperty(it.value.value.name) }
         kindColumn.setCellValueFactory { SimpleStringProperty(it.value.value.kind) }
@@ -198,6 +201,7 @@ class BalanceController @Inject constructor(
         incomeColumn.setCellValueFactory { SimpleStringProperty(it.value.value.income) }
         expenseColumn.setCellValueFactory { SimpleStringProperty(it.value.value.expense) }
         endColumn.setCellValueFactory { SimpleStringProperty(it.value.value.end) }
+        creditLimitRestColumn.setCellValueFactory { SimpleStringProperty(it.value.value.creditLimitRest) }
         dailyBalanceColumn.setCellValueFactory { SimpleStringProperty(it.value.value.dailyBalance) }
         subaccountsMismatchColumn.setCellValueFactory { SimpleStringProperty(it.value.value.subaccountsMismatch) }
 
@@ -363,6 +367,7 @@ class BalanceController @Inject constructor(
                 markEnd = account.content.restMark.matches(end.value),
                 moneyAccount = if (account.content.kind == AccountKind.MONEY) id else null,
                 subaccountsMismatch = if (mismatch) formatMoney(RawMoney(subaccountsSum.value - end.value), currency) else "",
+                creditLimit = account.content.creditLimit,
             )
             val children = if (showSubaccountsCheckbox.isSelected && forDate == null)
                 subs.sortedBy { it.content.name.lowercase() }.map { subaccountRow(it, currency) }
@@ -460,6 +465,7 @@ class BalanceController @Inject constructor(
         markEnd: Boolean = false,
         moneyAccount: AccountId? = null,
         subaccountsMismatch: String = "",
+        creditLimit: RawMoney = RawMoney.ZERO,
     ): BalanceRow {
         // turnover.income is positive, turnover.expenditure is negative
         val start = RawMoney(end.value - turnover.income.value - turnover.expenditure.value)
@@ -476,6 +482,8 @@ class BalanceController @Inject constructor(
             markEnd = markEnd,
             moneyAccount = moneyAccount,
             subaccountsMismatch = subaccountsMismatch,
+            creditLimitRest = if (creditLimit.value != 0L)
+                formatMoney(RawMoney(creditLimit.value + end.value), currency) else "",
         )
     }
 

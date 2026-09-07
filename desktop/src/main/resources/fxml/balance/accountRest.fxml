@@ -12,5 +12,16 @@
             <Label fx:id="currencyLabel" styleClass="account-rest-currency" />
          </children>
       </HBox>
+      <VBox fx:id="creditLimitRestBox" spacing="2.0">
+         <children>
+            <Label styleClass="account-rest-name" text="Остаток кредитного лимита" />
+            <HBox alignment="BASELINE_LEFT" spacing="6.0">
+               <children>
+                  <Label fx:id="creditLimitRestLabel" styleClass="account-rest-value" />
+                  <Label fx:id="creditLimitRestCurrencyLabel" styleClass="account-rest-currency" />
+               </children>
+            </HBox>
+         </children>
+      </VBox>
    </children>
 </VBox>

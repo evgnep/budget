@@ -49,6 +49,7 @@
           <TreeTableColumn fx:id="incomeColumn" editable="false" prefWidth="120.0" text="Доход" />
           <TreeTableColumn fx:id="expenseColumn" editable="false" prefWidth="120.0" text="Расход" />
           <TreeTableColumn fx:id="endColumn" editable="false" prefWidth="130.0" text="Остаток на конец" />
+          <TreeTableColumn fx:id="creditLimitRestColumn" editable="false" prefWidth="170.0" text="Остаток кредитного лимита" />
           <TreeTableColumn fx:id="dailyBalanceColumn" editable="false" prefWidth="130.0" text="Остаток на день" />
           <TreeTableColumn fx:id="subaccountsMismatchColumn" editable="false" prefWidth="160.0" text="Расхождение с субсчетами" />
         </columns>
