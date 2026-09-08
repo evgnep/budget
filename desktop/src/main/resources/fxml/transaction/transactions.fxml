@@ -104,6 +104,8 @@
                       <TableColumn fx:id="currencyColumn" editable="false" prefWidth="60.0" text="" />
                       <TableColumn fx:id="descriptionColumn" editable="false" prefWidth="220.0" text="Описание" />
                       <TableColumn fx:id="flagColumn" editable="false" prefWidth="60.0" text="Флаг" />
+                      <TableColumn fx:id="modifiedColumn" editable="false" prefWidth="120.0" text="Изменено" />
+                      <TableColumn fx:id="authorColumn" editable="false" prefWidth="100.0" text="Автор" />
                     </columns>
                      <columnResizePolicy>
                         <TableView fx:constant="CONSTRAINED_RESIZE_POLICY" />

@@ -448,7 +448,7 @@ internal class SqliteTransactionDaoTest : AbstractDbTest() {
         }
 
         fun testGetAndCountTr(query: Query, expectedCount: Int, vararg expected: Int) {
-            val actual = dao.getByQuery(query).map { (it.date - TIME_MOMENT).inWholeSeconds.toInt() }
+            val actual = dao.getByQuery(query).map { (it.transaction.date - TIME_MOMENT).inWholeSeconds.toInt() }
             assertThat(actual).isEqualTo(expected.toList())
             val actualCount = dao.countByFilter(query.filter)
             assertThat(actualCount).isEqualTo(expectedCount)
@@ -457,7 +457,7 @@ internal class SqliteTransactionDaoTest : AbstractDbTest() {
         fun testGetAndCountItem(query: Query, expectedCount: Int, vararg expected: Pair<Int, AccountContent>) {
             val actualRows = dao.getItemsByQuery(query)
             val actual = actualRows
-                .map { (it.transaction.date - TIME_MOMENT).inWholeSeconds.toInt() to
+                .map { (it.content.date - TIME_MOMENT).inWholeSeconds.toInt() to
                         allAccounts[it.item.account.uuid]?.name }
             assertThat(actual).isEqualTo(expected.map { it.first to it.second.name })
             // a row starts a new group whenever the transaction (its date, unique in these tests) changes
@@ -517,7 +517,7 @@ internal class SqliteTransactionDaoTest : AbstractDbTest() {
                 testGetAndCountTr(Query(Filter(currency = currency2.id)), 0)
             },
             dynamicTest("sort asc") {
-                testGetAndCountTr(Query(sortByDateAsc = true), 4, 10, 11, 12, 14)
+                testGetAndCountTr(Query(sortBy = TransactionDao.Sort(asc = true)), 4, 10, 11, 12, 14)
             },
             dynamicTest("page1") { testGetAndCountTr(Query(limit = 2), 4, 14, 12) },
             dynamicTest("page2") { testGetAndCountTr(Query(offset = 2, limit = 1), 4, 11) },
@@ -569,7 +569,7 @@ internal class SqliteTransactionDaoTest : AbstractDbTest() {
                     14 to accountC1Money, 14 to account2C1Budget)
             },
             dynamicTest("sort asc") {
-                testGetAndCountItem(Query(Filter(flag = false), sortByDateAsc = true), 6,
+                testGetAndCountItem(Query(Filter(flag = false), sortBy = TransactionDao.Sort(asc = true)), 6,
                     10 to accountC1Money, 10 to account2C1Budget,
                     11 to accountC1Money, 11 to accountC1Budget,
                     12 to accountC1Money, 12 to account2C1Budget,)

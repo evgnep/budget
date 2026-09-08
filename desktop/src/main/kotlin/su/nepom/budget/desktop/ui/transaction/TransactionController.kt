@@ -41,6 +41,7 @@ import su.nepom.budget.desktop.service.DbService
 import su.nepom.budget.desktop.ui.common.CsvExportController
 import su.nepom.budget.desktop.ui.common.CsvExportSpec
 import su.nepom.budget.desktop.util.formatDateForClipboard
+import su.nepom.budget.desktop.util.formatDateTime
 import su.nepom.budget.desktop.util.formatTime
 import su.nepom.budget.desktop.util.fx.Controller
 import su.nepom.budget.desktop.util.fx.Disposable
@@ -144,8 +145,10 @@ class TransactionController @Inject constructor(
     private var totalCount = 0
     private var pageItemCount = 0
     // default matches the removed "Сначала новые" sort option; toggled by clicking dateColumn's
-    // header instead of a filter combo box now
-    private var sortByDateAsc = false
+    // or modifiedColumn's header instead of a filter combo box now - only one of the two is ever
+    // the active sort field, see setupSort()
+    private var sortField = TransactionDao.SortField.TRANSACTION_DATE
+    private var sortAsc = false
 
     private val refreshPause = PauseTransition(Duration.millis(200.0)).apply {
         setOnFinished { reload(resetPage = false) }
@@ -206,6 +209,8 @@ class TransactionController @Inject constructor(
     @FXML private lateinit var currencyColumn: TableColumn<TxRow, String>
     @FXML private lateinit var descriptionColumn: TableColumn<TxRow, String>
     @FXML private lateinit var flagColumn: TableColumn<TxRow, String>
+    @FXML private lateinit var modifiedColumn: TableColumn<TxRow, String>
+    @FXML private lateinit var authorColumn: TableColumn<TxRow, String>
 
     override fun initialize(stage: Stage) {
         this.stage = stage
@@ -255,7 +260,7 @@ class TransactionController @Inject constructor(
             transactionDetailController.formDriver,
             newButton,
             toDetail = { row -> row.dataOrNull()?.let { TransactionObservable(it.transaction) } },
-            sameDetail = { a, b -> a.dataOrNull() != null && a.dataOrNull()?.transaction?.id == b.dataOrNull()?.transaction?.id },
+            sameDetail = { a, b -> a.dataOrNull() != null && a.dataOrNull()?.content?.id == b.dataOrNull()?.content?.id },
             onDetailChanged = { detail -> transactionDetailController.onMasterSelectionChanged(detail) },
         )
         newButton.addEventHandler(ActionEvent.ACTION) {
@@ -275,7 +280,7 @@ class TransactionController @Inject constructor(
     private fun buildCsvExportSpec(): CsvExportSpec? {
         val db = dbService.db ?: return null
         val filter = currentFilter()
-        val exportSortByDateAsc = sortByDateAsc
+        val exportSort = TransactionDao.Sort(sortField, sortAsc)
         val (header, extractors) = transactionsTable.exportColumns().unzip()
         val session = db.createSession("csv-export", createEvents = false)
         return CsvExportSpec(
@@ -283,7 +288,7 @@ class TransactionController @Inject constructor(
             header = header,
             totalCount = { session.coroDbOp { transactionDao.countItemsByFilter(filter) } },
             fetchPage = { offset, limit ->
-                val query = TransactionDao.Query(filter = filter, offset = offset, limit = limit, sortByDateAsc = exportSortByDateAsc)
+                val query = TransactionDao.Query(filter = filter, offset = offset, limit = limit, sortBy = exportSort)
                 val items = session.coroDbOp { transactionDao.getItemsByQuery(query) }
                 items.map { item -> extractors.map { it(TxRow.Data(item)) } }
             },
@@ -366,33 +371,62 @@ class TransactionController @Inject constructor(
         pageField.text = (pageIndex + 1).toString()
     }
 
-    // clicking the "Дата" header toggles sort direction, showing the usual native triangle marker -
-    // the actual ordering happens server-side (see loadPage/sortByDateAsc), so the table itself
-    // must not reorder rows on its own; a no-op sort policy keeps just the header's arrow indicator
-    private fun setupDateSort() {
+    private fun columnFor(field: TransactionDao.SortField): TableColumn<TxRow, String> = when (field) {
+        TransactionDao.SortField.TRANSACTION_DATE -> dateColumn
+        TransactionDao.SortField.MODIFIED_AT -> modifiedColumn
+    }
+
+    private fun fieldFor(column: TableColumn<TxRow, *>): TransactionDao.SortField? = when (column) {
+        dateColumn -> TransactionDao.SortField.TRANSACTION_DATE
+        modifiedColumn -> TransactionDao.SortField.MODIFIED_AT
+        else -> null
+    }
+
+    // reads the given column's current sort direction and, if that (field, direction) actually
+    // differs from what is currently applied, makes it the active sort and reloads
+    private fun applySortFromColumn(column: TableColumn<TxRow, *>) {
+        val field = fieldFor(column) ?: return
+        if (column !in transactionsTable.sortOrder) return
+        val asc = column.sortType == TableColumn.SortType.ASCENDING
+        if (field == sortField && asc == sortAsc) return
+        sortField = field
+        sortAsc = asc
+        userReload(resetPage = true)
+    }
+
+    // clicking "Дата" or "Изменено" toggles/switches the sort, showing the usual native triangle
+    // marker - the actual ordering happens server-side (see loadPage/sortField/sortAsc), so the
+    // table itself must not reorder rows on its own; a no-op sort policy keeps just the header's
+    // arrow indicator. A plain click on a header the native TableView behavior makes the table's
+    // sole sort column, which is exactly the desired "only one of the two is ever active" rule.
+    private fun setupSort() {
         transactionsTable.sortPolicy = Callback { true }
         dateColumn.isSortable = true
+        modifiedColumn.isSortable = true
         dateColumn.sortType = TableColumn.SortType.DESCENDING
         transactionsTable.sortOrder.setAll(dateColumn)
         // the header's native click handling only ever changes sortType between ASCENDING and
-        // DESCENDING - a third click instead removes the column from sortOrder outright, leaving
-        // sortType untouched, so that (not sortType turning null) is what "unsorted" looks like here
-        dateColumn.sortTypeProperty().addListener { _, _, sortType ->
-            when (sortType) {
-                TableColumn.SortType.ASCENDING -> { sortByDateAsc = true; userReload(resetPage = true) }
-                TableColumn.SortType.DESCENDING -> { sortByDateAsc = false; userReload(resetPage = true) }
-                null -> {}
-            }
+        // DESCENDING for the already-active column - a third click instead removes it from
+        // sortOrder outright, leaving sortType untouched, so that (not sortType turning null) is
+        // what "unsorted" looks like here
+        listOf(dateColumn, modifiedColumn).forEach { column ->
+            column.sortTypeProperty().addListener { _, _, _ -> applySortFromColumn(column) }
         }
-        // there are only two real options here, never "unsorted" - put the column right back with
-        // the direction flipped whenever a third click drops it out of sortOrder. Deferred: mutating
+        // covers two cases the per-column listener above cannot: switching to a column that was
+        // never sorted before (its sortType may already equal its own default, so no property
+        // change fires) and recovering from a third click's outright removal. Deferred: mutating
         // sortOrder from inside its own change notification is asking for trouble.
         transactionsTable.sortOrder.addListener(ListChangeListener<TableColumn<*, *>> {
-            if (dateColumn !in transactionsTable.sortOrder) {
+            val active = transactionsTable.sortOrder.firstOrNull()
+            if (active == null) {
                 Platform.runLater {
-                    dateColumn.sortType = if (sortByDateAsc) TableColumn.SortType.DESCENDING else TableColumn.SortType.ASCENDING
-                    if (dateColumn !in transactionsTable.sortOrder) transactionsTable.sortOrder.add(dateColumn)
+                    val column = columnFor(sortField)
+                    column.sortType = if (sortAsc) TableColumn.SortType.DESCENDING else TableColumn.SortType.ASCENDING
+                    if (transactionsTable.sortOrder.isEmpty()) transactionsTable.sortOrder.add(column)
                 }
+            } else {
+                if (transactionsTable.sortOrder.size > 1) transactionsTable.sortOrder.setAll(active)
+                applySortFromColumn(active)
             }
         })
     }
@@ -401,9 +435,9 @@ class TransactionController @Inject constructor(
         transactionsTable.items = rows
         transactionsTable.selectionModel.selectionMode = SelectionMode.MULTIPLE
         transactionsTable.enableCopySelectionToClipboard()
-        listOf(markerColumn, typeColumn, accountColumn, amountColumn, currencyColumn, descriptionColumn, flagColumn)
+        listOf(markerColumn, typeColumn, accountColumn, amountColumn, currencyColumn, descriptionColumn, flagColumn, authorColumn)
             .forEach { it.isSortable = false }
-        setupDateSort()
+        setupSort()
         currencyColumn.text = "Валюта"
         // the group header's turnover line is drawn as an overlay on the row, sized to cover
         // accountColumn..flagColumn, giving the look of merged cells without JavaFX's TableView
@@ -425,7 +459,7 @@ class TransactionController @Inject constructor(
                     super.updateItem(item, empty)
                     text = null
                     val data = (tableRow?.item as? TxRow.Data)?.row
-                    val color = if (empty || data == null) null else operationTypeMarkerColor(operationType(data.transaction))
+                    val color = if (empty || data == null) null else operationTypeMarkerColor(operationType(data.content))
                     style = if (color == null) "" else "-fx-background-color: $color;"
                 }
             }
@@ -436,7 +470,7 @@ class TransactionController @Inject constructor(
             SimpleStringProperty(
                 when (val v = it.value) {
                     is TxRow.GroupHeader -> groupHeaderDateLabel(v.date)
-                    is TxRow.Data -> if (v.row.isFirstInGroup) v.row.transaction.date.formatTime() else ""
+                    is TxRow.Data -> if (v.row.isFirstInGroup) v.row.content.date.formatTime() else ""
                 }
             )
         }
@@ -452,13 +486,13 @@ class TransactionController @Inject constructor(
         // the cell itself shows only the time (the date is already visible in the day's group
         // header) - Excel still needs the actual date, so the clipboard copy carries both
         dateColumn.setClipboardValue { row ->
-            row.dataOrNull()?.let { "${it.transaction.date.formatDateForClipboard()} ${it.transaction.date.formatTime()}" } ?: ""
+            row.dataOrNull()?.let { "${it.content.date.formatDateForClipboard()} ${it.content.date.formatTime()}" } ?: ""
         }
         typeColumn.setCellValueFactory {
             SimpleStringProperty(
                 when (val v = it.value) {
                     is TxRow.GroupHeader -> groupHeaderCountLabel(v.count)
-                    is TxRow.Data -> if (v.row.isFirstInGroup) operationTypeLabel(operationType(v.row.transaction)) else ""
+                    is TxRow.Data -> if (v.row.isFirstInGroup) operationTypeLabel(operationType(v.row.content)) else ""
                 }
             )
         }
@@ -471,7 +505,7 @@ class TransactionController @Inject constructor(
                     textFill = when {
                         empty || row == null -> Color.BLACK
                         row is TxRow.GroupHeader -> Color.web("#6b7480")
-                        row is TxRow.Data -> operationTypeTextColor(operationType(row.row.transaction))
+                        row is TxRow.Data -> operationTypeTextColor(operationType(row.row.content))
                         else -> Color.BLACK
                     }
                 }
@@ -547,7 +581,7 @@ class TransactionController @Inject constructor(
                 }
             }
         }
-        flagColumn.setCellValueFactory { SimpleStringProperty(if ((it.value as? TxRow.Data)?.row?.transaction?.flag == true) "⚑" else "") }
+        flagColumn.setCellValueFactory { SimpleStringProperty(if ((it.value as? TxRow.Data)?.row?.content?.flag == true) "⚑" else "") }
         flagColumn.setCellFactory {
             object : TableCell<TxRow, String>() {
                 init { alignment = Pos.CENTER }
@@ -558,7 +592,25 @@ class TransactionController @Inject constructor(
                 }
             }
         }
-        flagColumn.setClipboardValue { row -> if (row.dataOrNull()?.transaction?.flag == true) "Да" else "Нет" }
+        flagColumn.setClipboardValue { row -> if (row.dataOrNull()?.content?.flag == true) "Да" else "Нет" }
+        // modified/author are transaction-level, like date/type/description - shown only on the
+        // first row of a group
+        modifiedColumn.setCellValueFactory {
+            SimpleStringProperty(
+                when (val v = it.value) {
+                    is TxRow.GroupHeader -> ""
+                    is TxRow.Data -> if (v.row.isFirstInGroup) v.row.transaction.modifiedAt.formatDateTime() else ""
+                }
+            )
+        }
+        authorColumn.setCellValueFactory {
+            SimpleStringProperty(
+                when (val v = it.value) {
+                    is TxRow.GroupHeader -> ""
+                    is TxRow.Data -> if (v.row.isFirstInGroup) v.row.transaction.modifiedBy else ""
+                }
+            )
+        }
         // deleted rows are only ever shown while the "Удалённые" toggle is on - strike them
         // through instead of a separate boolean column (see transactions.css .deleted-row).
         // Group header rows get their own shaded pseudo-class and ignore mouse clicks, so they
@@ -575,7 +627,7 @@ class TransactionController @Inject constructor(
 
                 override fun updateItem(item: TxRow?, empty: Boolean) {
                     super.updateItem(item, empty)
-                    pseudoClassStateChanged(DELETED_ROW_PSEUDO_CLASS, !empty && item?.dataOrNull()?.transaction?.deleted == true)
+                    pseudoClassStateChanged(DELETED_ROW_PSEUDO_CLASS, !empty && item?.dataOrNull()?.content?.deleted == true)
                     val header = (if (empty) null else item) as? TxRow.GroupHeader
                     pseudoClassStateChanged(GROUP_HEADER_ROW_PSEUDO_CLASS, header != null)
                     isMouseTransparent = header != null
@@ -612,12 +664,12 @@ class TransactionController @Inject constructor(
         val result = ArrayList<TxRow>(items.size + items.size / 3 + 1)
         var i = 0
         while (i < items.size) {
-            val day = items[i].transaction.date.toLocalDate()
+            val day = items[i].content.date.toLocalDate()
             var count = 0
             val income = LinkedHashMap<CurrencyId, Long>()
             val expense = LinkedHashMap<CurrencyId, Long>()
             var j = i
-            while (j < items.size && items[j].transaction.date.toLocalDate() == day) {
+            while (j < items.size && items[j].content.date.toLocalDate() == day) {
                 val row = items[j]
                 if (row.isFirstInGroup) count++
                 val value = row.item.money.value
@@ -842,20 +894,20 @@ class TransactionController @Inject constructor(
         // preferUuid comes from a just-saved transaction, whose item count/order may have changed -
         // land on any of its rows; otherwise try to keep the exact same leg, falling back to the
         // first surviving leg of the same transaction
-        val prevTransactionUuid = preferUuid ?: prevSelected?.transaction?.id
+        val prevTransactionUuid = preferUuid ?: prevSelected?.content?.id
         val prevNo = if (preferUuid == null) prevSelected?.itemNoInTransaction else null
         val query = TransactionDao.Query(
             filter = filter,
             offset = pageIndex * PAGE_SIZE,
             limit = PAGE_SIZE,
-            sortByDateAsc = sortByDateAsc,
+            sortBy = TransactionDao.Sort(sortField, sortAsc),
         )
         val loaded = runAndShowError { session.transactionDao.getItemsByQuery(query) }.getOrDefault(emptyList())
         pageItemCount = loaded.size
         rows.setAll(buildDisplayRows(loaded))
-        loaded.distinctBy { it.transaction.id }.forEach { accountRestsController.addAccountsFromTransaction(it.transaction) }
+        loaded.distinctBy { it.content.id }.forEach { accountRestsController.addAccountsFromTransaction(it.content) }
         if (prevTransactionUuid != null) {
-            val sameTransactionRows = rows.mapNotNull { it.dataOrNull() }.filter { it.transaction.id == prevTransactionUuid }
+            val sameTransactionRows = rows.mapNotNull { it.dataOrNull() }.filter { it.content.id == prevTransactionUuid }
             val toSelect = sameTransactionRows.firstOrNull { it.itemNoInTransaction == prevNo } ?: sameTransactionRows.firstOrNull()
             toSelect?.let { data -> rows.firstOrNull { it.dataOrNull() === data }?.let(transactionsTable.selectionModel::select) }
         }
@@ -908,8 +960,10 @@ class TransactionController @Inject constructor(
         currencyFilterComboBox.value = null
         deletedToggle.isSelected = false
         flagAllToggle.isSelected = true
-        sortByDateAsc = false
+        sortField = TransactionDao.SortField.TRANSACTION_DATE
+        sortAsc = false
         dateColumn.sortType = TableColumn.SortType.DESCENDING
+        transactionsTable.sortOrder.setAll(dateColumn)
         descriptionFilterField.clear()
         updateAmountFilterAvailability()
         reload(resetPage = true)
@@ -979,7 +1033,7 @@ class TransactionController @Inject constructor(
 
     private fun accountValue(item: TransactionContextItemAndTransaction): String {
         val thisAccount = item.item.account.uuid
-        val otherAccounts = (item.transaction.items.mapTo(mutableSetOf()) { it.account.uuid } - thisAccount)
+        val otherAccounts = (item.content.items.mapTo(mutableSetOf()) { it.account.uuid } - thisAccount)
             .map { accountService.accounts[it]?.content?.name ?: "?" }
             .sorted()
         return buildString {
@@ -995,7 +1049,7 @@ class TransactionController @Inject constructor(
     }
 
     private fun descriptionValue(item: TransactionContextItemAndTransaction) = buildString {
-        if (item.isFirstInGroup) append(item.transaction.description)
+        if (item.isFirstInGroup) append(item.content.description)
         item.item.description.takeIf { it.isNotBlank() }?.let {
             if (isNotEmpty()) append(": ")
             append(it)

@@ -51,7 +51,6 @@ import su.nepom.budget.desktop.ui.history.History
 import su.nepom.budget.desktop.util.fx.Controller
 import su.nepom.budget.desktop.util.fx.FormDriver
 import su.nepom.budget.desktop.util.fx.FormState
-import su.nepom.budget.desktop.util.fx.runAndShowError
 import su.nepom.budget.desktop.util.fx.setupFlexibleDateFormat
 import su.nepom.budget.desktop.util.formatDateTime
 import su.nepom.budget.desktop.util.toLocalDate
@@ -1798,16 +1797,12 @@ class TransactionDetailController @Inject constructor(
     AccountKind.BUDGET -> "Бюджет"
   }
 
+  // modifiedAt/modifiedBy come straight from the loaded transaction (see TransactionObservable) -
+  // no separate event-table query needed
   private fun updateEventInfo(tx: TransactionObservable?) {
     if (conflictMode) return
-    val session = dbService.session
-    val event = if (tx != null && session != null)
-      runAndShowError { session.eventDao.getLastEventForObject(tx.uuid, ObjectKind.TRANSACTION) }.getOrNull()
-    else null
-    changedAtLabel.text = event?.created?.formatDateTime() ?: ""
-    val creator = event?.creator ?: ""
-    val place = event?.coords?.source?.code ?: ""
-    creatorLabel.text = listOf(creator, place).filter { it.isNotBlank() }.joinToString(" · ")
+    changedAtLabel.text = tx?.modifiedAt?.formatDateTime() ?: ""
+    creatorLabel.text = tx?.modifiedBy ?: ""
     // a NEW, unsaved operation has no history yet
     historyLink.isDisable = tx == null
     historyLink.setOnAction {

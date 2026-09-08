@@ -155,15 +155,18 @@ internal class SqliteSession(
 
     override fun getDb() = db.database
 
-    fun saveEvent(entity: ActualVersionContent, eventType: EventType) {
+    // returns the created event so callers can denormalize its created/creator elsewhere (e.g. a
+    // transaction's own "modified at/by" columns) without a separate event-table query
+    fun saveEvent(entity: ActualVersionContent, eventType: EventType): Event<ActualVersionContent> {
         beforeAnyOperation()
         db.catalogCaches[entity::class]?.setInTransactionUnsafe(entity)
-        if (!createEvents) return
-        val basedOn = eventDao.getLastEventCoords()
+        val basedOn = if (createEvents) eventDao.getLastEventCoords()
             .filterNot { it.key == Global.currentPlace }
             .map { it.key no it.value }
+        else listOf()
         val event = Event(Global.currentPlace no 0, SecondsClock.now(), Global.currentUser, eventType, basedOn, entity)
-        eventDao.save(event)
+        if (createEvents) eventDao.save(event)
+        return event
     }
 
     override fun toString(): String = "Session[$name]"

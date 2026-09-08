@@ -3,18 +3,24 @@ package su.nepom.budget.db.dao
 import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
 import su.nepom.budget.event.TransactionContent
+import su.nepom.budget.event.TransactionRecord
 import su.nepom.budget.event.TransactionContextItemAndTransaction
 import su.nepom.budget.model.AccountId
 import su.nepom.budget.model.CurrencyId
 import su.nepom.budget.model.RawMoney
 import su.nepom.budget.model.RawTurnover
+import su.nepom.budget.model.Uuid
 
 interface TransactionDao : CrudDao<TransactionContent> {
     override fun getAll(): List<TransactionContent> {
         throw UnsupportedOperationException("getAll is not supported for TransactionDao, use getByQuery instead")
     }
 
-    fun getByQuery(query: Query): List<TransactionContent>
+    override fun getById(id: Uuid): TransactionContent? = getRecordById(id)?.transaction
+
+    fun getRecordById(id: Uuid): TransactionRecord?
+
+    fun getByQuery(query: Query): List<TransactionRecord>
 
     fun countByFilter(filter: Filter): Int
 
@@ -60,6 +66,16 @@ interface TransactionDao : CrudDao<TransactionContent> {
         val filter: Filter = Filter(),
         val offset: Int = 0,
         val limit: Int = 100,
-        val sortByDateAsc: Boolean = false,
+        val sortBy: Sort = Sort(),
     )
+
+    data class Sort(
+        val field: SortField = SortField.TRANSACTION_DATE,
+        val asc: Boolean = false,
+    )
+
+    enum class SortField {
+        TRANSACTION_DATE,
+        MODIFIED_AT,
+    }
 }

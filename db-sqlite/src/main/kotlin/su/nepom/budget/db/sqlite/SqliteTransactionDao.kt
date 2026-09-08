@@ -60,6 +60,7 @@ import su.nepom.budget.event.Event
 import su.nepom.budget.event.EventType
 import su.nepom.budget.event.TransactionContent
 import su.nepom.budget.event.TransactionContentItem
+import su.nepom.budget.event.TransactionRecord
 import su.nepom.budget.event.TransactionContextItemAndTransaction
 import su.nepom.budget.model.AccountId
 import su.nepom.budget.model.AccountKind
@@ -76,7 +77,7 @@ import su.nepom.budget.utils.SecondsClock
 internal class SqliteTransactionDao(override val session: SqliteSession) : TransactionDao, DatabaseHolder {
   override fun getDb(): Database = session.db.database
 
-  override fun getById(id: Uuid): TransactionContent? = session.doReadOp {
+  override fun getRecordById(id: Uuid): TransactionRecord? = session.doReadOp {
     fromTransactionsSelect().where { Transactions.uuid eq id.id }.toTransactions().firstOrNull()
   }
 
@@ -87,17 +88,17 @@ internal class SqliteTransactionDao(override val session: SqliteSession) : Trans
   override fun save(entity: TransactionContent): TransactionContent = session.doWriteOp {
     validate(entity)
     val oldEntity = getById(entity.id)
-    session.saveEvent(entity, if (oldEntity == null) EventType.NEW else EventType.UPDATE)
+    val event = session.saveEvent(entity, if (oldEntity == null) EventType.NEW else EventType.UPDATE)
     if (oldEntity != null) {
       delete(Transactions) { Transactions.uuid eq oldEntity.uuidCode() }
     }
-    insert(Transactions) { setFromTransaction(entity) }
+    insert(Transactions) { setFromTransaction(entity, event.created, event.creator) }
     insertBatch(TransactionItems) { setFromTransactionItems(entity) }
     updateAccountRests(oldEntity, entity)
     entity
   }
 
-  override fun getByQuery(query: TransactionDao.Query): List<TransactionContent> = session.doReadOp {
+  override fun getByQuery(query: TransactionDao.Query): List<TransactionRecord> = session.doReadOp {
     val transactionUuids = fromTransactions()
       .selectDistinct(Transactions.uuid)
       .where(query.filter)
@@ -132,7 +133,7 @@ internal class SqliteTransactionDao(override val session: SqliteSession) : Trans
           TransactionItems.reservedUntil,
           TransactionItems.no)
         .where(query.filter)
-        .orderBy(query.orderByDateExpr(), Transactions.uuid.asc(), TransactionItems.no.asc())
+        .orderBy(query.orderByExpr(), Transactions.uuid.asc(), TransactionItems.no.asc())
         .limit(query)
         .map { rs ->
           val (item, no) = rs.toItemAndNo()
@@ -140,7 +141,7 @@ internal class SqliteTransactionDao(override val session: SqliteSession) : Trans
         }
       if (itemsWithInfo.isEmpty()) return@doReadOp emptyList()
       val transactionUuids = itemsWithInfo.map { it.transactionUuid }
-      val map: Map<String, Pair<TransactionContent, MutableList<Pair<TransactionContentItem, Int>>>> =
+      val map: Map<String, Pair<TransactionRecord, MutableList<Pair<TransactionContentItem, Int>>>> =
         fromTransactionsSelect()
         .where { Transactions.uuid inList transactionUuids }
         .orderBy(query)
@@ -349,10 +350,13 @@ internal class SqliteTransactionDao(override val session: SqliteSession) : Trans
       .map { it.getString(1)!! }
 
   private fun Query.orderBy(query: TransactionDao.Query) =
-    orderBy(query.orderByDateExpr())
+    orderBy(query.orderByExpr())
 
-  private fun TransactionDao.Query.orderByDateExpr() =
-      Transactions.date.run { if (sortByDateAsc) asc() else desc() }
+  private fun TransactionDao.Query.orderByExpr() =
+    when (sortBy.field) {
+      TransactionDao.SortField.TRANSACTION_DATE -> Transactions.date
+      TransactionDao.SortField.MODIFIED_AT -> Transactions.modifiedAt
+    }.run { if (sortBy.asc) asc() else desc() }
 
   private fun Query.limit(query: TransactionDao.Query) = limit(query.offset, query.limit)
 }

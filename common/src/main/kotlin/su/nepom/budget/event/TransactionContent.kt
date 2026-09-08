@@ -41,10 +41,18 @@ typealias TransactionContent = TransactionContentV1
 
 typealias TransactionContentItem = TransactionContentV1.Item
 
+data class TransactionRecord(
+    val transaction: TransactionContent,
+    val modifiedAt: Instant,
+    val modifiedBy: String,
+)
+
 data class TransactionContextItemAndTransaction(
     val item: TransactionContentItem,
     val itemNoInTransaction: Int,
     // true if this is the first row of its transaction in the list this item came from
     val isFirstInGroup: Boolean,
-    val transaction: TransactionContent,
-)
+    val transaction: TransactionRecord,
+) {
+    val content: TransactionContent get() = transaction.transaction
+}

@@ -11,13 +11,24 @@ import su.nepom.budget.desktop.util.toLocalDate
 import su.nepom.budget.desktop.util.toStartOfDayInstant
 import su.nepom.budget.event.TransactionContent
 import su.nepom.budget.event.TransactionContentItem
+import su.nepom.budget.event.TransactionRecord
 import su.nepom.budget.model.Uuid
 import su.nepom.budget.utils.SecondsClock
 import java.time.LocalDate
 
 class TransactionObservable(
     contentValue: TransactionContent,
+    // null for a not-yet-saved transaction (new / conflict-resolution / history view) - there is
+    // no "modified" info to show yet
+    val modifiedAt: Instant? = null,
+    val modifiedBy: String = "",
 ) : ObservableEntity<TransactionContent> {
+    constructor(record: TransactionRecord) : this(
+        record.transaction,
+        record.modifiedAt,
+        record.modifiedBy,
+    )
+
     val contentProperty = SimpleObjectWithIdProperty(this, "content", contentValue)
     override val content: TransactionContent get() = contentProperty.get()
 
