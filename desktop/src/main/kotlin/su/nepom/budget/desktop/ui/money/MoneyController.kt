@@ -15,8 +15,10 @@ import javafx.scene.control.ButtonType
 import javafx.scene.control.CheckBox
 import javafx.scene.control.ComboBox
 import javafx.scene.control.SelectionMode
+import javafx.scene.control.SplitPane
 import javafx.scene.control.TableColumn
 import javafx.scene.control.TableView
+import javafx.stage.Stage
 import org.controlsfx.control.CheckComboBox
 import org.controlsfx.control.MaskerPane
 import su.nepom.budget.db.Db
@@ -24,8 +26,10 @@ import su.nepom.budget.db.Session
 import su.nepom.budget.desktop.service.AccountService
 import su.nepom.budget.desktop.service.CurrencyService
 import su.nepom.budget.desktop.service.DbService
+import su.nepom.budget.desktop.service.WindowStateService
 import su.nepom.budget.desktop.util.fx.Controller
 import su.nepom.budget.desktop.util.fx.Disposable
+import su.nepom.budget.desktop.util.fx.StageAwareController
 import su.nepom.budget.desktop.util.fx.WeakListeners
 import su.nepom.budget.desktop.util.fx.enableCopySelectionToClipboard
 import su.nepom.budget.desktop.util.fx.setClipboardValue
@@ -57,7 +61,8 @@ class MoneyController @Inject constructor(
     private val dbService: DbService,
     private val accountService: AccountService,
     private val currencyService: CurrencyService,
-) : Controller, Initializable, Disposable {
+    private val windowStateService: WindowStateService,
+) : Controller, Initializable, StageAwareController, Disposable {
 
     // plain snapshots of the account/currency data actually needed for the calculation - taken on the
     // FX thread so the background thread never touches the live JavaFX observables directly
@@ -94,6 +99,7 @@ class MoneyController @Inject constructor(
     @FXML private lateinit var toYearCombo: ComboBox<Int>
     @FXML private lateinit var byYearsCheckBox: CheckBox
     @FXML private lateinit var excludeTagsCheckComboBox: CheckComboBox<String>
+    @FXML private lateinit var chartSplitter: SplitPane
     @FXML private lateinit var table: TableView<MoneyRow>
     @FXML private lateinit var chart: LineChart<String, Number>
     @FXML private lateinit var maskerPane: MaskerPane
@@ -130,6 +136,10 @@ class MoneyController @Inject constructor(
             }
             reload()
         }
+    }
+
+    override fun initialize(stage: Stage) {
+        windowStateService.bindSplitPane(stage, NAME, chartSplitter)
     }
 
     override fun dispose() {
@@ -390,6 +400,7 @@ class MoneyController @Inject constructor(
         BigDecimal.valueOf(value).setScale(2, RoundingMode.HALF_UP).toPlainString().replace('.', decimalSeparator)
 
     companion object {
+        const val NAME = "money"
         private val decimalSeparator = DecimalFormatSymbols.getInstance().decimalSeparator
         private val usdFormat = DecimalFormat().apply {
             decimalFormatSymbols = DecimalFormatSymbols(Locale.ROOT).apply {

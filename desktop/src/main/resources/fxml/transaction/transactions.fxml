@@ -90,7 +90,7 @@
             </HBox>
          </right>
       </BorderPane>
-      <SplitPane dividerPositions="0.6" VBox.vgrow="ALWAYS">
+      <SplitPane fx:id="masterDetailSplitter" dividerPositions="0.6" VBox.vgrow="ALWAYS">
          <items>
             <VBox spacing="5.0">
                <children>
@@ -125,7 +125,7 @@
                   </HBox>
                </children>
             </VBox>
-            <SplitPane dividerPositions="0.65" orientation="VERTICAL">
+            <SplitPane fx:id="detailRestsSplitter" dividerPositions="0.65" orientation="VERTICAL">
                <items>
                   <fx:include fx:id="transactionDetail" source="transactionDetail.fxml" />
                   <fx:include fx:id="accountRests" source="../balance/accountRests.fxml" />

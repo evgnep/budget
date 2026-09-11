@@ -8,7 +8,7 @@
 <?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.layout.VBox?>
 
-<SplitPane dividerPositions="0.35" prefHeight="600.0" prefWidth="900.0" xmlns="http://javafx.com/javafx/23.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="su.nepom.budget.desktop.ui.history.HistoryController">
+<SplitPane fx:id="historySplitter" dividerPositions="0.35" prefHeight="600.0" prefWidth="900.0" xmlns="http://javafx.com/javafx/23.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="su.nepom.budget.desktop.ui.history.HistoryController">
    <items>
       <VBox spacing="5.0">
          <padding>

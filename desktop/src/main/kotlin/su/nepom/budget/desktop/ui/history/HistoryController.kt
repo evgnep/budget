@@ -7,13 +7,17 @@ import javafx.fxml.FXML
 import javafx.fxml.Initializable
 import javafx.scene.Node
 import javafx.scene.control.Label
+import javafx.scene.control.SplitPane
 import javafx.scene.control.TableColumn
 import javafx.scene.control.TableView
+import javafx.stage.Stage
 import su.nepom.budget.desktop.service.DbService
+import su.nepom.budget.desktop.service.WindowStateService
 import su.nepom.budget.desktop.ui.account.AccountDetailController
 import su.nepom.budget.desktop.ui.currency.CurrencyDetailController
 import su.nepom.budget.desktop.ui.transaction.TransactionDetailController
 import su.nepom.budget.desktop.util.fx.Controller
+import su.nepom.budget.desktop.util.fx.StageAwareController
 import su.nepom.budget.desktop.util.fx.runAndShowError
 import su.nepom.budget.desktop.util.formatDateTime
 import su.nepom.budget.event.AccountContent
@@ -28,11 +32,17 @@ import java.util.*
 @Suppress("unused")
 class HistoryController @Inject constructor(
     private val dbService: DbService,
-) : Controller, Initializable {
+    private val windowStateService: WindowStateService,
+) : Controller, Initializable, StageAwareController {
+
+    private companion object {
+        const val NAME = "history"
+    }
 
     private val events = FXCollections.observableArrayList<ActualEvent>()
     private var target: Pair<Uuid, ObjectKind>? = null
 
+    @FXML private lateinit var historySplitter: SplitPane
     @FXML private lateinit var eventsTable: TableView<ActualEvent>
     @FXML private lateinit var placeColumn: TableColumn<ActualEvent, String>
     @FXML private lateinit var noColumn: TableColumn<ActualEvent, String>
@@ -64,6 +74,11 @@ class HistoryController @Inject constructor(
         loadEvents()
         showDetail(null)
         if (events.isNotEmpty()) eventsTable.selectionModel.select(0)
+    }
+
+    override fun initialize(stage: Stage) {
+        windowStateService.bindSplitPane(stage, NAME, historySplitter)
+        windowStateService.bindTableColumns(NAME, eventsTable)
     }
 
     private fun loadEvents() {

@@ -21,6 +21,7 @@ import javafx.scene.control.TreeTableColumn
 import javafx.scene.control.TreeTableRow
 import javafx.scene.control.TreeTableView
 import javafx.scene.input.MouseButton
+import javafx.stage.Stage
 import javafx.util.Duration
 import javafx.util.StringConverter
 import kotlinx.datetime.DateTimeUnit
@@ -35,11 +36,13 @@ import su.nepom.budget.desktop.service.AccountService
 import su.nepom.budget.desktop.service.CurrencyService
 import su.nepom.budget.desktop.service.DbService
 import su.nepom.budget.desktop.service.SubaccountService
+import su.nepom.budget.desktop.service.WindowStateService
 import su.nepom.budget.utils.ReservedAmount
 import su.nepom.budget.utils.calculateDailyBalance
 import su.nepom.budget.utils.format
 import su.nepom.budget.desktop.util.fx.Controller
 import su.nepom.budget.desktop.util.fx.Disposable
+import su.nepom.budget.desktop.util.fx.StageAwareController
 import su.nepom.budget.desktop.util.fx.WeakListeners
 import su.nepom.budget.desktop.util.fx.runAndShowError
 import su.nepom.budget.desktop.ui.WindowManager
@@ -63,7 +66,8 @@ class BalanceController @Inject constructor(
     private val currencyService: CurrencyService,
     private val subaccountService: SubaccountService,
     private val windowManager: WindowManager,
-) : Controller, Initializable, Disposable {
+    private val windowStateService: WindowStateService,
+) : Controller, Initializable, StageAwareController, Disposable {
 
     private enum class DateRangePreset(val label: String) {
         ALL("За все время"),
@@ -149,6 +153,10 @@ class BalanceController @Inject constructor(
             }
             reload()
         }
+    }
+
+    override fun initialize(stage: Stage) {
+        windowStateService.bindTreeTableColumns(NAME, balancesTable)
     }
 
     override fun dispose() {
@@ -531,6 +539,7 @@ class BalanceController @Inject constructor(
     }
 
     companion object {
+        const val NAME = "balances"
         private const val OTHER_GROUP = "Прочие"
         private val GROUP_ROW: PseudoClass = PseudoClass.getPseudoClass("group-row")
         private val MARK_REST: PseudoClass = PseudoClass.getPseudoClass("mark-rest")

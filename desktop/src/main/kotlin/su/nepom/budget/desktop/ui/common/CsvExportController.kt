@@ -22,6 +22,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import su.nepom.budget.desktop.service.GLOBAL_SETTINGS
 import su.nepom.budget.desktop.service.WindowStateService
 import su.nepom.budget.desktop.util.buildCsvText
 import su.nepom.budget.desktop.util.fx.Controller
@@ -119,12 +120,16 @@ class CsvExportController @Inject constructor(
             title = "Сохранить CSV"
             initialFileName = suggestedFileName
             extensionFilters.add(FileChooser.ExtensionFilter("CSV файлы", "*.csv"))
-            windowStateService.lastExportFolder?.let { File(it) }?.takeIf { it.isDirectory }?.let { initialDirectory = it }
+            windowStateService.getString(GLOBAL_SETTINGS, "lastExportFolder")
+                ?.let { File(it) }?.takeIf { it.isDirectory }?.let { initialDirectory = it }
         }
         val file = chooser.showSaveDialog(stage) ?: return
-        windowStateService.lastExportFolder = file.parentFile?.absolutePath
+        windowStateService.setString(GLOBAL_SETTINGS, "lastExportFolder", file.parentFile?.absolutePath)
         runCatching { file.writeText(content, Charsets.UTF_8) }
-            .onFailure { Alert(Alert.AlertType.ERROR, "Не удалось сохранить файл: ${it.message}", ButtonType.OK).showAndWait() }
+            .onFailure {
+                Alert(Alert.AlertType.ERROR, "Не удалось сохранить файл: ${it.message}", ButtonType.OK)
+                    .showAndWait()
+            }
     }
 
     private fun showButton() {

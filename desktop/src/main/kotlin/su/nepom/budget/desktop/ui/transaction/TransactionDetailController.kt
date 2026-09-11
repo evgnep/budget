@@ -47,6 +47,7 @@ import su.nepom.budget.desktop.model.TransactionObservable
 import su.nepom.budget.desktop.service.AccountService
 import su.nepom.budget.desktop.service.CurrencyService
 import su.nepom.budget.desktop.service.DbService
+import su.nepom.budget.desktop.service.WindowStateService
 import su.nepom.budget.desktop.ui.history.History
 import su.nepom.budget.desktop.util.fx.Controller
 import su.nepom.budget.desktop.util.fx.FormDriver
@@ -84,7 +85,12 @@ class TransactionDetailController @Inject constructor(
   private val currencyService: CurrencyService,
   private val accountPicker: AccountPicker,
   private val history: History,
+  private val windowStateService: WindowStateService,
 ) : Controller, Initializable {
+
+  private companion object {
+    const val NAME = "transactionDetail"
+  }
 
   private class ItemRow(
     account: AccountObservable?,
@@ -489,6 +495,7 @@ class TransactionDetailController @Inject constructor(
   override fun initialize(location: URL?, resources: ResourceBundle?) {
     dateEditPicker.setupFlexibleDateFormat()
     setupItemsEditor()
+    windowStateService.bindTableColumns(NAME, itemsTable)
     setupOperationTabs()
     setupForm()
     setupShortcuts()

@@ -18,12 +18,15 @@ import javafx.scene.control.TableView
 import javafx.scene.control.TextField
 import javafx.scene.control.cell.CheckBoxTableCell
 import javafx.scene.input.KeyCode
+import javafx.stage.Stage
 import javafx.util.StringConverter
 import su.nepom.budget.desktop.model.AccountObservable
 import su.nepom.budget.desktop.model.CurrencyObservable
 import su.nepom.budget.desktop.service.AccountService
 import su.nepom.budget.desktop.service.CurrencyService
+import su.nepom.budget.desktop.service.WindowStateService
 import su.nepom.budget.desktop.util.fx.Controller
+import su.nepom.budget.desktop.util.fx.StageAwareController
 import su.nepom.budget.model.AccountId
 import su.nepom.budget.model.AccountKind
 import su.nepom.budget.model.CurrencyId
@@ -34,7 +37,12 @@ import java.util.ResourceBundle
 class AccountPickerController @Inject constructor(
     private val accountService: AccountService,
     private val currencyService: CurrencyService,
-) : Controller, Initializable {
+    private val windowStateService: WindowStateService,
+) : Controller, Initializable, StageAwareController {
+
+    private companion object {
+        const val NAME = "accountPicker"
+    }
 
     class Row(val account: AccountObservable, val currencyName: String) {
         val selected = SimpleBooleanProperty(false)
@@ -146,6 +154,7 @@ class AccountPickerController @Inject constructor(
         kindColumn.setCellValueFactory { SimpleStringProperty(it.value.kind) }
         tagsColumn.setCellValueFactory { SimpleStringProperty(it.value.tags) }
         descriptionColumn.setCellValueFactory { SimpleStringProperty(it.value.description) }
+        windowStateService.bindTableColumns(NAME, accountsTableView)
 
         currencyFilterComboBox.items = currencyService.currencies
         currencyFilterComboBox.converter = currencyConverter
@@ -224,6 +233,10 @@ class AccountPickerController @Inject constructor(
             }
         }
         Platform.runLater { nameFilterTextField.requestFocus() }
+    }
+
+    override fun initialize(stage: Stage) {
+        windowStateService.bindWindowBounds(stage, NAME)
     }
 
     private fun focusTable() {

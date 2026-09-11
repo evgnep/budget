@@ -12,8 +12,10 @@ import javafx.fxml.Initializable
 import javafx.scene.control.Button
 import javafx.scene.control.CheckBox
 import javafx.scene.control.Label
+import javafx.scene.control.SplitPane
 import javafx.scene.control.TableColumn
 import javafx.scene.control.TableView
+import javafx.stage.Stage
 import javafx.util.Duration
 import su.nepom.budget.db.Db
 import su.nepom.budget.desktop.model.SubaccountObservable
@@ -21,9 +23,11 @@ import su.nepom.budget.desktop.service.AccountService
 import su.nepom.budget.desktop.service.CurrencyService
 import su.nepom.budget.desktop.service.DbService
 import su.nepom.budget.desktop.service.SubaccountService
+import su.nepom.budget.desktop.service.WindowStateService
 import su.nepom.budget.desktop.util.fx.Controller
 import su.nepom.budget.desktop.util.fx.Disposable
 import su.nepom.budget.desktop.util.fx.MasterDetailFormDriver
+import su.nepom.budget.desktop.util.fx.StageAwareController
 import su.nepom.budget.desktop.util.fx.WeakListeners
 import su.nepom.budget.desktop.util.fx.runAndShowError
 import su.nepom.budget.desktop.util.fx.table.CheckBoxTableCell
@@ -41,7 +45,8 @@ class SubaccountsController @Inject constructor(
     private val subaccountService: SubaccountService,
     private val accountService: AccountService,
     private val currencyService: CurrencyService,
-) : Controller, Initializable, Disposable {
+    private val windowStateService: WindowStateService,
+) : Controller, Initializable, StageAwareController, Disposable {
 
     private var accountId: AccountId? = null
 
@@ -62,6 +67,9 @@ class SubaccountsController @Inject constructor(
 
     @FXML
     private lateinit var createNewButton: Button
+
+    @FXML
+    private lateinit var subaccountsSplitter: SplitPane
 
     @FXML
     private lateinit var subaccountsTableView: TableView<SubaccountObservable>
@@ -126,6 +134,11 @@ class SubaccountsController @Inject constructor(
         }
     }
 
+    override fun initialize(stage: Stage) {
+        windowStateService.bindSplitPane(stage, NAME, subaccountsSplitter)
+        windowStateService.bindTableColumns(NAME, subaccountsTableView)
+    }
+
     override fun dispose() {
         weakListeners.dispose()
         refreshPause.stop()
@@ -165,6 +178,7 @@ class SubaccountsController @Inject constructor(
     }
 
     companion object {
+        const val NAME = "subaccounts"
         private val MISMATCH: PseudoClass = PseudoClass.getPseudoClass("mismatch")
     }
 }

@@ -16,7 +16,6 @@ import javafx.scene.control.SeparatorMenuItem
 import javafx.scene.control.ToggleButton
 import javafx.scene.control.ToggleGroup
 import javafx.scene.control.ToolBar
-import javafx.scene.image.Image
 import javafx.scene.layout.BorderPane
 import javafx.stage.Stage
 import su.nepom.budget.Global
@@ -40,7 +39,7 @@ class BudgetApplication : Application() {
         stage.scene = Scene(buildRoot())
         stage.width = 900.0
         stage.height = 640.0
-        budgetComponent.windowStateService().bind(stage, "main")
+        budgetComponent.windowStateService().bindWindowBounds(stage, "main")
         // closing the main window quits the app, even if detached windows are still open
         stage.setOnHidden { Platform.exit() }
         stage.show()

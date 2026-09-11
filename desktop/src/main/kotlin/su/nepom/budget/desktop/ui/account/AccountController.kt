@@ -9,17 +9,21 @@ import javafx.fxml.Initializable
 import javafx.scene.control.Button
 import javafx.scene.control.CheckBox
 import javafx.scene.control.ComboBox
+import javafx.scene.control.SplitPane
 import javafx.scene.control.TableColumn
 import javafx.scene.control.TableView
 import javafx.scene.control.TextField
+import javafx.stage.Stage
 import javafx.util.StringConverter
 import su.nepom.budget.desktop.model.AccountObservable
 import su.nepom.budget.desktop.model.CurrencyObservable
 import su.nepom.budget.desktop.service.AccountService
 import su.nepom.budget.desktop.service.CurrencyService
+import su.nepom.budget.desktop.service.WindowStateService
 import su.nepom.budget.desktop.ui.history.History
 import su.nepom.budget.desktop.util.fx.Controller
 import su.nepom.budget.desktop.util.fx.MasterDetailFormDriver
+import su.nepom.budget.desktop.util.fx.StageAwareController
 import su.nepom.budget.desktop.util.fx.table.CheckBoxTableCell
 import su.nepom.budget.model.AccountKind
 import su.nepom.budget.model.ObjectKind
@@ -31,7 +35,13 @@ class AccountController @Inject constructor(
     private val accountService: AccountService,
     private val currencyService: CurrencyService,
     private val history: History,
-) : Controller, Initializable {
+    private val windowStateService: WindowStateService,
+) : Controller, Initializable, StageAwareController {
+
+    private companion object {
+        const val NAME = "main"
+    }
+
     private val accounts = FilteredList(accountService.accounts) { !it.content.hidden }
     private val accountsSorted = SortedList(accounts)
     private val visibleCurrencies = FilteredList(currencyService.currencies) { !it.content.hidden }
@@ -39,6 +49,9 @@ class AccountController @Inject constructor(
 
     @FXML
     private lateinit var accountDetailController: AccountDetailController
+
+    @FXML
+    private lateinit var accountsSplitter: SplitPane
 
     @FXML
     private lateinit var createNewButton: Button
@@ -146,6 +159,11 @@ class AccountController @Inject constructor(
                 "История счёта: ${selected.content.name}",
             )
         }
+    }
+
+    override fun initialize(stage: Stage) {
+        windowStateService.bindSplitPane(stage, NAME, accountsSplitter)
+        windowStateService.bindTableColumns(NAME, accountsTableView)
     }
 
     private fun updateFilter() {

@@ -9,7 +9,7 @@
 <?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.layout.VBox?>
 
-<SplitPane dividerPositions="0.5" prefHeight="600.0" prefWidth="1000.0" xmlns="http://javafx.com/javafx/23.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="su.nepom.budget.desktop.ui.conflict.ConflictController">
+<SplitPane fx:id="conflictSplitter" dividerPositions="0.5" prefHeight="600.0" prefWidth="1000.0" xmlns="http://javafx.com/javafx/23.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="su.nepom.budget.desktop.ui.conflict.ConflictController">
    <items>
       <VBox spacing="5.0">
          <padding>

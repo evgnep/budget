@@ -25,7 +25,7 @@
       </HBox>
       <StackPane VBox.vgrow="ALWAYS">
          <children>
-            <SplitPane dividerPositions="0.55" orientation="VERTICAL">
+            <SplitPane fx:id="chartSplitter" dividerPositions="0.55" orientation="VERTICAL">
               <items>
                 <TableView fx:id="table" />
                 <LineChart fx:id="chart" animated="false" createSymbols="false">

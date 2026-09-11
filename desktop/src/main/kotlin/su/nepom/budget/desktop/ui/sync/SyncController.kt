@@ -14,6 +14,7 @@ import su.nepom.budget.desktop.service.EventStoreService
 import su.nepom.budget.desktop.service.SyncOutcome
 import su.nepom.budget.desktop.service.SyncPlaceInfo
 import su.nepom.budget.desktop.service.SyncStoreInfo
+import su.nepom.budget.desktop.service.WindowStateService
 import su.nepom.budget.desktop.util.formatDateTime
 import su.nepom.budget.desktop.util.fx.Controller
 import java.net.URL
@@ -22,7 +23,12 @@ import java.util.ResourceBundle
 @Suppress("unused")
 class SyncController @Inject constructor(
     private val eventStoreService: EventStoreService,
+    private val windowStateService: WindowStateService,
 ) : Controller, Initializable {
+
+    private companion object {
+        const val NAME = "main"
+    }
 
     @FXML private lateinit var unsavedLabel: Label
     @FXML private lateinit var saveNowButton: Button
@@ -50,6 +56,7 @@ class SyncController @Inject constructor(
         placeColumn.setCellValueFactory { SimpleStringProperty(it.value.place) }
         onDiskColumn.setCellValueFactory { SimpleIntegerProperty(it.value.onDisk) }
         importedColumn.setCellValueFactory { SimpleIntegerProperty(it.value.imported) }
+        windowStateService.bindTableColumns(NAME, placesTable)
 
         eventStoreService.storeInfo.addListener { _, _, info -> showStoreInfo(info) }
         showStoreInfo(eventStoreService.storeInfo.value)

@@ -16,6 +16,7 @@ import javafx.scene.control.DatePicker
 import javafx.scene.control.Hyperlink
 import javafx.scene.control.Label
 import javafx.scene.control.SelectionMode
+import javafx.scene.control.SplitPane
 import javafx.scene.control.TableCell
 import javafx.scene.control.TableColumn
 import javafx.scene.control.TableView
@@ -38,6 +39,7 @@ import su.nepom.budget.desktop.model.TransactionObservable
 import su.nepom.budget.desktop.service.AccountService
 import su.nepom.budget.desktop.service.CurrencyService
 import su.nepom.budget.desktop.service.DbService
+import su.nepom.budget.desktop.service.WindowStateService
 import su.nepom.budget.desktop.ui.common.CsvExportController
 import su.nepom.budget.desktop.ui.common.CsvExportSpec
 import su.nepom.budget.desktop.util.formatDateForClipboard
@@ -81,15 +83,17 @@ class TransactionController @Inject constructor(
     private val accountService: AccountService,
     private val currencyService: CurrencyService,
     private val accountPicker: AccountPicker,
+    private val windowStateService: WindowStateService,
 ) : Controller, StageAwareController, Disposable {
 
-    private companion object {
-        const val PAGE_SIZE = 100
-        val DELETED_ROW_PSEUDO_CLASS: javafx.css.PseudoClass = javafx.css.PseudoClass.getPseudoClass("deleted-row")
-        val GROUP_HEADER_ROW_PSEUDO_CLASS: javafx.css.PseudoClass = javafx.css.PseudoClass.getPseudoClass("group-header-row")
-        val GROUP_HEADER_WEEKDAY_FORMAT: DateTimeFormatter =
+    companion object {
+        const val NAME = "transactions"
+        private const val PAGE_SIZE = 100
+        private val DELETED_ROW_PSEUDO_CLASS: javafx.css.PseudoClass = javafx.css.PseudoClass.getPseudoClass("deleted-row")
+        private val GROUP_HEADER_ROW_PSEUDO_CLASS: javafx.css.PseudoClass = javafx.css.PseudoClass.getPseudoClass("group-header-row")
+        private val GROUP_HEADER_WEEKDAY_FORMAT: DateTimeFormatter =
             DateTimeFormatter.ofPattern("EEE", Locale.of("ru"))
-        val GROUP_HEADER_DATE_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("dd-MM-yyyy")
+        private val GROUP_HEADER_DATE_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("dd-MM-yyyy")
     }
 
     /** Filter to apply once when the window opens (e.g. from the balances window). */
@@ -167,6 +171,8 @@ class TransactionController @Inject constructor(
 
     @FXML private lateinit var transactionDetailController: TransactionDetailController
     @FXML private lateinit var accountRestsController: AccountRestsController
+    @FXML private lateinit var masterDetailSplitter: SplitPane
+    @FXML private lateinit var detailRestsSplitter: SplitPane
 
     // filter panel
     @FXML private lateinit var dateRangeComboBox: ComboBox<DateRangePreset>
@@ -229,6 +235,9 @@ class TransactionController @Inject constructor(
         wireDetail()
         wireCsvExport()
         applyInitialFilter()
+        windowStateService.bindSplitPane(stage, NAME, masterDetailSplitter)
+        windowStateService.bindSplitPane(stage, NAME, detailRestsSplitter)
+        windowStateService.bindTableColumns(NAME, transactionsTable)
 
         weakListeners.addListenerAndCallNow(dbService.sessionProperty) { _, _, session ->
             if (session != null) {

@@ -13,6 +13,7 @@ import javafx.scene.control.ComboBox
 import javafx.scene.control.DatePicker
 import javafx.scene.control.Hyperlink
 import javafx.scene.control.Label
+import javafx.scene.control.SplitPane
 import javafx.scene.control.TableColumn
 import javafx.scene.control.TableView
 import javafx.scene.control.TextField
@@ -25,6 +26,7 @@ import kotlinx.datetime.Instant
 import su.nepom.budget.db.Db
 import su.nepom.budget.db.dao.EventDao
 import su.nepom.budget.desktop.service.DbService
+import su.nepom.budget.desktop.service.WindowStateService
 import su.nepom.budget.desktop.ui.account.AccountDetailController
 import su.nepom.budget.desktop.ui.conflict.JsonDetailController
 import su.nepom.budget.desktop.ui.currency.CurrencyDetailController
@@ -56,10 +58,12 @@ import kotlin.math.ceil
 @Suppress("unused")
 class EventsController @Inject constructor(
     private val dbService: DbService,
+    private val windowStateService: WindowStateService,
 ) : Controller, StageAwareController, Disposable {
 
     private companion object {
         const val PAGE_SIZE = 100
+        const val NAME = "events"
     }
 
     private enum class DateRangePreset(val label: String) {
@@ -124,6 +128,7 @@ class EventsController @Inject constructor(
     @FXML private lateinit var pageCountLabel: Label
 
     // list
+    @FXML private lateinit var eventsSplitter: SplitPane
     @FXML private lateinit var eventsTable: TableView<ActualEvent>
     @FXML private lateinit var dateColumn: TableColumn<ActualEvent, String>
     @FXML private lateinit var creatorColumn: TableColumn<ActualEvent, String>
@@ -137,6 +142,8 @@ class EventsController @Inject constructor(
         setupFilterPanel()
         setupListTable()
         showDetail(null)
+        windowStateService.bindSplitPane(stage, NAME, eventsSplitter)
+        windowStateService.bindTableColumns(NAME, eventsTable)
 
         weakListeners.addListenerAndCallNow(dbService.sessionProperty) { _, _, session ->
             if (session != null) {

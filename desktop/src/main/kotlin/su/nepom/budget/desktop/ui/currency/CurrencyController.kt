@@ -8,13 +8,17 @@ import javafx.fxml.FXML
 import javafx.fxml.Initializable
 import javafx.scene.control.Button
 import javafx.scene.control.CheckBox
+import javafx.scene.control.SplitPane
 import javafx.scene.control.TableColumn
 import javafx.scene.control.TableView
+import javafx.stage.Stage
 import su.nepom.budget.desktop.model.CurrencyObservable
 import su.nepom.budget.desktop.service.CurrencyService
+import su.nepom.budget.desktop.service.WindowStateService
 import su.nepom.budget.desktop.ui.history.History
 import su.nepom.budget.desktop.util.fx.Controller
 import su.nepom.budget.desktop.util.fx.MasterDetailFormDriver
+import su.nepom.budget.desktop.util.fx.StageAwareController
 import su.nepom.budget.desktop.util.fx.table.CheckBoxTableCell
 import su.nepom.budget.model.ObjectKind
 import java.net.URL
@@ -24,13 +28,22 @@ import java.util.*
 class CurrencyController @Inject constructor(
     private val currencyService: CurrencyService,
     private val history: History,
-) : Controller, Initializable {
+    private val windowStateService: WindowStateService,
+) : Controller, Initializable, StageAwareController {
+
+    private companion object {
+        const val NAME = "main"
+    }
+
     private val currencies = FilteredList(currencyService.currencies) { !it.content.hidden }
     private val currenciesSorted = SortedList(currencies)
     private lateinit var masterDetailFormDriver: MasterDetailFormDriver<CurrencyObservable, CurrencyObservable>
 
     @FXML
     private lateinit var currencyDetailController: CurrencyDetailController
+
+    @FXML
+    private lateinit var currencySplitter: SplitPane
 
     @FXML
     private lateinit var createNewButton: Button
@@ -91,5 +104,10 @@ class CurrencyController @Inject constructor(
                 "История валюты: ${selected.content.name}",
             )
         }
+    }
+
+    override fun initialize(stage: Stage) {
+        windowStateService.bindSplitPane(stage, NAME, currencySplitter)
+        windowStateService.bindTableColumns(NAME, currenciesTableView)
     }
 }

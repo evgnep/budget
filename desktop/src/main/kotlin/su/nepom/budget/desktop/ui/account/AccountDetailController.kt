@@ -28,6 +28,7 @@ import su.nepom.budget.desktop.model.CurrencyObservable
 import su.nepom.budget.desktop.service.AccountService
 import su.nepom.budget.desktop.service.CurrencyService
 import su.nepom.budget.desktop.service.DbService
+import su.nepom.budget.desktop.service.WindowStateService
 import su.nepom.budget.desktop.util.fx.Controller
 import su.nepom.budget.desktop.util.fx.FormDriver
 import su.nepom.budget.db.dao.AccountDao
@@ -52,7 +53,12 @@ class AccountDetailController @Inject constructor(
     private val dbService: DbService,
     private val accountService: AccountService,
     private val currencyService: CurrencyService,
+    private val windowStateService: WindowStateService,
 ) : Controller, Initializable {
+
+    private companion object {
+        const val NAME = "accountDetail"
+    }
 
     private val visibleCurrencies = FilteredList(currencyService.currencies) { !it.content.hidden }
 
@@ -217,6 +223,8 @@ class AccountDetailController @Inject constructor(
         setupTagsEditor()
         setupBudgetEditor()
         setupPairCurrencyEditor()
+        windowStateService.bindTableColumns(NAME, allowancesTable)
+        windowStateService.bindTableColumns(NAME, reservesTable)
 
         formDriver = FormDriver.builder(
             okButton,

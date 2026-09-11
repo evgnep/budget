@@ -6,16 +6,19 @@ import javafx.fxml.Initializable
 import javafx.scene.Parent
 import javafx.scene.control.Button
 import javafx.scene.control.Label
+import javafx.scene.control.SplitPane
 import javafx.scene.control.Tab
 import javafx.scene.control.TabPane
 import javafx.scene.layout.StackPane
 import javafx.stage.Stage
+import su.nepom.budget.desktop.service.WindowStateService
 import su.nepom.budget.desktop.ui.account.AccountDetailController
 import su.nepom.budget.desktop.ui.currency.CurrencyDetailController
 import su.nepom.budget.desktop.ui.transaction.TransactionDetailController
 import su.nepom.budget.desktop.util.formatDateTime
 import su.nepom.budget.desktop.util.fx.Controller
 import su.nepom.budget.desktop.util.fx.FxmlService
+import su.nepom.budget.desktop.util.fx.StageAwareController
 import su.nepom.budget.event.AccountContent
 import su.nepom.budget.event.ActualEvent
 import su.nepom.budget.event.CurrencyContent
@@ -28,8 +31,14 @@ import java.util.*
 @Suppress("unused")
 class ConflictController @Inject constructor(
     private val fxmlService: FxmlService,
-) : Controller, Initializable {
+    private val windowStateService: WindowStateService,
+) : Controller, Initializable, StageAwareController {
 
+    private companion object {
+        const val NAME = "conflict"
+    }
+
+    @FXML private lateinit var conflictSplitter: SplitPane
     @FXML private lateinit var tabPane: TabPane
     @FXML private lateinit var authorLabel: Label
     @FXML private lateinit var timeLabel: Label
@@ -78,6 +87,11 @@ class ConflictController @Inject constructor(
         seedResult(heads.first())
 
         stage.setOnCloseRequest { finish(ConflictResolver.Result(ConflictResolver.Action.CANCEL, null)) }
+    }
+
+    override fun initialize(stage: Stage) {
+        windowStateService.bindWindowBounds(stage, NAME)
+        windowStateService.bindSplitPane(stage, NAME, conflictSplitter)
     }
 
     private fun loadDetail(path: String, collect: (Any) -> Unit): Parent =

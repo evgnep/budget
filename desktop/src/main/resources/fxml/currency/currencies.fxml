@@ -12,7 +12,7 @@
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.RowConstraints?>
 
-<SplitPane dividerPositions="0.4" prefHeight="582.0" prefWidth="637.0" xmlns="http://javafx.com/javafx/23.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="su.nepom.budget.desktop.ui.currency.CurrencyController">
+<SplitPane fx:id="currencySplitter" dividerPositions="0.4" prefHeight="582.0" prefWidth="637.0" xmlns="http://javafx.com/javafx/23.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="su.nepom.budget.desktop.ui.currency.CurrencyController">
    <items>
       <GridPane hgap="5.0" vgap="5.0">
          <columnConstraints>

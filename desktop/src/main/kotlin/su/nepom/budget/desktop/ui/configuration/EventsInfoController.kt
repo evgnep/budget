@@ -8,14 +8,24 @@ import javafx.fxml.FXML
 import javafx.fxml.Initializable
 import javafx.scene.control.TableColumn
 import javafx.scene.control.TableView
+import javafx.stage.Stage
+import su.nepom.budget.desktop.service.WindowStateService
 import su.nepom.budget.desktop.util.fx.Controller
+import su.nepom.budget.desktop.util.fx.StageAwareController
 import su.nepom.budget.events.EventStoreReader
 import su.nepom.budget.model.Place
 import java.net.URL
 import java.nio.file.Path
 import java.util.*
 
-class EventsInfoController @Inject constructor() : Controller, Initializable {
+class EventsInfoController @Inject constructor(
+    private val windowStateService: WindowStateService,
+) : Controller, Initializable, StageAwareController {
+
+    private companion object {
+        const val NAME = "eventsInfo"
+    }
+
     @FXML
     private lateinit var eventCountColumn: TableColumn<EventInfo, Number>
 
@@ -35,6 +45,11 @@ class EventsInfoController @Inject constructor() : Controller, Initializable {
         eventsTableView.items = FXCollections.observableArrayList(items)
         eventPlaceColumn.setCellValueFactory { it.value.place }
         eventCountColumn.setCellValueFactory { it.value.count }
+        windowStateService.bindTableColumns(NAME, eventsTableView)
+    }
+
+    override fun initialize(stage: Stage) {
+        windowStateService.bindWindowBounds(stage, NAME)
     }
 
     private class EventInfo(place: String, count: Int) {

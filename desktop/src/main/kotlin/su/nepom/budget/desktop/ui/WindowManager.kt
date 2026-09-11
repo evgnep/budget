@@ -41,7 +41,7 @@ class WindowManager @Inject constructor(
             val picked = accountPicker.pick(null) ?: emptySet()
             TransactionController.InitialFilter(picked, null, null)
         }
-        open("Операции", "transactions") { stage, collect ->
+        open("Операции", TransactionController.NAME) { stage, collect ->
             stage.setIcon("operations")
             fxmlService.load<Parent>("transaction/transactions.fxml", stage, null) { controller ->
                 collect(controller)
@@ -132,7 +132,7 @@ class WindowManager @Inject constructor(
         val stage = Stage()
         stage.title = nextTitle(titleBase)
         stage.scene = Scene(buildRoot(stage) { if (it is Disposable) disposables += it })
-        if (stateKey != null) windowStateService.bind(stage, stateKey)
+        if (stateKey != null) windowStateService.bindWindowBounds(stage, stateKey)
         val window = OpenWindow(stage, titleBase)
         openWindows += window
         stage.setOnHidden {
