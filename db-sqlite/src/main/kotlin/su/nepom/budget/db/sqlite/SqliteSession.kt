@@ -157,15 +157,15 @@ internal class SqliteSession(
 
     // returns the created event so callers can denormalize its created/creator elsewhere (e.g. a
     // transaction's own "modified at/by" columns) without a separate event-table query
-    fun saveEvent(entity: ActualVersionContent, eventType: EventType): Event<ActualVersionContent> {
+    fun saveEvent(entity: ActualVersionContent, eventType: EventType): Event<ActualVersionContent>? {
         beforeAnyOperation()
         db.catalogCaches[entity::class]?.setInTransactionUnsafe(entity)
-        val basedOn = if (createEvents) eventDao.getLastEventCoords()
+        if (!createEvents) return null
+        val basedOn = eventDao.getLastEventCoords()
             .filterNot { it.key == Global.currentPlace }
             .map { it.key no it.value }
-        else listOf()
         val event = Event(Global.currentPlace no 0, SecondsClock.now(), Global.currentUser, eventType, basedOn, entity)
-        if (createEvents) eventDao.save(event)
+        eventDao.save(event)
         return event
     }
 

@@ -89,10 +89,12 @@ internal class SqliteTransactionDao(override val session: SqliteSession) : Trans
     validate(entity)
     val oldEntity = getById(entity.id)
     val event = session.saveEvent(entity, if (oldEntity == null) EventType.NEW else EventType.UPDATE)
+      ?: session.eventDao.getLastEventForObject(entity.id, entity.objectKind)
     if (oldEntity != null) {
       delete(Transactions) { Transactions.uuid eq oldEntity.uuidCode() }
     }
-    insert(Transactions) { setFromTransaction(entity, event.created, event.creator) }
+    val (created, creator) = event?.let { it.created to it.creator } ?: (SecondsClock.now() to Global.currentUser)
+    insert(Transactions) { setFromTransaction(entity, created, creator) }
     insertBatch(TransactionItems) { setFromTransactionItems(entity) }
     updateAccountRests(oldEntity, entity)
     entity
