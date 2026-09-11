@@ -88,8 +88,8 @@ class TransactionController @Inject constructor(
         val DELETED_ROW_PSEUDO_CLASS: javafx.css.PseudoClass = javafx.css.PseudoClass.getPseudoClass("deleted-row")
         val GROUP_HEADER_ROW_PSEUDO_CLASS: javafx.css.PseudoClass = javafx.css.PseudoClass.getPseudoClass("group-header-row")
         val GROUP_HEADER_WEEKDAY_FORMAT: DateTimeFormatter =
-            DateTimeFormatter.ofPattern("EEE", Locale.forLanguageTag("ru"))
-        val GROUP_HEADER_DATE_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("d-MM-yyyy")
+            DateTimeFormatter.ofPattern("EEE", Locale.of("ru"))
+        val GROUP_HEADER_DATE_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("dd-MM-yyyy")
     }
 
     /** Filter to apply once when the window opens (e.g. from the balances window). */

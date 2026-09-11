@@ -95,10 +95,16 @@ tasks.test {
 // Copy that folder to the target machine and run `budget.exe` (native GUI launcher,
 // no console window). To update, replace jars in `app/`.
 runtime {
-    options.set(listOf("--strip-debug", "--no-header-files", "--no-man-pages", "--compress", "zip-6"))
+    options.set(
+        listOf(
+            "--strip-debug", "--no-header-files", "--no-man-pages", "--compress", "zip-6",
+            "--include-locales", "en,ru",
+        )
+    )
 
     // JVM modules needed by non-modular deps (sqlite-jdbc, logback, flyway, kotlin, ...).
     // run `gradle :desktop:suggestModules` to review this list.
+    // jdk.localedata is needed for ru locale data (weekday/month names), otherwise it falls back to en.
     modules.set(
         listOf(
             "java.base",
@@ -110,6 +116,7 @@ runtime {
             "java.sql",
             "java.xml",
             "jdk.crypto.ec",
+            "jdk.localedata",
             "jdk.unsupported",
         )
     )
