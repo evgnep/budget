@@ -4,8 +4,6 @@ plugins {
 }
 
 dependencies {
-    api(libs.jackson.yaml)
-    api(libs.jackson.kotlin)
     api(libs.kotlin.datetime)
     implementation(libs.kotlin.coroutines)
     implementation(libs.kotlin.serialization.core)

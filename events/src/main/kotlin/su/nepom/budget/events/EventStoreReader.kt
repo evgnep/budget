@@ -5,6 +5,7 @@ import su.nepom.budget.events.impl.EventsSequenceImpl
 import su.nepom.budget.events.impl.readContent
 import su.nepom.budget.model.Place
 import java.nio.file.Path
+import java.nio.file.Paths
 import kotlin.io.path.absolutePathString
 import kotlin.io.path.isDirectory
 import kotlin.io.path.listDirectoryEntries
@@ -23,7 +24,7 @@ class EventStoreReader(
     .mapNotNull {
       it.fileName.toString().getFirstEventNoAndCount()?.let { (first, count) ->
         val place = Place(
-          Path.of(it.absolutePathString().removePrefix(rootPath.absolutePathString()))
+          Paths.get(it.absolutePathString().removePrefix(rootPath.absolutePathString()))
             .subpath(0, 1).toString()
         )
         if (place == ourPlace) null else EventFile(place, it, first, count)

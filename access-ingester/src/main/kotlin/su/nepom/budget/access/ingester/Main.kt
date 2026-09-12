@@ -9,7 +9,6 @@ import su.nepom.budget.access.ingester.access.dao.TransactionDao
 import su.nepom.budget.access.ingester.access.dao.UsersReader
 import su.nepom.budget.access.ingester.generator.EventsGenerator
 import su.nepom.budget.access.ingester.generator.procesed.connectToProcessed
-import su.nepom.budget.utils.readObjectFromYamlResourceFile
 import java.nio.file.Path
 import kotlin.io.path.createDirectories
 

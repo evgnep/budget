@@ -1,8 +1,19 @@
 [libraries]
+android-core-ktx = { module = "androidx.core:core-ktx", version = "1.13.1" }
+android-activity-compose = { module = "androidx.activity:activity-compose", version = "1.9.3" }
+android-compose-bom = { module = "androidx.compose:compose-bom", version = "2024.12.01" }
+android-compose-ui = { module = "androidx.compose.ui:ui" }
+android-compose-ui-tooling = { module = "androidx.compose.ui:ui-tooling" }
+android-compose-ui-tooling-preview = { module = "androidx.compose.ui:ui-tooling-preview" }
+android-compose-material3 = { module = "androidx.compose.material3:material3" }
+
 atlantafx-base = { module = "io.github.mkpaz:atlantafx-base", version = "2.0.1" }
 
 dagger-lib = { module = "com.google.dagger:dagger", version.ref = "dagger"}
 dagger-compiler = { module = "com.google.dagger:dagger-compiler", version.ref = "dagger"}
+
+room-runtime = { module = "androidx.room:room-runtime", version.ref = "room" }
+room-compiler = { module = "androidx.room:room-compiler", version.ref = "room" }
 
 flyway-core = { module = "org.flywaydb:flyway-core", version = "11.4.0" }
 
@@ -47,11 +58,17 @@ jdk = "21"
 kotlinSerialization = "1.8.0"
 ktor = "3.5.0"
 ktorm = "4.1.1"
+room = "2.8.4"
 
 [bundles]
 test-junit5 = ["test-junit5", "test-junit5-platform", "test-assertj", "test-jsonunit", "test-mockk-jvm"]
 
 [plugins]
+android-application = { id = "com.android.application" }
+android-library = { id = "com.android.library" }
+kotlin-android = { id = "org.jetbrains.kotlin.android" }
+kotlin-kapt = { id = "org.jetbrains.kotlin.kapt" }
+kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose" }
 moduleplugin = { id = "org.javamodularity.moduleplugin", version = "1.8.12" }
 javafxplugin = { id = "org.openjfx.javafxplugin", version = "0.0.13" }
 jlink = { id = "org.beryx.jlink", version = "3.1.1" }

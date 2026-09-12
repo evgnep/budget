@@ -1,4 +1,4 @@
-package su.nepom.budget.utils
+package su.nepom.budget.access.ingester
 
 import com.fasterxml.jackson.dataformat.yaml.YAMLMapper
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule

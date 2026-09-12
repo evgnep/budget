@@ -3,6 +3,8 @@ plugins {
 }
 
 dependencies {
+    implementation(libs.jackson.yaml)
+    implementation(libs.jackson.kotlin)
     implementation(libs.kotlin.datetime)
     implementation(libs.ktorm.core)
     implementation(libs.logging.logback)
