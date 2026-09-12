@@ -22,6 +22,7 @@ plugins {
 
 include(
     "access-ingester",
+    "android:bank-notifications-reader",
     "common",
     "db-sqlite",
     "desktop",
