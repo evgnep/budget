@@ -2,6 +2,7 @@ package su.nepom.budget.desktop.ui.balance
 
 import jakarta.inject.Inject
 import javafx.fxml.FXML
+import javafx.scene.Node
 import javafx.scene.layout.FlowPane
 import javafx.scene.layout.VBox
 import javafx.stage.Stage
@@ -10,7 +11,7 @@ import su.nepom.budget.desktop.util.fx.Controller
 import su.nepom.budget.desktop.util.fx.Disposable
 import su.nepom.budget.desktop.util.fx.FxmlService
 import su.nepom.budget.event.TransactionContent
-import su.nepom.budget.model.AccountKind
+import su.nepom.budget.model.AccountId
 import su.nepom.budget.model.Uuid
 
 /**
@@ -27,24 +28,31 @@ class AccountRestsController @Inject constructor(
 
     private lateinit var stage: Stage
     private val order = mutableListOf<Uuid>()
-    private val cards = mutableMapOf<Uuid, AccountRestController>()
+    private val cards = mutableMapOf<Uuid, Pair<AccountRestController, Node>>()
 
     fun setStage(stage: Stage) {
         this.stage = stage
     }
 
     fun clearAccounts() {
-        cards.values.forEach { it.dispose() }
+        cards.values.forEach { it.first.dispose() }
         cards.clear()
         order.clear()
         cardsPane.children.clear()
     }
 
-    fun addAccountsFromTransaction(transaction: TransactionContent) {
-        transaction.items.forEach { item ->
-            val account = accountService.accounts[item.account.uuid] ?: return@forEach
-            if (account.content.kind == AccountKind.MONEY) addAccount(account.uuid)
+    fun setAccounts(uuids: List<AccountId>, transaction: TransactionContent? = null) {
+        val newAccounts = uuids.mapTo(mutableSetOf()) { it.uuid }
+        transaction?.items?.forEach { newAccounts.add(it.account.uuid) }
+        val accountsToAdd = newAccounts - cards.keys
+        val accountsToRemove = cards.keys - newAccounts
+        accountsToRemove.forEach { uuid ->
+            order.remove(uuid)
+            val controllerAndNode = cards.remove(uuid) ?: return@forEach
+            controllerAndNode.first.dispose()
+            cardsPane.children.remove(controllerAndNode.second)
         }
+        accountsToAdd.forEach { uuid -> addAccount(uuid) }
     }
 
     // card removal is not needed elsewhere - the set only ever grows between clearAccounts() calls
@@ -59,7 +67,7 @@ class AccountRestsController @Inject constructor(
             cardController = controller as AccountRestController
             cardController.setAccount(account)
         }
-        cards[uuid] = cardController
+        cards[uuid] = cardController to card
         val index = order.indexOfFirst { accountName(it) > account.content.name.lowercase() }
             .let { if (it < 0) order.size else it }
         order.add(index, uuid)

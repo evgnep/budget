@@ -38,7 +38,7 @@ class WindowManager @Inject constructor(
 
     fun openTransactions(initialFilter: TransactionController.InitialFilter? = null) {
         val filter = initialFilter ?: run {
-            val picked = accountPicker.pick(null) ?: emptySet()
+            val picked = accountPicker.pick(null) ?: return
             TransactionController.InitialFilter(picked, null, null)
         }
         open("Операции", TransactionController.NAME) { stage, collect ->

@@ -34,12 +34,12 @@ import javafx.util.StringConverter
 import su.nepom.budget.db.Db
 import su.nepom.budget.db.dao.TransactionDao
 import su.nepom.budget.desktop.model.CurrencyObservable
-import su.nepom.budget.desktop.ui.balance.AccountRestsController
 import su.nepom.budget.desktop.model.TransactionObservable
 import su.nepom.budget.desktop.service.AccountService
 import su.nepom.budget.desktop.service.CurrencyService
 import su.nepom.budget.desktop.service.DbService
 import su.nepom.budget.desktop.service.WindowStateService
+import su.nepom.budget.desktop.ui.balance.AccountRestsController
 import su.nepom.budget.desktop.ui.common.CsvExportController
 import su.nepom.budget.desktop.ui.common.CsvExportSpec
 import su.nepom.budget.desktop.util.formatDateForClipboard
@@ -57,6 +57,7 @@ import su.nepom.budget.desktop.util.fx.runAndShowError
 import su.nepom.budget.desktop.util.fx.setClipboardValue
 import su.nepom.budget.desktop.util.fx.setupFlexibleDateFormat
 import su.nepom.budget.desktop.util.toEndOfDayInstant
+import su.nepom.budget.desktop.util.toLocalDate
 import su.nepom.budget.desktop.util.toStartOfDayInstant
 import su.nepom.budget.event.TransactionContent
 import su.nepom.budget.event.TransactionContextItemAndTransaction
@@ -68,13 +69,12 @@ import su.nepom.budget.model.Uuid
 import su.nepom.budget.utils.format
 import su.nepom.budget.utils.toBigDecimal
 import su.nepom.budget.utils.toRawMoneyOrNull
-import su.nepom.budget.desktop.util.toLocalDate
 import java.text.DecimalFormatSymbols
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.temporal.TemporalAdjusters
-import java.util.Locale
+import java.util.*
 import kotlin.math.ceil
 
 @Suppress("unused", "UNCHECKED_CAST")
@@ -264,6 +264,7 @@ class TransactionController @Inject constructor(
         transactionDetailController.onSaved = { savedUuid -> reload(resetPage = false, preferUuid = savedUuid) }
         transactionDetailController.masterSelection =
             { transactionsTable.selectionModel.selectedItem?.dataOrNull()?.let { TransactionObservable(it.transaction) } }
+        transactionsTable.selectionModel.selectedItemProperty().addListener { _, _, _ -> updateAccountRests() }
         masterDetailFormDriver = MasterDetailFormDriver(
             transactionsTable.selectionModel,
             transactionDetailController.formDriver,
@@ -872,7 +873,6 @@ class TransactionController @Inject constructor(
         pageCount = maxOf(1, ceil(totalCount / PAGE_SIZE.toDouble()).toInt())
         if (resetPage) {
             pageIndex = 0
-            accountRestsController.clearAccounts()
         }
         if (pageIndex >= pageCount) pageIndex = pageCount - 1
         loadPage(filter, preferUuid)
@@ -914,7 +914,7 @@ class TransactionController @Inject constructor(
         val loaded = runAndShowError { session.transactionDao.getItemsByQuery(query) }.getOrDefault(emptyList())
         pageItemCount = loaded.size
         rows.setAll(buildDisplayRows(loaded))
-        loaded.distinctBy { it.content.id }.forEach { accountRestsController.addAccountsFromTransaction(it.content) }
+        // loaded.distinctBy { it.content.id }.forEach { accountRestsController.addAccountsFromTransaction(it.content) }
         if (prevTransactionUuid != null) {
             val sameTransactionRows = rows.mapNotNull { it.dataOrNull() }.filter { it.content.id == prevTransactionUuid }
             val toSelect = sameTransactionRows.firstOrNull { it.itemNoInTransaction == prevNo } ?: sameTransactionRows.firstOrNull()
@@ -989,6 +989,7 @@ class TransactionController @Inject constructor(
     }
 
     private fun updateAccountsSummary() {
+        updateAccountRests()
         if (selectedAccounts.isEmpty()) {
             accountsSummaryLabel.text = "Все счета"
             return
@@ -997,6 +998,12 @@ class TransactionController @Inject constructor(
         val shown = names.take(5).joinToString(", ")
         val tail = if (names.size > 5) ", ..." else ""
         accountsSummaryLabel.text = "Счетов: ${selectedAccounts.size}: $shown$tail"
+    }
+
+    private fun updateAccountRests() {
+        accountRestsController.setAccounts(
+            selectedAccounts,
+            (transactionsTable.selectionModel.selectedItem as? TxRow.Data)?.row?.content)
     }
 
     // --- list rendering helpers ---
